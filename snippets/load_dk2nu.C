@@ -22,10 +22,25 @@ void load_dk2nu(bool genie_too = false, bool verbose = false)
   TString ip = gSystem->GetIncludePath();
   ip += " -I";
   ip += path;
+
   ip += " -I";
   ip += path;
   ip += "/include";
+
   gSystem->SetIncludePath(ip);
   if ( verbose ) cout << "SetIncludePath:  " << ip << endl;
+
+  // additions to .include must be done individually or CINT will
+  // try to quote all the spaces as a single path
+  TString dip;
+
+  dip = ".include ";
+  dip += path;
+  gROOT->ProcessLine(dip.Data());
+
+  dip = ".include ";
+  dip += path;
+  dip += "/include";
+  gROOT->ProcessLine(dip.Data());
 
 }
