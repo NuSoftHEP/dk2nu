@@ -3,8 +3,9 @@
 #include <iomanip>
 
 #include "dk2nu/tree/readWeightLocations.h"
-
 #include "dk2nu/tree/dkmeta.h"
+
+#include "TSystem.h"
 
 /// Read a text file that contains a header line followed by
 /// quartets of "<xpos> <ypos> <zpos> <text string>" on separate 
@@ -18,19 +19,25 @@ void readWeightLocations(std::string locfilename,
                          std::vector<double>& zloc)
 {
 
-  std::ifstream locfile(locfilename.c_str());
+  const char* path = gSystem->ExpandPathName(locfilename.c_str());
+  std::ifstream locfile(path);
 
   int iline=0;
 
-  // read/skip header line in text file
-  char header[1000];
-  locfile.getline(header,sizeof(header));
-  ++iline;
+  char comment_buffer[1000];
 
   // read lines
   char tmp[1001];
   size_t tmplen = sizeof(tmp);
   while ( ! locfile.eof() ) {
+    char c;
+    while ( ( c = locfile.get() ) == ' ' ) {}; // eat leading spaces
+    if ( c == '#' ) {
+      // comment_buffer line
+      locfile.getline(comment_buffer,sizeof(comment_buffer));
+      continue;
+    }
+    locfile.putback(c);
     double x, y, z;
     locfile >> x >> y >> z;
     locfile.getline(tmp,tmplen-1);
