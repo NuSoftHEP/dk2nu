@@ -1,0 +1,61 @@
+README File for "dk2nu" package
+
+Purpose: 
+
+   This package's code was developed to consolidate the disparate
+   formats of neutrino beam simulation "flux" files.  There is code to
+   support the ROOT TTree format, assist in filling it in the beam
+   simulations, and interface to GENIE.
+
+   These "flux" files encapsulate more than just the flux of neutrinos
+   but information about the hadron or muon decay the gave rise to
+   that neutrino.  Using the particulars allowed one to re-evaluate
+   the probability (and energy) of the neutrino ray passing through
+   any arbitrary point.
+
+   There were at the time of this writing (2012-11-06) at least 4
+   variants [gnumi (geant3-based), g4numi, g4numi-minerva, flugg] with
+   many similar elements but also different additions and formatting
+   (both of element type and naming, mostly capitalization).
+
+Subdirectories:
+
+   tree     - the ROOT TTree dk2nu entries and the metadata entries
+   genie    - interface to genie
+   etc      - auxillary files (such a location text file)
+   include  - 
+   doc      - documentation
+   snippets - code fragments for common use
+   convert  - code to convert old ntuples to the new common format
+
+Building and packaging:
+
+   The code separates classes that interface to GENIE from the others
+   to limit the dependencies.  The build expect a DK2NU environment
+   variable to point to the top directory containing this file.
+
+   At this time the build uses an standalone scheme that assumes the 
+   necessary products (compiler, ROOT, GENIE, etc) have been setup ahead 
+   of time.  The results should be package-able into a UPS setup.
+
+   If ROOT is compiled 32-bit the system should detect that and use
+   the -m32 flag automagically.  The build system assumes that g++
+   is the correct compiler.  It should also link shared libraries
+   appropriately on Linux and OS X.
+
+Environment variables:
+
+   DK2NU     - must point at top directory
+   CXXFLAGS  - [optional]  (e.g. force -m32)
+   LDFLAGS   - [optional]  (e.g. force -m32)
+
+   GENIE     - std build build area if building genie interface
+   LIBXML2INC - location of libxml2 include (necessary for genie interface)
+
+Use in ROOT or GENIE:
+
+   at the prompt use:
+      .L $(DK2NU)/lib/libdk2nuTree.so
+   or if export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${DK2NU}/lib"
+      gSystem->Load("libdk2nuTree");
+      

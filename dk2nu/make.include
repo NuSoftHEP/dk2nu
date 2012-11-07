@@ -1,0 +1,105 @@
+#
+# make.include for dk2nu
+#
+bindir=$(DK2NU)/bin
+libdir=$(DK2NU)/lib
+tmpdir=$(DK2NU)/tmp
+includedir=$(DK2NU)/include
+
+LIBNAME    = lib$(PACKAGE)
+SHAREDLIB  := $(libdir)/$(LIBNAME).so
+DICTIONARY = _ROOT_DICT_$(PACKAGE)
+
+sources    := $(wildcard *.cxx) $(wildcard *.cc)
+allheaders := $(wildcard *.h) $(wildcard *.hh)
+headers1   := $(filter-out LinkDef.h, $(allheaders))
+headers    := $(filter-out $(DICTIONARY).h, $(headers1))
+objects    := $(addsuffix .o, $(basename $(sources) $(DICTIONARY) ))
+depfiles   := $(addsuffix .d, $(basename $(sources) $(DICTIONARY) ))
+
+ARCHNAME = $(shell uname -s)
+
+#
+# set compile/link flags
+#
+CXX      = g++
+CXXFLAGS += -O2 -fPIC -Wall  -pedantic-errors -W -Wno-long-long 
+CXXFLAGS += -Wwrite-strings -Wno-inline  -Woverloaded-virtual -Wno-inline
+LDFLAGS  += -L$(ROOTSYS)/lib -L$(libdir)
+INCLUDE  += -I$(DK2NU) -I$(includedir) -I$(ROOTSYS)/include
+
+ifneq ($(ARCHNAME),Darwin)
+  SLIBFLAGS := -shared 
+else
+  SLIBFLAGS := -dynamiclib -single_module -flat_namespace \
+               -undefined dynamic_lookup
+endif
+
+# GENIE interface require additional locations
+ifneq ($(GENIE),)
+   LDFLAGS += -L$(GENIE)/lib
+   INCLUDE += -I$(GENIE)/src
+# this won't work when GENIE wasn't built in-place
+  GOPT_LIBXML2_LIB=$(shell grep LIBXML2_LIB $(GENIE)/src/make/Make.config | cut -d'=' -f2)
+  GOPT_LOG4CPP_LIB=$(shell grep LOG4CPP_LIB $(GENIE)/src/make/Make.config | cut -d'=' -f2)
+  GOPT_LIBXML2_INC=$(shell grep LIBXML2_INC $(GENIE)/src/make/Make.config | cut -d'=' -f2)
+  GOPT_LOG4CPP_INC=$(shell grep LOG4CPP_INC $(GENIE)/src/make/Make.config | cut -d'=' -f2)
+  LDFLAGS += -L$(GOPT_LIBXML2_LIB) -L$(GOPT_LOG4CPP_LIB)
+  INCLUDE += -I$(GOPT_LIBXML2_INC) -I$(GOPT_LOG4CPP_INC)
+endif
+#
+# make sure architecture is consistent in case of old 32-bit builds
+#
+#  ELF 64-bit LSB shared object, AMD x86-64, version 1 (SYSV), not stripped
+#  ELF 32-bit LSB shared object, Intel 80386, version 1 (SYSV), not stripped
+#  Mach-O dynamically linked shared library i386
+#
+RCOREARCH = $(shell file $(ROOTSYS)/lib/libCore.so | cut -d':' -f2)
+IS32 += $(findstring 32-bit,$(RCOREARCH))
+IS32 += $(findstring i386,$(RCOREARCH))
+ifneq ($(IS32),)
+  CXXFLAGS += -m32
+  LDFLAGS  += -m32
+endif
+
+$(DICTIONARY).cc:  $(headers) LinkDef.h
+	@rm -f $(DICTIONARY).*
+	rootcint -f $(DICTIONARY).cc -c $(INCLUDE) $(headers) LinkDef.h
+
+##$(tmpdir)/
+%.o: %.cxx
+##	@if [ ! -d "$(tmpdir)" ]; then /bin/mkdir "$(tmpdir)"; fi
+	@echo "<**compiling**> $(<)"
+	@$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
+
+##$(tmpdir)/
+%.o: %.cc
+##	@if [ ! -d "$(tmpdir)" ]; then /bin/mkdir "$(tmpdir)"; fi
+	@echo "<**compiling**> $(<)"
+	@$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
+
+##$(tmpdir)/
+%.d: %.cxx
+##	@if [ ! -d "$(tmpdir)" ]; then /bin/mkdir "$(tmpdir)"; fi
+	@echo "<**depends**> $(<)"
+	@$(CXX) $(CXXFLAGS) $(INCLUDE) -M $< > $@
+
+##$(tmpdir)/
+%.d: %.cc
+##	@if [ ! -d "$(tmpdir)" ]; then /bin/mkdir "$(tmpdir)"; fi
+	@echo "<**depends**> $(<)"
+	@$(CXX) $(CXXFLAGS) $(INCLUDE) -M $< > $@
+
+clean:
+	@echo "<**clean $(PACKAGE)**>"
+	@rm -f *.d *.o
+#	@if [ -d "$(tmpdir)" ]; then rm -r "$(tmpdir)"; fi
+	@if [ -f "$(DICTIONARY).cc" ]; then rm $(DICTIONARY).* ; fi
+	@if [ -f "$(SHAREDLIB)" ]; then rm $(SHAREDLIB); fi
+
+$(SHAREDLIB): $(depfiles) $(objects)
+	@echo "<**building library**> $(@)"
+	@echo "$(SHAREDLIB) depends on $(objects)"
+	$(CXX) $(LDFLAGS) $(SLIBFLAGS) -o $@ $(objects) $(LIBDEPS)
+
+#.PHONEY:
