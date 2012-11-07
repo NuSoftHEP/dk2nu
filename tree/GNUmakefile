@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.1 2012-11-07 01:35:47 rhatcher Exp $
+# $Id: GNUmakefile,v 1.2 2012-11-07 21:11:30 rhatcher Exp $
 #
 ########################################################################
 
@@ -27,5 +27,7 @@ FORCE:
 	@echo "FORCE depfiles:   $(depfiles)"
 	@echo "FORCE INCLUDE:    $(INCLUDE)"
 	@echo "FORCE RCOREARCH:  $(RCOREARCH)"
-	@echo "FORCE IS32:       $(IS32)"
+	@echo "FORCE IS32:       \"$(IS32)\""
+	@echo "FORCE CXXFLAGS:   $(CXXFLAGS)"
+	@echo "FORCE LDFLAGS:    $(LDFLAGS)"
 ########################################################################
