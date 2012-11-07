@@ -8,19 +8,21 @@
  *
  * \author (last to touch it) $Author: rhatcher $
  *
- * \version $Revision: 1.1 $
+ * \version $Revision: 1.2 $
  *
- * \date $Date: 2012-11-07 01:35:47 $
+ * \date $Date: 2012-11-07 03:46:16 $
  *
  * Contact: rhatcher@fnal.gov
  *
- * $Id: dk2nu.cc,v 1.1 2012-11-07 01:35:47 rhatcher Exp $
+ * $Id: dk2nu.cc,v 1.2 2012-11-07 03:46:16 rhatcher Exp $
  */
 
 #include "dk2nu.h"
 ClassImp(dk2nu)
 
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 
 //-----------------------------------------------------------------------------
 dk2nu::dk2nu() { Clear(); }
@@ -116,9 +118,23 @@ void dk2nu::Clear(const std::string &)
 
 std::string dk2nu::AsString(const std::string& opt) const
 {
-  std::string s("dk2nu: ");
-  s += opt;
-  return s;
+
+  std::ostringstream s;
+  s << "dk2nu: \"" << opt << "\" job " << job << " pot# " << potnum << "\n";
+  size_t nloc = nuwgt.size();
+  bool printloc = true; // ( opt.find("l") != std::string::npos);
+  s << nloc << " locations " << (printloc?"":"(suppressed)") << "\n";
+  if ( ! printloc ) nloc = 0;
+  for ( size_t iloc = 0; iloc < nloc; ++iloc ) {
+    s << "[" << std::setw(2) << iloc << "]"
+      << " p4=(" << nupx[iloc] << "," 
+      << nupy[iloc] << "," << nupz[iloc] << ")"
+      << " E=" << nuenergy[iloc] << " wgt=" << nuwgt[iloc];
+  }
+  s << "norig " << norig << " ndecay " << ndecay << " ntype " << ntype << "\n";
+
+  s << "production vtx=(" << vx << "," << vy << "," << vz << ")\n";
+  return s.str();
 }
 
 std::ostream& operator<<(std::ostream& os, const dk2nu& entry)
