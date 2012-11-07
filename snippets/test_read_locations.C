@@ -1,7 +1,7 @@
 //
 // test reading locations text file
 // this script can be run using:
-//       root -b -q test_read_locations.C+
+//       root -b -q load_dk2nu.C test_read_locations.C+
 // 
 // rhatcher@fnal.gov  2012-10-02
 //====================================================================
@@ -10,12 +10,6 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
-
-// assumes that the libdk2nuTree.so has been loaded
-// either by:
-//    .L $(DK2NU)/lib/libdk2nuTree.so
-// or via (assuming LD_LIBRARY_PATH has been set):
-//    gSystem->Load("libdk2nuTree");
 
 void test_read_locations(std::string locfilename = "../etc/locations.txt") 
 {
