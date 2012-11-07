@@ -11,7 +11,7 @@
 #include <fstream>
 #include <iomanip>
 
-void test_read_locations(std::string locfilename = "../etc/locations.txt") 
+void test_read_locations(std::string locfilename = "${DK2NU}/etc/locations.txt") 
 {
   std::vector<std::string> nameloc;
   std::vector<double> xloc, yloc, zloc;
