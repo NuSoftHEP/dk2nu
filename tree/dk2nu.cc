@@ -8,13 +8,13 @@
  *
  * \author (last to touch it) $Author: rhatcher $
  *
- * \version $Revision: 1.2 $
+ * \version $Revision: 1.3 $
  *
- * \date $Date: 2012-11-07 03:46:16 $
+ * \date $Date: 2012-11-07 21:12:01 $
  *
  * Contact: rhatcher@fnal.gov
  *
- * $Id: dk2nu.cc,v 1.2 2012-11-07 03:46:16 rhatcher Exp $
+ * $Id: dk2nu.cc,v 1.3 2012-11-07 21:12:01 rhatcher Exp $
  */
 
 #include "dk2nu.h"
@@ -72,6 +72,7 @@ void dk2nu::Clear(const std::string &)
   tpz         = kUnsetDouble;
   tptype      = kUnsetInt;
   tgen        = kUnsetInt;
+  tgptype     = kUnsetInt;
 
   apdg.clear();
   trackid.clear();
@@ -127,9 +128,12 @@ std::string dk2nu::AsString(const std::string& opt) const
   if ( ! printloc ) nloc = 0;
   for ( size_t iloc = 0; iloc < nloc; ++iloc ) {
     s << "[" << std::setw(2) << iloc << "]"
-      << " p4=(" << nupx[iloc] << "," 
-      << nupy[iloc] << "," << nupz[iloc] << ")"
-      << " E=" << nuenergy[iloc] << " wgt=" << nuwgt[iloc];
+      << " p4=(" << std::setw(12) << nupx[iloc] << "," 
+      << std::setw(12) << nupy[iloc] << "," 
+      << std::setw(12) << nupz[iloc] << ")"
+      << " E=" << std::setw(12) << nuenergy[iloc]
+      << " wgt=" << std::setw(12) << nuwgt[iloc]
+      << "\n";
   }
   s << "norig " << norig << " ndecay " << ndecay << " ntype " << ntype << "\n";
 
