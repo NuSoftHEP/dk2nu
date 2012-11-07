@@ -56,14 +56,22 @@ endif
 RCOREARCH = $(shell file $(ROOTSYS)/lib/libCore.so | cut -d':' -f2)
 IS32 += $(findstring 32-bit,$(RCOREARCH))
 IS32 += $(findstring i386,$(RCOREARCH))
-ifneq ($(IS32),)
+ifneq ($(strip $(IS32)),)
   CXXFLAGS += -m32
   LDFLAGS  += -m32
+else
+  CXXFLAGS += -m64
+  LDFLAGS  += -m64  
 endif
 
 $(DICTIONARY).cc:  $(headers) LinkDef.h
 	@rm -f $(DICTIONARY).*
 	rootcint -f $(DICTIONARY).cc -c $(INCLUDE) $(headers) LinkDef.h
+
+$(SHAREDLIB): $(depfiles) $(objects)
+	@echo "<**building library**> $(@)"
+	@echo "$(SHAREDLIB) depends on $(objects)"
+	$(CXX) $(LDFLAGS) $(SLIBFLAGS) -o $@ $(objects) $(LIBDEPS)
 
 ##$(tmpdir)/
 %.o: %.cxx
@@ -75,7 +83,7 @@ $(DICTIONARY).cc:  $(headers) LinkDef.h
 %.o: %.cc
 ##	@if [ ! -d "$(tmpdir)" ]; then /bin/mkdir "$(tmpdir)"; fi
 	@echo "<**compiling**> $(<)"
-	@$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
 ##$(tmpdir)/
 %.d: %.cxx
@@ -96,9 +104,4 @@ clean:
 	@if [ -f "$(DICTIONARY).cc" ]; then rm $(DICTIONARY).* ; fi
 	@if [ -f "$(SHAREDLIB)" ]; then rm $(SHAREDLIB); fi
 
-$(SHAREDLIB): $(depfiles) $(objects)
-	@echo "<**building library**> $(@)"
-	@echo "$(SHAREDLIB) depends on $(objects)"
-	$(CXX) $(LDFLAGS) $(SLIBFLAGS) -o $@ $(objects) $(LIBDEPS)
-
-#.PHONEY:
+# .PHONEY:
