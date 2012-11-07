@@ -10,10 +10,9 @@ LIBNAME    = lib$(PACKAGE)
 SHAREDLIB  := $(libdir)/$(LIBNAME).so
 DICTIONARY = _ROOT_DICT_$(PACKAGE)
 
-sources    := $(wildcard *.cxx) $(wildcard *.cc)
-allheaders := $(wildcard *.h) $(wildcard *.hh)
-headers1   := $(filter-out LinkDef.h, $(allheaders))
-headers    := $(filter-out $(DICTIONARY).h, $(headers1))
+sources    := $(filter-out $(DICTIONARY).cc, $(wildcard *.cxx) $(wildcard *.cc))
+allheaders := $(filter-out $(DICTIONARY).h, $(wildcard *.h) $(wildcard *.hh))
+headers    := $(filter-out LinkDef.h $(DICTIONARY).h, $(allheaders))
 objects    := $(addsuffix .o, $(basename $(sources) $(DICTIONARY) ))
 depfiles   := $(addsuffix .d, $(basename $(sources) $(DICTIONARY) ))
 
