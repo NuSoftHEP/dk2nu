@@ -17,7 +17,7 @@
 // or via (assuming LD_LIBRARY_PATH has been set):
 //    gSystem->Load("libdk2nuTree");
 
-void test_read_locations(std::string locfilename = "../etc/location.txt") 
+void test_read_locations(std::string locfilename = "../etc/locations.txt") 
 {
   std::vector<std::string> nameloc;
   std::vector<double> xloc, yloc, zloc;
