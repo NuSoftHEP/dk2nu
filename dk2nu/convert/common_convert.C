@@ -4,7 +4,7 @@
 ///          Fermi National Accelerator Laboratory
 ///
 /// \created   2012-11-07
-/// \version $Id: common_convert.C,v 1.1 2012-11-07 22:23:20 rhatcher Exp $
+/// \version $Id: common_convert.C,v 1.2 2012-11-08 03:27:16 rhatcher Exp $
 ///==========================================================================
 
 #include <iostream>
@@ -339,13 +339,34 @@ int ConvertGeantToPdg(int geant_code)
   if(geant_code == 49) return kPdgHe3;
 
   if (geant_code != 0 ) 
-    cerr << "Can not convert geant code: " << geant_code << " to PDG";
+    cerr << "## Can not convert geant code: " << geant_code << " to PDG" << endl;
   return 0;
 }
 //____________________________________________________________________________
 
 void ConvertPartCodes()
 {
+ 
+  static bool first = true;
+  if ( dk2nuObj->ntype   == 99 ||
+       dk2nuObj->ptype   == 99 ||
+       dk2nuObj->tptype  == 99 ||
+       dk2nuObj->tgptype == 99     ) {
+    if ( first ) {
+      first = false;
+      cout << "## ConvertPartCodes (potnum="
+           << dk2nuObj->potnum << ") saw code 99: " 
+           << " ntype=" << dk2nuObj->ntype
+           << " ptype=" << dk2nuObj->ptype
+           << " tptype=" << dk2nuObj->tptype
+           << " tgptype=" << dk2nuObj->tgptype
+           << endl;
+      cout << "## ... last message of this type" << endl;
+      // tends to be tptype = parent exiting the target
+      //cout << "## " << *dk2nuObj << endl;
+    }
+  }
+ 
   // NuMI ntuples have an odd neutrino "geant" convention
   switch ( dk2nuObj->ntype ) {
   case 56: dk2nuObj->ntype =  14; break;  // kPdgNuMu;     break;
@@ -358,7 +379,8 @@ void ConvertPartCodes()
   }
   dk2nuObj->ptype   = ConvertGeantToPdg(dk2nuObj->ptype);
   dk2nuObj->tptype  = ConvertGeantToPdg(dk2nuObj->tptype);
-  dk2nuObj->tgptype = ConvertGeantToPdg(dk2nuObj->tgptype);
+  if ( dk2nuObj->tgptype != -1 )  // may not exist in original ntuple
+    dk2nuObj->tgptype = ConvertGeantToPdg(dk2nuObj->tgptype);
 }
 //____________________________________________________________________________
 
@@ -442,73 +464,4 @@ void compare(double a, double b, string s)
 }
 
 //____________________________________________________________________________
-/***************************************************************************
-void junkme()
-{
-  ///-----------------------------------------------------------------------
-  ///
-  ///  equivalent to NumiAnalysis::? in g4numi
-  ///  this is the main loop, making entries as the come about
-  ///
-  ///-----------------------------------------------------------------------
-  // fill a few element of a few entries
-  for (unsigned int ipot=1; ipot <= nentries; ++ipot) {
 
-    ///
-    ///  equivalent to NumiAnalysis::FillNeutrinoNtuple() in g4numi
-    ///  (only the part within the loop over ipot)
-    ///
-
-    // clear the object in preparation for filling an entry
-    dk2nuObj->Clear();
-
-    // fill with info ... only a few elements, just for test purposes
-    dk2nuObj->job    = myjob;
-    dk2nuObj->potnum = ipot;
-
-    // pick a bogus particle type to decay, and a neutrino flavor
-    int ptype = 211;  // pi+
-    if ( ipot %  5 == 0 ) ptype = 321;  // k+
-    if ( ipot % 50 == 0 ) ptype = 13;   // mu-
-    int ntype = ( ( ptype == 321 ) ? 12 : 14 );
-    TVector3 p3nu(1,2,3); // bogus random neutrino decay vector
-
-    // calcLocationWeights needs these filled if it isn't going assert()
-    // really need to fill the other bits at this point as well:
-    //   ntype, ptype, vx, vy, vz, pdpx, pdpy, pdpz, necm, 
-    //   ppenergy, ppdxdz, ppdydz, pppz, 
-    //   muparpx, muparpy, muparpz, mupare
-    dk2nuObj->ptype  = ptype;  
-    dk2nuObj->ntype  = ntype;
-
-    // fill nupx, nupy, nupz, nuenergy, nuwgt(=1) for random decay
-    // should be the 0-th entry
-    if ( dkmetaObj->nameloc[0] == "random decay" ) {
-      dk2nuObj->nupx.push_back(p3nu.x());
-      dk2nuObj->nupy.push_back(p3nu.y());
-      dk2nuObj->nupz.push_back(p3nu.z());
-      dk2nuObj->nuenergy.push_back(p3nu.Mag());
-      dk2nuObj->nuwgt.push_back(1.0);
-    }
-    // fill location specific p3, energy and weights; locations in metadata
-    calcLocationWeights(dkmetaObj,dk2nuObj);
-
-    // test the filling of vector where entries vary in length
-    // ... really need to fill whole dk2nu object
-    unsigned int nancestors = rndm->Integer(12) + 1;  // at least one entry
-    for (unsigned int janc = 0; janc < nancestors; ++janc ) {
-      int xpdg = rndm->Integer(100);
-      dk2nuObj->apdg.push_back(janc*10000+xpdg);
-    }
-
-    // push a couple of user defined values for each entry
-    //dk2nuObj->vint.push_back(42);
-    //dk2nuObj->vint.push_back(ipot);
-
-    // push entry out to tree
-    dk2nu_tree->Fill();
-
-  } // end of fill loop
-}
-
-***************************************************************************/
