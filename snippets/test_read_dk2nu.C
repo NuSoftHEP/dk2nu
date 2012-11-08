@@ -27,7 +27,9 @@ void test_read_dk2nu(string pattern="generic_g4minerva*.root")
   
   for (Long64_t i=0; i < nflux; ++i ) {
     cflux->GetEntry(i);
-    if ( i < 5 ) cout << "ntype " << dk2nuObj->ntype << endl;
+    if ( i < 50 ) cout << "ntype " << dk2nuObj->ntype << endl;
   }
 
+  cmeta->GetEntry(0);
+  cout << *dkmetaObj << endl;
 }
