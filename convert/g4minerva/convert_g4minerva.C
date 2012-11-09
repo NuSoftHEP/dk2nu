@@ -259,9 +259,10 @@ void copy_g4minerva_to_dk2nu(const g4minerva& g4minervaObj)
       // except for first particle start[i] should == stop[i-1]
       bool match = true;
       match = match && ( close_enough(g4minervaObj.startx[ian],g4minervaObj.stopx[ian-1]) );
-      match = match && ( close_enough(g4minervaObj.starty[ian],g4minervaObj.stopy[ian-1]) );
+      Match = match && ( close_enough(g4minervaObj.starty[ian],g4minervaObj.stopy[ian-1]) );
       match = match && ( close_enough(g4minervaObj.startz[ian],g4minervaObj.stopz[ian-1]) );
-      if ( ! match ) {
+      match = match && ( g4minervaObj.ivol[ian] == g4minervaObj.fvol[ian-1] );
+      If ( ! match ) {
         cout << "## ancestor " << ian << " didn't start where previous entry stopped" << endl;
       }
     }
