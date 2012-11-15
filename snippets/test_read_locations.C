@@ -6,14 +6,18 @@
 // rhatcher@fnal.gov  2012-10-02
 //====================================================================
 
+#ifndef __CINT__
+// hide header stuff from CINT, assume load_dk2nu.C run first
+
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <iomanip>
 
-//#include "dk2nu/tree/dk2nu.h"
 #include "dk2nu/tree/dkmeta.h"
 #include "dk2nu/tree/readWeightLocations.h"
+
+#endif  // ifndef __CINT__
 
 void test_read_locations(std::string locfilename = "${DK2NU}/etc/locations.txt") 
 {

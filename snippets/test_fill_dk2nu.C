@@ -15,7 +15,7 @@
 ///
 /// \created   2012-04-03
 /// \modified  2012-10-03
-/// \version $Id: test_fill_dk2nu.C,v 1.2 2012-11-15 09:09:27 rhatcher Exp $
+/// \version $Id: test_fill_dk2nu.C,v 1.3 2012-11-15 21:56:53 rhatcher Exp $
 ///==========================================================================
 
 #include <iostream>
@@ -25,10 +25,23 @@
 #include "TTree.h"
 #include "TRandom3.h"
 
+#ifndef __CINT__
+// hide header stuff from CINT, assume load_dk2nu.C run first
+
 #include "dk2nu/tree/dk2nu.h"
 #include "dk2nu/tree/dkmeta.h"
 
+/// include standardized code for reading location text file
+#include "dk2nu/tree/readWeightLocations.h"
+
+/// include standardized code for getting energy/weight vectors for locations
+#include "dk2nu/tree/calcLocationWeights.h"
+
+#endif  // ifndef __CINT__
+
+// if running bare CINT don't try adding the NonStd addition it won't work
 #define ADD_NONSTD
+
 #ifdef ADD_NONSTD
 /// example class for extending the tree with non-standard extras
 /// that doesn't require modifying the basic "dk2nu" class
@@ -46,12 +59,6 @@ class NonStd {
 /// again do this because we have no external linkages to libraries
 #pragma link C++ class NonStd+;
 #endif
-
-/// include standardized code for reading location text file
-#include "dk2nu/tree/readWeightLocations.h"
-
-/// include standardized code for getting energy/weight vectors for locations
-#include "dk2nu/tree/calcLocationWeights.h"
 
 // flugg 500K POT lowth files seem to have 510000 as an upper limit on 
 // # of entries.   So to test for estimate of file size one needs to have 
@@ -153,7 +160,7 @@ void test_fill_dk2nu(unsigned int nentries=1000)
       dk2nu->nuray.push_back(nurndm);
     }
     // fill location specific p3, energy and weights; locations in metadata
-    calcLocationWeights(dkmeta,dk2nu);
+    bsim::calcLocationWeights(dkmeta,dk2nu);
 
     // test the filling of vector where entries vary in length
     // ... really need to fill whole dk2nu object
