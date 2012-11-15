@@ -16,26 +16,31 @@ using namespace std;
 
 #include "dk2nu/convert/common_convert.C"
 
-#include "flugg.C"
+#include "dk2nu/convert/flugg/flugg.C"
 
 void copy_flugg_to_dk2nu(const flugg& fluggObj);
+void fluggCrossChecks(const flugg& fluggObj, string inputloc);
 
-void convert_flugg(string ifname="../generic_flugg.root",
-                   string inputloc="MINOS",  // "MINOS" or "NOvA"
+void convert_flugg(string ifname="../fluxfiles/generic_flugg.root",
                    int jobnum=42,
-                   Long64_t maxentries=200000000,
+                   string inputloc="MINOS",  // "MINOS"or "NOvA" for xcheck
+                   Long64_t maxentries=-1,
                    Long64_t moddump=-1) // modulo for dump
 {
   // set globals
   myjob = jobnum; // allow override because flugg files forgot to set this
   pots  = 0;
   // allowance in location energy/weight cross-check
-  frac_diff_tolerance = 5.0e-4;
+  frac_diff_tolerance = 2.5e-4;
 
   int highest_potnum = 0;
 
   // open input ntuple
   TFile* fin = TFile::Open(ifname.c_str());
+  if ( ! fin ) {
+    cout << "couldn't open input file: " << ifname << endl;
+    return;
+  }
   const char* objName = "h10";
   TTree* tin = 0;
   fin->GetObject(objName,tin);
@@ -44,22 +49,17 @@ void convert_flugg(string ifname="../generic_flugg.root",
     cout << "couldn't find " << objName << endl;
     return;
   }
-  cout << "Input file:  " << ifname << endl;
+  cout << endl << "Input file:  " << ifname << endl;
 
   // use makeclass interface for flugg
   flugg fluggObj(tin);
 
   // construct output filename
   string ofname = construct_outfilename(ifname);
-  cout << "Output file: " << ofname << endl;
+  cout << "Output file: " << ofname << endl << endl;
 
   ConvertInit();
   ConvertBookNtuple(ofname);
-
-  /// find indices for new weights so we can compare later
-  size_t indxN = find_loc_index(inputloc+" NearDet");
-  size_t indxF = find_loc_index(inputloc+" FarDet");
-  cout << "indx Near " << indxN << " Far " << indxF << endl;
 
   ///
   /// loop over entries
@@ -80,29 +80,27 @@ void convert_flugg(string ifname="../generic_flugg.root",
     nbytes += nb;
 
     // always clear the dk2nu object 
-    dk2nuObj->Clear(); //  !!! important always to this
+    dk2nu->clear(); //  !!! important !!! always do this
+
     // fill the dk2nu object from the flugg entry
     copy_flugg_to_dk2nu(fluggObj);
-    // convert Geant to PDG codes (ntype,ptype,tptype,tgptype) in dk2nu
-    ConvertPartCodes();
+
     // fill location specific p3, energy and weights
     // locations to fill are in the metadata
     // assumes that prior copying filled the first entry w/ random decay
-    calcLocationWeights(dkmetaObj,dk2nuObj);
+    calcLocationWeights(dkmeta,dk2nu);
+
     // keep track of potnum
-    if ( dk2nuObj->potnum > highest_potnum ) 
-      highest_potnum = dk2nuObj->potnum;
+    if ( dk2nu->potnum > highest_potnum ) 
+      highest_potnum = dk2nu->potnum;
+
     // push entry out to tree
-    dk2nu_tree->Fill();
+    dk2nuTree->Fill();
 
     // just for fun print every n entries
-    if ( moddump > 0 && jentry%moddump == 0 ) cout << endl << *dk2nuObj << endl;
+    if ( moddump > 0 && jentry%moddump == 0 ) cout << endl << *dk2nu << endl;
 
-    // cross check location energy/weights
-    compare(fluggObj.Nenergyn,dk2nuObj->nuenergy[indxN],"near energy");
-    compare(fluggObj.Nwtnear,dk2nuObj->nuwgt[indxN],"near wgt");
-    compare(fluggObj.Nenergyf,dk2nuObj->nuenergy[indxF],"far energy");
-    compare(fluggObj.Nwtfar,dk2nuObj->nuwgt[indxF],"far wgt");
+    fluggCrossChecks(fluggObj,inputloc);
 
   }
   cout << endl;
@@ -113,6 +111,16 @@ void convert_flugg(string ifname="../generic_flugg.root",
        << obs_frac_diff_max << endl
        << "print ## message when exceeded " << frac_diff_tolerance << endl;
 
+  dkmeta->job     = myjob;
+  dkmeta->pots    = pots;
+  dkmeta->beamsim = "convert_flugg.C";
+  dkmeta->physics = "bogus";
+
+  // print last entries
+  cout << endl << "========== last entries" << endl << endl;
+  cout << *dk2nu << endl << endl;
+  cout << *dkmeta << endl;
+
   // finish off ntuples (including meta data)
   ConvertFinish();
 
@@ -122,88 +130,10 @@ void convert_flugg(string ifname="../generic_flugg.root",
 
 void copy_flugg_to_dk2nu(const flugg& fluggObj)
 {
-  // fill the global dk2nuObj
+  // fill the global dk2nu object
 
-  dk2nuObj->norig    = fluggObj.Norig;
-  dk2nuObj->ndecay   = fluggObj.Ndecay;
-  dk2nuObj->ntype    = fluggObj.Ntype;
-  dk2nuObj->vx       = fluggObj.Vx;
-  dk2nuObj->vy       = fluggObj.Vy;
-  dk2nuObj->vz       = fluggObj.Vz;
-  dk2nuObj->pdpx     = fluggObj.pdPx;
-  dk2nuObj->pdpy     = fluggObj.pdPy;
-  dk2nuObj->pdpz     = fluggObj.pdPz;
-  dk2nuObj->ppdxdz   = fluggObj.ppdxdz;
-  dk2nuObj->ppdydz   = fluggObj.ppdydz;
-  dk2nuObj->pppz     = fluggObj.pppz;
-  dk2nuObj->ppenergy = fluggObj.ppenergy;
-  dk2nuObj->ppmedium = fluggObj.ppmedium;
-  dk2nuObj->ptype    = fluggObj.ptype;
-  dk2nuObj->ppvx     = fluggObj.ppvx;
-  dk2nuObj->ppvy     = fluggObj.ppvy;
-  dk2nuObj->ppvz     = fluggObj.ppvz;
-  dk2nuObj->muparpx  = fluggObj.muparpx;
-  dk2nuObj->muparpy  = fluggObj.muparpy;
-  dk2nuObj->muparpz  = fluggObj.muparpz;
-  dk2nuObj->mupare   = fluggObj.mupare;
-
-  dk2nuObj->necm     = fluggObj.Necm;
-  dk2nuObj->nimpwt   = fluggObj.Nimpwt;
-  dk2nuObj->xpoint   = fluggObj.xpoint;
-  dk2nuObj->ypoint   = fluggObj.ypoint;
-  dk2nuObj->zpoint   = fluggObj.zpoint;
-
-  dk2nuObj->tvx      = fluggObj.tvx;
-  dk2nuObj->tvy      = fluggObj.tvy;
-  dk2nuObj->tvz      = fluggObj.tvz;
-  dk2nuObj->tpx      = fluggObj.tpx;
-  dk2nuObj->tpy      = fluggObj.tpy;
-  dk2nuObj->tpz      = fluggObj.tpz;
-  dk2nuObj->tptype   = fluggObj.tptype;
-  dk2nuObj->tgen     = fluggObj.tgen;
-  dk2nuObj->tgptype  = fluggObj.tgptype;
-  dk2nuObj->tgppx    = fluggObj.tgppx;
-  dk2nuObj->tgppy    = fluggObj.tgppy;
-  dk2nuObj->tgppz    = fluggObj.tgppz;
-  dk2nuObj->tprivx   = fluggObj.tprivx;
-  dk2nuObj->tprivy   = fluggObj.tprivy;
-  dk2nuObj->tprivz   = fluggObj.tprivz;
-  dk2nuObj->beamx    = fluggObj.beamx;
-  dk2nuObj->beamy    = fluggObj.beamy;
-  dk2nuObj->beamz    = fluggObj.beamz;
-  dk2nuObj->beampx   = fluggObj.beampx;
-  dk2nuObj->beampy   = fluggObj.beampy;
-  dk2nuObj->beampz   = fluggObj.beampz;
-
-  //cout << "pot # " << fluggObj.evtno << endl;
-
-  dk2nuObj->job    = myjob;
-  dk2nuObj->potnum = fluggObj.evtno;
-
-  // calcLocationWeights needs these filled if it isn't going assert()
-  // really need to fill the other bits at this point as well:
-  //   ntype, ptype, vx, vy, vz, pdpx, pdpy, pdpz, necm, 
-  //   ppenergy, ppdxdz, ppdydz, pppz, 
-  //   muparpx, muparpy, muparpz, mupare
-  dk2nuObj->ptype    = fluggObj.ptype;  
-  dk2nuObj->ntype    = fluggObj.Ntype;
-  dk2nuObj->vx       = fluggObj.Vx;
-  dk2nuObj->vy       = fluggObj.Vy;
-  dk2nuObj->vz       = fluggObj.Vz;
-  dk2nuObj->pdpx     = fluggObj.pdPx;
-  dk2nuObj->pdpy     = fluggObj.pdPy;
-  dk2nuObj->pdpz     = fluggObj.pdPz;
-  dk2nuObj->necm     = fluggObj.Necm;
-  dk2nuObj->ppenergy = fluggObj.ppenergy;
-  dk2nuObj->ppdxdz   = fluggObj.ppdxdz;
-  dk2nuObj->ppdydz   = fluggObj.ppdydz;
-  dk2nuObj->pppz     = fluggObj.pppz;
-  dk2nuObj->muparpx  = fluggObj.muparpx;
-  dk2nuObj->muparpy  = fluggObj.muparpy;
-  dk2nuObj->muparpz  = fluggObj.muparpz;
-  dk2nuObj->mupare   = fluggObj.mupare;
-
-  dk2nuObj->nimpwt   = fluggObj.Nimpwt;
+  dk2nu->job    = myjob;
+  dk2nu->potnum = fluggObj.evtno;
 
   // calcLocationWeights needs random decay entries filled first
   // but don't copy any other (i.e. near/far) values as they'll
@@ -211,14 +141,93 @@ void copy_flugg_to_dk2nu(const flugg& fluggObj)
   double pzrndm = fluggObj.Npz;
   double pxrndm = fluggObj.Ndxdz * pzrndm;
   double pyrndm = fluggObj.Ndydz * pzrndm;
-  dk2nuObj->nupx.push_back(pxrndm);
-  dk2nuObj->nupy.push_back(pyrndm);
-  dk2nuObj->nupz.push_back(pzrndm);
-  dk2nuObj->nuenergy.push_back(fluggObj.Nenergy);
-  dk2nuObj->nuwgt.push_back(1.0);
+  bsim::NuRay nuray(pxrndm,pyrndm,pzrndm,fluggObj.Nenergy,1.0);
+  dk2nu->nuray.push_back(nuray);
 
-  dk2nuObj->tptype   = fluggObj.tptype;
-  dk2nuObj->tgptype  = fluggObj.tgptype;
+  // calcLocationWeights needs these filled if it isn't going assert()
+  // really need to fill the other bits at this point as well:
+  //   ntype, ptype, vx, vy, vz, pdpx, pdpy, pdpz, necm, 
+  //   ppenergy, ppdxdz, ppdydz, pppz, 
+  //   muparpx, muparpy, muparpz, mupare
+
+  dk2nu->decay.norig    = fluggObj.Norig;
+  dk2nu->decay.ndecay   = fluggObj.Ndecay;
+  dk2nu->decay.ntype    = Convert5xToPdg(fluggObj.Ntype);
+  dk2nu->decay.vx       = fluggObj.Vx;
+  dk2nu->decay.vy       = fluggObj.Vy;
+  dk2nu->decay.vz       = fluggObj.Vz;
+  dk2nu->decay.pdpx     = fluggObj.pdPx;
+  dk2nu->decay.pdpy     = fluggObj.pdPy;
+  dk2nu->decay.pdpz     = fluggObj.pdPz;
+  dk2nu->decay.ppdxdz   = fluggObj.ppdxdz;
+  dk2nu->decay.ppdydz   = fluggObj.ppdydz;
+  dk2nu->decay.pppz     = fluggObj.pppz;
+  dk2nu->decay.ppenergy = fluggObj.ppenergy;
+  dk2nu->decay.ppmedium = fluggObj.ppmedium;
+  dk2nu->decay.ptype    = ConvertGeantToPdg(fluggObj.ptype,"ptype");
+  dk2nu->decay.muparpx  = fluggObj.muparpx;
+  dk2nu->decay.muparpy  = fluggObj.muparpy;
+  dk2nu->decay.muparpz  = fluggObj.muparpz;
+  dk2nu->decay.mupare   = fluggObj.mupare;
+
+  dk2nu->decay.necm     = fluggObj.Necm;
+  dk2nu->decay.nimpwt   = fluggObj.Nimpwt;
+
+  dk2nu->ppvx     = fluggObj.ppvx;
+  dk2nu->ppvy     = fluggObj.ppvy;
+  dk2nu->ppvz     = fluggObj.ppvz;
+
+  //not-in-new//dk2nu->xpoint   = fluggObj.xpoint;
+  //not-in-new//dk2nu->ypoint   = fluggObj.ypoint;
+  //not-in-new//dk2nu->zpoint   = fluggObj.zpoint;
+
+  dk2nu->tgtexit.tvx      = fluggObj.tvx;
+  dk2nu->tgtexit.tvy      = fluggObj.tvy;
+  dk2nu->tgtexit.tvz      = fluggObj.tvz;
+  dk2nu->tgtexit.tpx      = fluggObj.tpx;
+  dk2nu->tgtexit.tpy      = fluggObj.tpy;
+  dk2nu->tgtexit.tpz      = fluggObj.tpz;
+  dk2nu->tgtexit.tptype   = ConvertGeantToPdg(fluggObj.tptype,"tptype");
+  dk2nu->tgtexit.tgen     = fluggObj.tgen;
+
+  //no-equiv//  dk2nu->tgptype  = ConvertGeantToPdg(fluggObj.tgptype,"tgptype");
+  //no-equiv//  dk2nu->tgppx    = fluggObj.tgppx;
+  //no-equiv//  dk2nu->tgppy    = fluggObj.tgppy;
+  //no-equiv//  dk2nu->tgppz    = fluggObj.tgppz;
+  //no-equiv//  dk2nu->tprivx   = fluggObj.tprivx;
+  //no-equiv//  dk2nu->tprivy   = fluggObj.tprivy;
+  //no-equiv//  dk2nu->tprivz   = fluggObj.tprivz;
+
+  //not-in-new//dk2nu->beamx    = fluggObj.protonX;
+  //not-in-new//dk2nu->beamy    = fluggObj.protonY;
+  //not-in-new//dk2nu->beamz    = fluggObj.protonZ;
+  //not-in-new//dk2nu->beampx   = fluggObj.protonPx;
+  //not-in-new//dk2nu->beampy   = fluggObj.protonPy;
+  //not-in-new//dk2nu->beampz   = fluggObj.protonPz;
+
+  //no-equiv//  dk2nu->tgptype  = fluggObj.tgptype;
+
+}
+
+void fluggCrossChecks(const flugg& fluggObj, string inputloc)
+{
+
+  static bool first = true;
+  static size_t indxNear = -1, indxFar = -1;
+  if ( first ) {
+    first = false;
+    /// find indices for new weights so we can compare later
+    indxNear = find_loc_index(inputloc+" NearDet");
+    indxFar  = find_loc_index(inputloc+" FarDet");
+    cout << "indx " << inputloc << " Near " << indxNear 
+         << " Far " << indxFar << endl;
+  }
+  // cross check location energy/weights
+  // 
+  histCompare(fluggObj.Nenergyn,dk2nu->nuray[indxNear].E,  "near energy");
+  histCompare(fluggObj.Nwtnear, dk2nu->nuray[indxNear].wgt,"near wgt");
+  histCompare(fluggObj.Nenergyf,dk2nu->nuray[indxFar].E,   "far energy");
+  histCompare(fluggObj.Nwtfar,  dk2nu->nuray[indxFar].wgt, "far wgt");
 
 }
 

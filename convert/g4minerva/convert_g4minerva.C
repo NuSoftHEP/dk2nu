@@ -16,26 +16,30 @@ using namespace std;
 
 #include "dk2nu/convert/common_convert.C"
 
-#include "g4minerva.C"
+#include "dk2nu/convert/g4minerva/g4minerva.C"
 
 void copy_g4minerva_to_dk2nu(const g4minerva& g4minervaObj);
+void g4minervaCrossChecks(const g4minerva& g4minervaObj);
 
-void convert_g4minerva(string ifname="../generic_g4minerva.root",
-                       string inputloc="MINOS",  // "MINOS" or "NOvA"
+void convert_g4minerva(string ifname="../fluxfiles/generic_g4minerva.root",
                        int jobnum=42,
-                       Long64_t maxentries=200000000,
+                       Long64_t maxentries=-1,
                        Long64_t moddump=-1) // modulo for dump
 {
   // set globals
   myjob = jobnum; // allow override because g4minerva files forgot to set this
   pots  = 0;
   // allowance in location energy/weight cross-check
-  frac_diff_tolerance = 5.0e-4;
+  frac_diff_tolerance = 2.5e-4;
 
   int highest_potnum = 0;
 
   // open input ntuple
   TFile* fin = TFile::Open(ifname.c_str());
+  if ( ! fin ) {
+    cout << "couldn't open input file: " << ifname << endl;
+    return;
+  }
   const char* objName = "nudata";
   TTree* tin = 0;
   fin->GetObject(objName,tin);
@@ -44,22 +48,17 @@ void convert_g4minerva(string ifname="../generic_g4minerva.root",
     cout << "couldn't find " << objName << endl;
     return;
   }
-  cout << "Input file:  " << ifname << endl;
+  cout << endl << "Input file:  " << ifname << endl;
 
   // use makeclass interface for g4minerva
   g4minerva g4minervaObj(tin);
 
   // construct output filename
   string ofname = construct_outfilename(ifname);
-  cout << "Output file: " << ofname << endl;
+  cout << "Output file: " << ofname << endl << endl;
 
   ConvertInit();
   ConvertBookNtuple(ofname);
-
-  /// find indices for new weights so we can compare later
-  size_t indxN = find_loc_index(inputloc+" NearDet");
-  size_t indxF = find_loc_index(inputloc+" FarDet");
-  cout << "indx Near " << indxN << " Far " << indxF << endl;
 
   ///
   /// loop over entries
@@ -80,30 +79,27 @@ void convert_g4minerva(string ifname="../generic_g4minerva.root",
     nbytes += nb;
 
     // always clear the dk2nu object 
-    dk2nuObj->Clear(); //  !!! important always to this
+    dk2nu->clear(); //  !!! important !!! always do this
+
     // fill the dk2nu object from the g4minerva entry
     copy_g4minerva_to_dk2nu(g4minervaObj);
-    // convert Geant to PDG codes (ntype,ptype,tptype,tgptype) in dk2nu
-    ConvertPartCodes();
+
     // fill location specific p3, energy and weights
     // locations to fill are in the metadata
     // assumes that prior copying filled the first entry w/ random decay
-    calcLocationWeights(dkmetaObj,dk2nuObj);
+    calcLocationWeights(dkmeta,dk2nu);
+
     // keep track of potnum
-    if ( dk2nuObj->potnum > highest_potnum ) 
-      highest_potnum = dk2nuObj->potnum;
+    if ( dk2nu->potnum > highest_potnum ) 
+      highest_potnum = dk2nu->potnum;
+
     // push entry out to tree
-    dk2nu_tree->Fill();
+    dk2nuTree->Fill();
 
     // just for fun print every n entries
-    if ( moddump > 0 && jentry%moddump == 0 ) cout << endl << *dk2nuObj << endl;
+    if ( moddump > 0 && jentry%moddump == 0 ) cout << endl << *dk2nu << endl;
 
-    // cross check location energy/weights
-    // don't currently know mapping for minerva weights to dk2nu list
-    //compare(g4minervaObj.Nenergyn,dk2nuObj->nuenergy[indxN],"near energy");
-    //compare(g4minervaObj.Nwtnear,dk2nuObj->nuwgt[indxN],"near wgt");
-    //compare(g4minervaObj.Nenergyf,dk2nuObj->nuenergy[indxF],"far energy");
-    //compare(g4minervaObj.Nwtfar,dk2nuObj->nuwgt[indxF],"far wgt");
+    g4minervaCrossChecks(g4minervaObj);
 
   }
   cout << endl;
@@ -114,6 +110,24 @@ void convert_g4minerva(string ifname="../generic_g4minerva.root",
        << obs_frac_diff_max << endl
        << "print ## message when exceeded " << frac_diff_tolerance << endl;
 
+  dkmeta->job     = myjob;
+  dkmeta->pots    = pots;
+  dkmeta->beamsim = "convert_g4minerva.C";
+  dkmeta->physics = "bogus";
+
+  dkmeta->tgtcfg  = TString::Format("Z=%6.1fcm",g4minervaObj.nuTarZ);
+  dkmeta->horncfg = TString::Format("I=%6.1fkA",g4minervaObj.hornCurrent);
+
+  dkmeta->beam0x = g4minervaObj.beamX;
+  dkmeta->beam0y = g4minervaObj.beamY;
+  dkmeta->beamhwidth = g4minervaObj.beamHWidth;
+  dkmeta->beamvwidth = g4minervaObj.beamVWidth;
+
+  // print last entries
+  cout << endl << "========== last entries" << endl << endl;
+  cout << *dk2nu << endl << endl;
+  cout << *dkmeta << endl;
+
   // finish off ntuples (including meta data)
   ConvertFinish();
 
@@ -123,88 +137,10 @@ void convert_g4minerva(string ifname="../generic_g4minerva.root",
 
 void copy_g4minerva_to_dk2nu(const g4minerva& g4minervaObj)
 {
-  // fill the global dk2nuObj
+  // fill the global dk2nu object
 
-  dk2nuObj->norig    = g4minervaObj.Norig;
-  dk2nuObj->ndecay   = g4minervaObj.Ndecay;
-  dk2nuObj->ntype    = g4minervaObj.Ntype;
-  dk2nuObj->vx       = g4minervaObj.Vx;
-  dk2nuObj->vy       = g4minervaObj.Vy;
-  dk2nuObj->vz       = g4minervaObj.Vz;
-  dk2nuObj->pdpx     = g4minervaObj.pdPx;
-  dk2nuObj->pdpy     = g4minervaObj.pdPy;
-  dk2nuObj->pdpz     = g4minervaObj.pdPz;
-  dk2nuObj->ppdxdz   = g4minervaObj.ppdxdz;
-  dk2nuObj->ppdydz   = g4minervaObj.ppdydz;
-  dk2nuObj->pppz     = g4minervaObj.pppz;
-  dk2nuObj->ppenergy = g4minervaObj.ppenergy;
-  dk2nuObj->ppmedium = g4minervaObj.ppmedium;
-  dk2nuObj->ptype    = g4minervaObj.ptype;
-  dk2nuObj->ppvx     = g4minervaObj.ppvx;
-  dk2nuObj->ppvy     = g4minervaObj.ppvy;
-  dk2nuObj->ppvz     = g4minervaObj.ppvz;
-  dk2nuObj->muparpx  = g4minervaObj.muparpx;
-  dk2nuObj->muparpy  = g4minervaObj.muparpy;
-  dk2nuObj->muparpz  = g4minervaObj.muparpz;
-  dk2nuObj->mupare   = g4minervaObj.mupare;
-
-  dk2nuObj->necm     = g4minervaObj.Necm;
-  dk2nuObj->nimpwt   = g4minervaObj.Nimpwt;
-  dk2nuObj->xpoint   = g4minervaObj.xpoint;
-  dk2nuObj->ypoint   = g4minervaObj.ypoint;
-  dk2nuObj->zpoint   = g4minervaObj.zpoint;
-
-  dk2nuObj->tvx      = g4minervaObj.tvx;
-  dk2nuObj->tvy      = g4minervaObj.tvy;
-  dk2nuObj->tvz      = g4minervaObj.tvz;
-  dk2nuObj->tpx      = g4minervaObj.tpx;
-  dk2nuObj->tpy      = g4minervaObj.tpy;
-  dk2nuObj->tpz      = g4minervaObj.tpz;
-  dk2nuObj->tptype   = g4minervaObj.tptype;
-  dk2nuObj->tgen     = g4minervaObj.tgen;
-  //no-equiv//  dk2nuObj->tgptype  = g4minervaObj.tgptype;
-  //no-equiv//  dk2nuObj->tgppx    = g4minervaObj.tgppx;
-  //no-equiv//  dk2nuObj->tgppy    = g4minervaObj.tgppy;
-  //no-equiv//  dk2nuObj->tgppz    = g4minervaObj.tgppz;
-  //no-equiv//  dk2nuObj->tprivx   = g4minervaObj.tprivx;
-  //no-equiv//  dk2nuObj->tprivy   = g4minervaObj.tprivy;
-  //no-equiv//  dk2nuObj->tprivz   = g4minervaObj.tprivz;
-  dk2nuObj->beamx    = g4minervaObj.protonX;
-  dk2nuObj->beamy    = g4minervaObj.protonY;
-  dk2nuObj->beamz    = g4minervaObj.protonZ;
-  dk2nuObj->beampx   = g4minervaObj.protonPx;
-  dk2nuObj->beampy   = g4minervaObj.protonPy;
-  dk2nuObj->beampz   = g4minervaObj.protonPz;
-
-  //cout << "pot # " << g4minervaObj.evtno << endl;
-
-  dk2nuObj->job    = myjob;
-  dk2nuObj->potnum = g4minervaObj.evtno;
-
-  // calcLocationWeights needs these filled if it isn't going assert()
-  // really need to fill the other bits at this point as well:
-  //   ntype, ptype, vx, vy, vz, pdpx, pdpy, pdpz, necm, 
-  //   ppenergy, ppdxdz, ppdydz, pppz, 
-  //   muparpx, muparpy, muparpz, mupare
-  dk2nuObj->ptype    = g4minervaObj.ptype;  
-  dk2nuObj->ntype    = g4minervaObj.Ntype;
-  dk2nuObj->vx       = g4minervaObj.Vx;
-  dk2nuObj->vy       = g4minervaObj.Vy;
-  dk2nuObj->vz       = g4minervaObj.Vz;
-  dk2nuObj->pdpx     = g4minervaObj.pdPx;
-  dk2nuObj->pdpy     = g4minervaObj.pdPy;
-  dk2nuObj->pdpz     = g4minervaObj.pdPz;
-  dk2nuObj->necm     = g4minervaObj.Necm;
-  dk2nuObj->ppenergy = g4minervaObj.ppenergy;
-  dk2nuObj->ppdxdz   = g4minervaObj.ppdxdz;
-  dk2nuObj->ppdydz   = g4minervaObj.ppdydz;
-  dk2nuObj->pppz     = g4minervaObj.pppz;
-  dk2nuObj->muparpx  = g4minervaObj.muparpx;
-  dk2nuObj->muparpy  = g4minervaObj.muparpy;
-  dk2nuObj->muparpz  = g4minervaObj.muparpz;
-  dk2nuObj->mupare   = g4minervaObj.mupare;
-
-  dk2nuObj->nimpwt   = g4minervaObj.Nimpwt;
+  dk2nu->job    = myjob;
+  dk2nu->potnum = g4minervaObj.evtno;
 
   // calcLocationWeights needs random decay entries filled first
   // but don't copy any other (i.e. near/far) values as they'll
@@ -212,60 +148,235 @@ void copy_g4minerva_to_dk2nu(const g4minerva& g4minervaObj)
   double pzrndm = g4minervaObj.Npz;
   double pxrndm = g4minervaObj.Ndxdz * pzrndm;
   double pyrndm = g4minervaObj.Ndydz * pzrndm;
-  dk2nuObj->nupx.push_back(pxrndm);
-  dk2nuObj->nupy.push_back(pyrndm);
-  dk2nuObj->nupz.push_back(pzrndm);
-  dk2nuObj->nuenergy.push_back(g4minervaObj.Nenergy);
-  dk2nuObj->nuwgt.push_back(1.0);
+  bsim::NuRay nuray(pxrndm,pyrndm,pzrndm,g4minervaObj.Nenergy,1.0);
+  dk2nu->nuray.push_back(nuray);
 
-  dk2nuObj->tptype   = g4minervaObj.tptype;
-  //no-equiv//  dk2nuObj->tgptype  = g4minervaObj.tgptype;
+  // calcLocationWeights needs these filled if it isn't going assert()
+  // really need to fill the other bits at this point as well:
+  //   ntype, ptype, vx, vy, vz, pdpx, pdpy, pdpz, necm, 
+  //   ppenergy, ppdxdz, ppdydz, pppz, 
+  //   muparpx, muparpy, muparpz, mupare
+
+  dk2nu->decay.norig    = g4minervaObj.Norig;
+  dk2nu->decay.ndecay   = g4minervaObj.Ndecay;
+  dk2nu->decay.ntype    = Convert5xToPdg(g4minervaObj.Ntype);
+  dk2nu->decay.vx       = g4minervaObj.Vx;
+  dk2nu->decay.vy       = g4minervaObj.Vy;
+  dk2nu->decay.vz       = g4minervaObj.Vz;
+  dk2nu->decay.pdpx     = g4minervaObj.pdPx;
+  dk2nu->decay.pdpy     = g4minervaObj.pdPy;
+  dk2nu->decay.pdpz     = g4minervaObj.pdPz;
+  dk2nu->decay.ppdxdz   = g4minervaObj.ppdxdz;
+  dk2nu->decay.ppdydz   = g4minervaObj.ppdydz;
+  dk2nu->decay.pppz     = g4minervaObj.pppz;
+  dk2nu->decay.ppenergy = g4minervaObj.ppenergy;
+  dk2nu->decay.ppmedium = g4minervaObj.ppmedium;
+  dk2nu->decay.ptype    = ConvertGeantToPdg(g4minervaObj.ptype,"ptype");
+  dk2nu->decay.muparpx  = g4minervaObj.muparpx;
+  dk2nu->decay.muparpy  = g4minervaObj.muparpy;
+  dk2nu->decay.muparpz  = g4minervaObj.muparpz;
+  dk2nu->decay.mupare   = g4minervaObj.mupare;
+
+  dk2nu->decay.necm     = g4minervaObj.Necm;
+  dk2nu->decay.nimpwt   = g4minervaObj.Nimpwt;
+
+  dk2nu->ppvx     = g4minervaObj.ppvx;
+  dk2nu->ppvy     = g4minervaObj.ppvy;
+  dk2nu->ppvz     = g4minervaObj.ppvz;
+
+  //not-in-new//dk2nu->xpoint   = g4minervaObj.xpoint;
+  //not-in-new//dk2nu->ypoint   = g4minervaObj.ypoint;
+  //not-in-new//dk2nu->zpoint   = g4minervaObj.zpoint;
+
+  dk2nu->tgtexit.tvx      = g4minervaObj.tvx;
+  dk2nu->tgtexit.tvy      = g4minervaObj.tvy;
+  dk2nu->tgtexit.tvz      = g4minervaObj.tvz;
+  dk2nu->tgtexit.tpx      = g4minervaObj.tpx;
+  dk2nu->tgtexit.tpy      = g4minervaObj.tpy;
+  dk2nu->tgtexit.tpz      = g4minervaObj.tpz;
+  dk2nu->tgtexit.tptype   = ConvertGeantToPdg(g4minervaObj.tptype,"tptype");
+  dk2nu->tgtexit.tgen     = g4minervaObj.tgen;
+
+  //no-equiv//  dk2nu->tgptype  = ConvertGeantToPdg(g4minervaObj.tgptype,"tgptype");
+  //no-equiv//  dk2nu->tgppx    = g4minervaObj.tgppx;
+  //no-equiv//  dk2nu->tgppy    = g4minervaObj.tgppy;
+  //no-equiv//  dk2nu->tgppz    = g4minervaObj.tgppz;
+  //no-equiv//  dk2nu->tprivx   = g4minervaObj.tprivx;
+  //no-equiv//  dk2nu->tprivy   = g4minervaObj.tprivy;
+  //no-equiv//  dk2nu->tprivz   = g4minervaObj.tprivz;
+
+  //not-in-new//dk2nu->beamx    = g4minervaObj.protonX;
+  //not-in-new//dk2nu->beamy    = g4minervaObj.protonY;
+  //not-in-new//dk2nu->beamz    = g4minervaObj.protonZ;
+  //not-in-new//dk2nu->beampx   = g4minervaObj.protonPx;
+  //not-in-new//dk2nu->beampy   = g4minervaObj.protonPy;
+  //not-in-new//dk2nu->beampz   = g4minervaObj.protonPz;
+
+  //no-equiv//  dk2nu->tgptype  = g4minervaObj.tgptype;
 
   // now copy ancestor history
+  if ( g4minervaObj.overflow ) dk2nu->flagbits |= bsim::kFlgOverflow;  // flag overflow
   int nmx = TMath::Min(g4minervaObj.ntrajectory,10);
   for (int ian=0; ian < nmx; ++ian) {
 
     const double mm2cm = 0.1;
     const double mev2gev = 0.001;
 
-    dk2nuObj->apdg.push_back(g4minervaObj.pdg[ian]);
-    dk2nuObj->trackid.push_back(g4minervaObj.trackId[ian]);
+    bsim::Ancestor ancestor;
+    /*
+    dk2nu->apdg.push_back(g4minervaObj.pdg[ian]);
+    dk2nu->trackid.push_back(g4minervaObj.trackId[ian]);
+    dk2nu->parentid.push_back(g4minervaObj.parentId[ian]);
 
-    dk2nuObj->parentid.push_back(g4minervaObj.parentId[ian]);
-    dk2nuObj->startx.push_back(g4minervaObj.startx[ian]*mm2cm);
-    dk2nuObj->starty.push_back(g4minervaObj.starty[ian]*mm2cm);
-    dk2nuObj->startz.push_back(g4minervaObj.startz[ian]*mm2cm);
-    dk2nuObj->stopx.push_back(g4minervaObj.stopx[ian]*mm2cm);
-    dk2nuObj->stopy.push_back(g4minervaObj.stopy[ian]*mm2cm);
-    dk2nuObj->stopz.push_back(g4minervaObj.stopz[ian]*mm2cm);
+    dk2nu->startx.push_back(g4minervaObj.startx[ian]*mm2cm);
+    dk2nu->starty.push_back(g4minervaObj.starty[ian]*mm2cm);
+    dk2nu->startz.push_back(g4minervaObj.startz[ian]*mm2cm);
+    dk2nu->stopx.push_back(g4minervaObj.stopx[ian]*mm2cm);
+    dk2nu->stopy.push_back(g4minervaObj.stopy[ian]*mm2cm);
+    dk2nu->stopz.push_back(g4minervaObj.stopz[ian]*mm2cm);
 
-    dk2nuObj->startpx.push_back(g4minervaObj.startpx[ian]*mev2gev);
-    dk2nuObj->startpy.push_back(g4minervaObj.startpy[ian]*mev2gev);
-    dk2nuObj->startpz.push_back(g4minervaObj.startpz[ian]*mev2gev);
-    dk2nuObj->stoppx.push_back(g4minervaObj.stoppx[ian]*mev2gev);
-    dk2nuObj->stoppy.push_back(g4minervaObj.stoppy[ian]*mev2gev);
-    dk2nuObj->stoppz.push_back(g4minervaObj.stoppz[ian]*mev2gev);
+    dk2nu->startpx.push_back(g4minervaObj.startpx[ian]*mev2gev);
+    dk2nu->startpy.push_back(g4minervaObj.startpy[ian]*mev2gev);
+    dk2nu->startpz.push_back(g4minervaObj.startpz[ian]*mev2gev);
+    dk2nu->stoppx.push_back(g4minervaObj.stoppx[ian]*mev2gev);
+    dk2nu->stoppy.push_back(g4minervaObj.stoppy[ian]*mev2gev);
+    dk2nu->stoppz.push_back(g4minervaObj.stoppz[ian]*mev2gev);
 
-    dk2nuObj->pprodpx.push_back(g4minervaObj.pprodpx[ian]*mev2gev);
-    dk2nuObj->pprodpy.push_back(g4minervaObj.pprodpy[ian]*mev2gev);
-    dk2nuObj->pprodpz.push_back(g4minervaObj.pprodpz[ian]*mev2gev);
+    dk2nu->pprodpx.push_back(g4minervaObj.pprodpx[ian]*mev2gev);
+    dk2nu->pprodpy.push_back(g4minervaObj.pprodpy[ian]*mev2gev);
+    dk2nu->pprodpz.push_back(g4minervaObj.pprodpz[ian]*mev2gev);
 
     // TString -> std::string via char*
-    dk2nuObj->proc.push_back(g4minervaObj.proc[ian].Data());
-    dk2nuObj->ivol.push_back(g4minervaObj.ivol[ian].Data());
-    dk2nuObj->fvol.push_back(g4minervaObj.fvol[ian].Data());
+    dk2nu->proc.push_back(g4minervaObj.proc[ian].Data());
+    dk2nu->ivol.push_back(g4minervaObj.ivol[ian].Data());
+    dk2nu->fvol.push_back(g4minervaObj.fvol[ian].Data());
+    */
 
-    if ( ian > 0 ) {
-      // except for first particle start[i] should == stop[i-1]
-      bool match = true;
-      match = match && ( close_enough(g4minervaObj.startx[ian],g4minervaObj.stopx[ian-1]) );
-      Match = match && ( close_enough(g4minervaObj.starty[ian],g4minervaObj.stopy[ian-1]) );
-      match = match && ( close_enough(g4minervaObj.startz[ian],g4minervaObj.stopz[ian-1]) );
-      match = match && ( g4minervaObj.ivol[ian] == g4minervaObj.fvol[ian-1] );
-      If ( ! match ) {
-        cout << "## ancestor " << ian << " didn't start where previous entry stopped" << endl;
-      }
+    ancestor.pdg = g4minervaObj.pdg[ian];
+    ancestor.SetStartXYZ(g4minervaObj.startx[ian]*mm2cm,
+                         g4minervaObj.starty[ian]*mm2cm,
+                         g4minervaObj.startz[ian]*mm2cm);
+    ancestor.SetStartP(g4minervaObj.startpx[ian]*mev2gev,
+                       g4minervaObj.startpy[ian]*mev2gev,
+                       g4minervaObj.startpz[ian]*mev2gev);
+    ancestor.SetStopP(g4minervaObj.stoppx[ian]*mev2gev,
+                      g4minervaObj.stoppy[ian]*mev2gev,
+                      g4minervaObj.stoppz[ian]*mev2gev);
+    ancestor.SetPProdP(g4minervaObj.pprodpx[ian]*mev2gev,
+                       g4minervaObj.pprodpy[ian]*mev2gev,
+                       g4minervaObj.pprodpz[ian]*mev2gev);
+
+    // ancestor.polx = ancestor.poly = ancestor.polz = ?
+    // ancestor.nucleau = ?
+    ancestor.proc = g4minervaObj.proc[ian].Data();
+    ancestor.ivol = g4minervaObj.ivol[ian].Data();
+
+    dk2nu->ancestor.push_back(ancestor);
+  }
+
+}
+
+void g4minervaCrossChecks(const g4minerva& g4minervaObj)
+{
+
+  static bool first = true;
+  static size_t indxMinosN = -1, indxMinosF = -1, indxNovaF = -1, indxMini = -1;
+  static size_t ioldMinosN =  0, ioldMinosF =  0, ioldNovaF =  1, ioldMini =  8;
+  if ( first ) {
+    first = false;
+    /// find indices for new weights so we can compare later
+    indxMinosN = find_loc_index("MINOS NearDet");
+    indxMinosF = find_loc_index("MINOS FarDet");
+    //indxNovaF  = find_loc_index("NOvA FarDet");
+    indxNovaF  = find_loc_index("Ash River per Minerva");
+    indxMini   = find_loc_index("MiniBooNE");
+    cout << "indx MINOS Near " << indxMinosN << " Far " << indxMinosF << endl;
+    cout << "indx NOvA Far " << indxNovaF << endl;
+    cout << "indx MiniBooNE " << indxMini << endl;
+
+    /****  minerva g4numi/src/NumiDataInput.cc
+     *  RWH: these appear to be in meters ... not sure about what
+     *       the "NovaX" are meant to represent
+     *
+     //Near & Far Detector location
+     nNear=11;//was 9 without the different energy for the ND positions.
+     nFar=2;
+     G4double xdetNear[]    = {   0     , 0.     , 7.     , 11.    ,
+                                 14.    , 14.    , 14.    , 0.     , 
+                                 25.84  , 4.8/2. , -4.8/2.         };
+     G4double ydetNear[]    = {  0     , -3.    , -5.    , -5.    ,
+                                -6.    , -3.    ,  0.    , 71.    ,
+                                78.42  , 3.8/2. , -3.8/2.          };
+     G4double zdetNear[]    = {  1040  , 1010.  , 975.   , 958.   ,
+                                 940.  ,  840.  ,  740.  , 940.   ,
+                                745.25 , 1040+16.6/2. , 1040-16.6/2.  };
+     G4String detNameNear[] = {  "Near", "Nova1a","Nova1b","Nova1c",
+                               "Nova2a", "Nova2b", "Nova3","MSB",
+                               "MiniBooNE","Near +x +y +z","Near -x -y -z"};
+     G4double xdetFar[]     = {0     , 28.81258   };
+     G4double ydetFar[]     = {0     , 81.39258   };
+     G4double zdetFar[]     = {735000, 811400     };
+     G4String detNameFar[]  = {"Far" , "Ash River"};
+     *
+     */
+  }
+  // cross check location energy/weights
+  // 
+  histCompare(g4minervaObj.NenergyN[ioldMinosN],dk2nu->nuray[indxMinosN].E,   "MINOS near energy");
+  histCompare(g4minervaObj.NWtNear[ioldMinosN], dk2nu->nuray[indxMinosN].wgt, "MINOS near wgt");
+  histCompare(g4minervaObj.NenergyF[ioldMinosF],dk2nu->nuray[indxMinosF].E,   "MINOS far energy");
+  histCompare(g4minervaObj.NWtFar[ioldMinosF],  dk2nu->nuray[indxMinosF].wgt, "MINOS far wgt");
+  if ( indxNovaF > 0 ) {
+    histCompare(g4minervaObj.NenergyF[ioldNovaF], dk2nu->nuray[indxNovaF].E,    "NOvA far energy");
+    histCompare(g4minervaObj.NWtFar[ioldNovaF],   dk2nu->nuray[indxNovaF].wgt,  "NOvA far wgt");
+  } else {
+    static int nmsgnovaf = 10;
+    if ( nmsgnovaf-- > 0 ) {
+      cout << "## no relevant index for NOvA FarDet that will match minerva version of location" << endl;
     }
+  }
+  histCompare(g4minervaObj.NenergyN[ioldMini],  dk2nu->nuray[indxMini].E,     "MiniBooNE energy");
+  histCompare(g4minervaObj.NWtNear[ioldMini],   dk2nu->nuray[indxMini].wgt,   "MiniBooNE wgt");
+
+  static int nmsg = 0;
+  double a = g4minervaObj.NWtNear[ioldMini];
+  double b = dk2nu->nuray[indxMini].wgt;
+  double myfdiff = ( (a+b) > 1.0e-30 ) ? TMath::Abs(2.0*(a-b)/(a+b)) : 0;
+  if ( (nmsg < 1) &&  (myfdiff > 1.8) ) {
+    ++nmsg;
+    cout << "#### extreme case:  mini wtg " << a << " " << b << " fdiff " << myfdiff << endl;
+    cout << "## g4 MinosN=" << ioldMinosN << " MinosF=" << ioldMinosF << " NovaF=" << ioldNovaF << " MiniBooNE=" << ioldMini << endl;
+    cout << "g4minerva NenergyN ";
+    for (int i=0; i<11; ++i) cout << ((i!=0&&i%4==0)?"\n                    ":" ") 
+                                  << std::setw(12) << g4minervaObj.NenergyN[i];
+    cout << endl;
+    cout << "g4minerva NWtNear  ";
+    for (int i=0; i<11; ++i) cout << ((i!=0&&i%4==0)?"\n                    ":" ")
+                                  << std::setw(12) << g4minervaObj.NWtNear[i];
+    cout << endl;
+    cout << "g4minerva NenergyF ";
+    for (int i=0; i<2; ++i) cout << " " << std::setw(12) << g4minervaObj.NenergyF[i];
+    cout << endl;
+    cout << "g4minerva NWtFar   ";
+    for (int i=0; i<2; ++i) cout << " " << std::setw(12) << g4minervaObj.NWtFar[i];
+    cout << endl;
+    cout << "## dk MinosN=" << indxMinosN << " MinosF=" << indxMinosF << " NovaF=" << indxNovaF << " MiniBooNE=" << indxMini << endl;
+    cout << *dk2nu << endl;
+  }
+
+  int nmx = TMath::Min(g4minervaObj.ntrajectory,10);
+  for (int ian=0; ian < nmx; ++ian) {
+    if ( ian <= 0 ) continue;
+    // except for first particle start[i] should == stop[i-1]
+    bool match = true;
+    match = match && ( histCompare(g4minervaObj.startx[ian],g4minervaObj.stopx[ian-1],"startx") );
+    match = match && ( histCompare(g4minervaObj.starty[ian],g4minervaObj.stopy[ian-1],"starty") );
+    match = match && ( histCompare(g4minervaObj.startz[ian],g4minervaObj.stopz[ian-1],"startz") );
+    match = match && ( g4minervaObj.ivol[ian] == g4minervaObj.fvol[ian-1] );
+    if ( ! match ) {
+      cout << "## ancestor " << ian << " didn't start where previous entry stopped" << endl;
+    }
+
   }
 
 }

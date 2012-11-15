@@ -1,9 +1,23 @@
-void load_dk2nu(bool genie_too = false, bool verbose = false)
+int load_dk2nu(bool genie_too = false, bool cnvtinc = false,
+                bool verbose = false)
 {
+  // load the dk2nuTree library
+  // if "genie_too" load the library that had the GENIE flux driver
+  // if "cvntinc" add include paths to convert areas
 
-  //TString libs0 = gSystem->GetDynamicPath();
-  //TString libs  = libs0 + ":/usr/lib:/usr/local/lib:/opt/lib:/opt/local/lib";
-  //gSystem->SetDynamicPath(libs.Data());
+  const char* path = gSystem->ExpandPathName("$(DK2NU)");
+  if ( ! path ) {
+    cout << "DK2NU not defined?!" << endl;
+  }
+
+  // add to the library path
+  if ( path ) {
+    TString libs = gSystem->GetDynamicPath();
+    libs += ":";
+    libs += path;
+    libs += "/lib";
+    gSystem->SetDynamicPath(libs.Data());
+  }
 
   /// Add dk2nu libraries
   const char* libname[2] = { "libdk2nuTree", "libdk2nuGenie" };
@@ -13,12 +27,10 @@ void load_dk2nu(bool genie_too = false, bool verbose = false)
     gSystem->Load(libname[ilib]);
   }
 
+  // none of the rest makes sense unless we know the DK2NU path
+  if ( ! path ) return -1;
+
   /// Add locations for include files
-  const char* path = gSystem->ExpandPathName("$(DK2NU)");
-  if ( ! path ) {
-    cout << "DK2NU not defined?!" << endl;
-    return;
-  }
   TString ip = gSystem->GetIncludePath();
   ip += " -I";
   ip += path;
@@ -26,6 +38,16 @@ void load_dk2nu(bool genie_too = false, bool verbose = false)
   ip += " -I";
   ip += path;
   ip += "/include";
+
+  const char* cnvt[4] = { "g3numi", "flugg", "g4numi", "g4minerva" };
+  if ( cnvtinc ) {
+    for (int i = 0; i < 4; ++i ) {
+      ip += " -I";
+      ip += path;
+      ip += "/convert/";
+      ip += cnvt;
+    }
+  }
 
   gSystem->SetIncludePath(ip);
   if ( verbose ) cout << "SetIncludePath:  " << ip << endl;
@@ -43,4 +65,15 @@ void load_dk2nu(bool genie_too = false, bool verbose = false)
   dip += "/include";
   gROOT->ProcessLine(dip.Data());
 
+  if ( cnvtinc ) {
+    for (int i = 0; i < 4; ++i ) {
+      dip = ".include ";
+      dip += path;
+      dip += "/convert/";
+      dip += cnvt;
+      gROOT->ProcessLine(dip.Data());
+    }
+  }
+
+  return 0;
 }

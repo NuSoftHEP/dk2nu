@@ -4,12 +4,13 @@
 ///          Fermi National Accelerator Laboratory
 ///
 /// \created   2012-11-07
-/// \version $Id: common_convert.C,v 1.2 2012-11-08 03:27:16 rhatcher Exp $
+/// \version $Id: common_convert.C,v 1.3 2012-11-15 09:09:26 rhatcher Exp $
 ///==========================================================================
 
 #include <iostream>
 #include <iomanip>
 #include <cassert>
+#include <map>
   
 #include <float.h> // FLT_EPSILON and DBL_EPSILON definitions used for
                    // floating point comparisons
@@ -17,6 +18,7 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "TRandom3.h"
+#include "TH1D.h"
 
 #include "dk2nu/tree/dk2nu.h"
 #include "dk2nu/tree/dkmeta.h"
@@ -27,16 +29,20 @@
 #include "dk2nu/tree/calcLocationWeights.h"
 
 // some globals
-TRandom3* rndm        = 0;
-dk2nu*    dk2nuObj    = 0;
-dkmeta*   dkmetaObj   = 0;
-TFile*    treeFile    = 0;
-TTree*    dk2nu_tree  = 0;
-TTree*    dkmeta_tree = 0;
-int       myjob       = 0;
-int       pots        = 0;
+TRandom3* rndm            = 0;
+bsim::Dk2Nu*  dk2nu       = 0;
+bsim::DkMeta* dkmeta      = 0;
+TFile*        treeFile    = 0;
+TTree*        dk2nuTree   = 0;
+TTree*        dkmetaTree  = 0;
+int           myjob       = 0;
+int           pots        = 0;
+
 double    frac_diff_tolerance = 5.0e-4;
-double    obs_frac_diff_max = 0;
+double    obs_frac_diff_max  = 0;
+
+bool histCompare(double a, double b, string s);  // forward declaration
+
 //____________________________________________________________________________
 
 void ConvertInit(std::string locfilename = "$(DK2NU)/etc/locations.txt")
@@ -48,26 +54,17 @@ void ConvertInit(std::string locfilename = "$(DK2NU)/etc/locations.txt")
   ///-----------------------------------------------------------------------
 
   // create the objects used for writing entries
-  dk2nuObj  = new dk2nu;
-  dkmetaObj = new dkmeta;
+  dk2nu  = new bsim::Dk2Nu;
+  dkmeta = new bsim::DkMeta;
 
   rndm = new TRandom3();
 
   // read the text file for locations, fill the dkmeta object
-  readWeightLocations(locfilename,dkmetaObj);
+  /*bsim::*/readWeightLocations(locfilename,dkmeta);
 
   // print out what we have for locations
-  size_t nloc = dkmetaObj->nameloc.size();
-  std::cout << "Read " << nloc << " locations read from \"" 
-            << locfilename << "\"" << std::endl;
-  for (size_t iloc = 0; iloc < nloc; ++iloc ) {
-    std::cout << "[" << std::setw(2) << iloc << "] "
-              << "{ " << std::setw(10) << dkmetaObj->xloc[iloc]
-              << ", " << std::setw(10) << dkmetaObj->yloc[iloc]
-              << ", " << std::setw(10) << dkmetaObj->zloc[iloc]
-              << " } \"" << dkmetaObj->nameloc[iloc] << "\""
-              << std::endl;
-  }
+  /*bsim::*/printWeightLocations(dkmeta);
+
 }
 
 void ConvertBookNtuple(std::string ofname = "test_dk2nu.root")
@@ -81,11 +78,11 @@ void ConvertBookNtuple(std::string ofname = "test_dk2nu.root")
   // create file, book tree, set branch address to created object 
   treeFile = new TFile(ofname.c_str(),"RECREATE");
 
-  dk2nu_tree = new TTree("dk2nu","FNAL neutrino ntuple");
-  dk2nu_tree->Branch("dk2nu","dk2nu",&dk2nuObj,32000,1);
+  dk2nuTree = new TTree("dk2nuTree","neutrino ntuple");
+  dk2nuTree->Branch("dk2nu","bsim::Dk2Nu",&dk2nu,32000,1);
 
-  dkmeta_tree  = new TTree("dkmeta","FNAL neutrino ntuple metadata");
-  dkmeta_tree->Branch("dkmeta","dkmeta",&dkmetaObj,32000,1);
+  dkmetaTree  = new TTree("dkmetaTree","neutrino ntuple metadata");
+  dkmetaTree->Branch("dkmeta","bsim::DkMeta",&dkmeta,32000,1);
 }
 
 void ConvertFinish()
@@ -97,24 +94,32 @@ void ConvertFinish()
   ///-----------------------------------------------------------------------
 
   /// fill the rest of the metadata (locations filled above)
-  //no! would clear location info // dkmetaObj->Clear();
-  dkmetaObj->job  = myjob;  // needs to match the value in each dk2nu entry
-  dkmetaObj->pots = pots;   // ntuple represents this many protons-on-target 
-  dkmetaObj->beamsim = "common_convert.C";
-  dkmetaObj->physics = "bogus";
-  //dkmetaObj->vintnames.push_back("mytemp_42");
-  //dkmetaObj->vintnames.push_back("mytemp_ipot");
+  //no! would clear location info // dkmeta->clear();
+  dkmeta->job  = myjob;  // needs to match the value in each dk2nu entry
+  dkmeta->pots = pots;   // ntuple represents this many protons-on-target 
+  //leave to user// dkmeta->beamsim = "common_convert.C";
+  //leave to user// dkmeta->physics = "bogus";
+
+  //dkmeta->vintnames.push_back("mytemp_42");
+  //dkmeta->vintnames.push_back("mytemp_ipot");
   // push entry out to meta-data tree
-  dkmeta_tree->Fill();
+  dkmetaTree->Fill();
 
   // finish and clean-up
   treeFile->cd();
-  dk2nu_tree->Write();
-  dkmeta_tree->Write();
+  dk2nuTree->Write();
+  dkmetaTree->Write();
+
+  treeFile->cd();  // be here so any booked histograms get created inside output file
+  treeFile->mkdir("zzz_diff_hists");
+  treeFile->cd("zzz_diff_hists");
+  histCompare(0,0,"WriteHist");
+
   treeFile->Close();
+
   delete treeFile; treeFile=0;
-  dk2nu_tree=0;
-  dkmeta_tree=0;
+  dk2nuTree=0;
+  dkmetaTree=0;
 }
 //____________________________________________________________________________
 
@@ -283,114 +288,93 @@ const int kPdgString       = 92;
 const int kPdgIndep        = 93; 
 
 //____________________________________________________________________________
-int ConvertGeantToPdg(int geant_code)
+int ConvertGeantToPdg(int geant_code, std::string tag="?")
 {
-  if(geant_code ==  3) return kPdgElectron;     //    11 / e-
-  if(geant_code ==  2) return kPdgPositron;     //   -11 / e+
-  if(geant_code ==  6) return kPdgMuon;         //    13 / mu-
-  if(geant_code ==  5) return kPdgAntiMuon;     //   -13 / mu+             
-  if(geant_code == 34) return kPdgTau;          //    15 / tau-
-  if(geant_code == 33) return kPdgAntiTau;      //   -15 / tau+              
-  if(geant_code ==  8) return kPdgPiP;          //   211 / pi+
-  if(geant_code ==  9) return kPdgPiM;          //  -211 / pi-
-  if(geant_code ==  7) return kPdgPi0;          //   111 / pi0
-  if(geant_code == 17) return kPdgEta;          //   221 / eta
-  if(geant_code == 11) return kPdgKP;           //   321 / K+
-  if(geant_code == 12) return kPdgKM;           //  -321 / K-
-  if(geant_code == 10) return kPdgK0L;          //   130 / K0_{long}
-  if(geant_code == 16) return kPdgK0S;          //   310 / K0_{short}
-  if(geant_code == 35) return kPdgDP;           //   411 / D+
-  if(geant_code == 36) return kPdgDM;           //  -411 / D-
-  if(geant_code == 37) return kPdgD0;           //   421 / D0
-  if(geant_code == 38) return kPdgAntiD0;       //  -421 / \bar{D0}
-  if(geant_code == 39) return kPdgDPs;          //   431 / D+_{s}
-  if(geant_code == 40) return kPdgDMs;          //  -431 / D-_{s}
-  if(geant_code ==  1) return kPdgGamma;        //    22 / photon
-  if(geant_code == 44) return kPdgZ0;           //    23 / Z
-  if(geant_code == 42) return kPdgWP;           //    24 / W+
-  if(geant_code == 43) return kPdgWM;           //   -24 / W-
-  if(geant_code == 14) return kPdgProton;       //  2212
-  if(geant_code == 15) return kPdgAntiProton;   // -2212
-  if(geant_code == 13) return kPdgNeutron;      //  2112
-  if(geant_code == 25) return kPdgAntiNeutron;  // -2112
-  if(geant_code == 18) return kPdgLambda;       //  3122 / Lambda
-  if(geant_code == 26) return kPdgAntiLambda;   // -3122 / \bar{Lambda}
-  if(geant_code == 19) return kPdgSigmaP;       //  3222 / Sigma+
-  if(geant_code == 20) return kPdgSigma0;       //  3212 / Sigma0
-  if(geant_code == 21) return kPdgSigmaM;       //  3112 / Sigma-
-  if(geant_code == 29) return kPdgAntiSigmaP;   // -3112 / \bar{Sigma+}
-  if(geant_code == 28) return kPdgAntiSigma0;   // -3212 / \bar{Sigma0}
-  if(geant_code == 27) return kPdgAntiSigmaM;   // -3112 / \bar{Sigma-}
-  if(geant_code == 22) return kPdgXi0;          //  3322 / Xi0
-  if(geant_code == 23) return kPdgXiM;          //  3312 / Xi-
-  if(geant_code == 30) return kPdgAntiXi0;      // -3322 / \bar{Xi0}
-  if(geant_code == 31) return kPdgAntiXiP;      // -3312 / \bar{Xi+}
-  if(geant_code == 24) return kPdgOmegaM;       //  3334 / Omega-
-  if(geant_code == 32) return kPdgAntiOmegaP;   // -3334 / \bar{Omega+}
+  if (geant_code ==  3) return kPdgElectron;     //    11 / e-
+  if (geant_code ==  2) return kPdgPositron;     //   -11 / e+
+  if (geant_code ==  6) return kPdgMuon;         //    13 / mu-
+  if (geant_code ==  5) return kPdgAntiMuon;     //   -13 / mu+             
+  if (geant_code == 34) return kPdgTau;          //    15 / tau-
+  if (geant_code == 33) return kPdgAntiTau;      //   -15 / tau+              
+  if (geant_code ==  8) return kPdgPiP;          //   211 / pi+
+  if (geant_code ==  9) return kPdgPiM;          //  -211 / pi-
+  if (geant_code ==  7) return kPdgPi0;          //   111 / pi0
+  if (geant_code == 17) return kPdgEta;          //   221 / eta
+  if (geant_code == 11) return kPdgKP;           //   321 / K+
+  if (geant_code == 12) return kPdgKM;           //  -321 / K-
+  if (geant_code == 10) return kPdgK0L;          //   130 / K0_{long}
+  if (geant_code == 16) return kPdgK0S;          //   310 / K0_{short}
+  if (geant_code == 35) return kPdgDP;           //   411 / D+
+  if (geant_code == 36) return kPdgDM;           //  -411 / D-
+  if (geant_code == 37) return kPdgD0;           //   421 / D0
+  if (geant_code == 38) return kPdgAntiD0;       //  -421 / \bar{D0}
+  if (geant_code == 39) return kPdgDPs;          //   431 / D+_{s}
+  if (geant_code == 40) return kPdgDMs;          //  -431 / D-_{s}
+  if (geant_code ==  1) return kPdgGamma;        //    22 / photon
+  if (geant_code == 44) return kPdgZ0;           //    23 / Z
+  if (geant_code == 42) return kPdgWP;           //    24 / W+
+  if (geant_code == 43) return kPdgWM;           //   -24 / W-
+  if (geant_code == 14) return kPdgProton;       //  2212
+  if (geant_code == 15) return kPdgAntiProton;   // -2212
+  if (geant_code == 13) return kPdgNeutron;      //  2112
+  if (geant_code == 25) return kPdgAntiNeutron;  // -2112
+  if (geant_code == 18) return kPdgLambda;       //  3122 / Lambda
+  if (geant_code == 26) return kPdgAntiLambda;   // -3122 / \bar{Lambda}
+  if (geant_code == 19) return kPdgSigmaP;       //  3222 / Sigma+
+  if (geant_code == 20) return kPdgSigma0;       //  3212 / Sigma0
+  if (geant_code == 21) return kPdgSigmaM;       //  3112 / Sigma-
+  if (geant_code == 29) return kPdgAntiSigmaP;   // -3112 / \bar{Sigma+}
+  if (geant_code == 28) return kPdgAntiSigma0;   // -3212 / \bar{Sigma0}
+  if (geant_code == 27) return kPdgAntiSigmaM;   // -3112 / \bar{Sigma-}
+  if (geant_code == 22) return kPdgXi0;          //  3322 / Xi0
+  if (geant_code == 23) return kPdgXiM;          //  3312 / Xi-
+  if (geant_code == 30) return kPdgAntiXi0;      // -3322 / \bar{Xi0}
+  if (geant_code == 31) return kPdgAntiXiP;      // -3312 / \bar{Xi+}
+  if (geant_code == 24) return kPdgOmegaM;       //  3334 / Omega-
+  if (geant_code == 32) return kPdgAntiOmegaP;   // -3334 / \bar{Omega+}
 
   // some rare Geant3 codes that don't really need definitions in PDGCodes.h
   const int kPdgDeuteron = 1000010020; // pdg::IonPdgCode(2,1);
   const int kPdgTritium  = 1000010030; // pdg::IonPdgCode(3,1);
   const int kPdgAlpha    = 1000020040; // pdg::IonPdgCode(4,2);
   const int kPdgHe3      = 1000020030; // pdg::IonPdgCode(3,2);
-  if(geant_code == 45) return kPdgDeuteron;
-  if(geant_code == 46) return kPdgTritium;
-  if(geant_code == 47) return kPdgAlpha;
-  if(geant_code == 49) return kPdgHe3;
+  if (geant_code == 45) return kPdgDeuteron;
+  if (geant_code == 46) return kPdgTritium;
+  if (geant_code == 47) return kPdgAlpha;
+  if (geant_code == 49) return kPdgHe3;
 
   if (geant_code != 0 ) 
-    cerr << "## Can not convert geant code: " << geant_code << " to PDG" << endl;
+    std::cerr << "## Can not convert geant code: " << geant_code
+              << " to PDG  (" << tag << ")" << std::endl;
   return 0;
 }
 //____________________________________________________________________________
 
-void ConvertPartCodes()
+int Convert5xToPdg(int old_ntype)
 {
- 
-  static bool first = true;
-  if ( dk2nuObj->ntype   == 99 ||
-       dk2nuObj->ptype   == 99 ||
-       dk2nuObj->tptype  == 99 ||
-       dk2nuObj->tgptype == 99     ) {
-    if ( first ) {
-      first = false;
-      cout << "## ConvertPartCodes (potnum="
-           << dk2nuObj->potnum << ") saw code 99: " 
-           << " ntype=" << dk2nuObj->ntype
-           << " ptype=" << dk2nuObj->ptype
-           << " tptype=" << dk2nuObj->tptype
-           << " tgptype=" << dk2nuObj->tgptype
-           << endl;
-      cout << "## ... last message of this type" << endl;
-      // tends to be tptype = parent exiting the target
-      //cout << "## " << *dk2nuObj << endl;
-    }
-  }
- 
   // NuMI ntuples have an odd neutrino "geant" convention
-  switch ( dk2nuObj->ntype ) {
-  case 56: dk2nuObj->ntype =  14; break;  // kPdgNuMu;     break;
-  case 55: dk2nuObj->ntype = -14; break;  // kPdgAntiNuMu; break;
-  case 53: dk2nuObj->ntype =  12; break;  // kPdgNuE;      break;
-  case 52: dk2nuObj->ntype = -12; break;  // kPdgAntiNuE;  break;
+  switch ( old_ntype ) {
+  case 56: return  14; break;  // kPdgNuMu;     break;
+  case 55: return -14; break;  // kPdgAntiNuMu; break;
+  case 53: return  12; break;  // kPdgNuE;      break;
+  case 52: return -12; break;  // kPdgAntiNuE;  break;
   default:
-    cerr << "ConvertPartCodes saw ntype " << dk2nuObj->ntype << " -- unknown ";
+    std::cerr << "Convert5xToPdg saw ntype " << old_ntype 
+              << " -- unknown " << std::endl;
     assert(0);
   }
-  dk2nuObj->ptype   = ConvertGeantToPdg(dk2nuObj->ptype);
-  dk2nuObj->tptype  = ConvertGeantToPdg(dk2nuObj->tptype);
-  if ( dk2nuObj->tgptype != -1 )  // may not exist in original ntuple
-    dk2nuObj->tgptype = ConvertGeantToPdg(dk2nuObj->tgptype);
+  return 0;
 }
+
 //____________________________________________________________________________
 
 size_t find_loc_index(string match)
 {
   // find the index in the array of locations
-  for ( size_t i=0; i < dkmetaObj->nameloc.size(); ++i ) {
+  for ( size_t i=0; i < dkmeta->location.size(); ++i ) {
     //cout << "looking for \"" << match << "\" vs \""
-    //     << dkmetaObj->nameloc[i] << "\"" << endl;
-    if ( dkmetaObj->nameloc[i] == match ) return i;
+    //     << dkmeta->nameloc[i] << "\"" << endl;
+    if ( dkmeta->location[i].name == match ) return i;
   }
   //cout << "failed to find match" << endl;
   return -1;
@@ -429,7 +413,8 @@ double estimate_pots(int highest_potnum)
 }
 
 //____________________________________________________________________________
-bool close_enough(double a, double b)
+bool isCloseEnough(double a, double b, double& difference, double& fdiff,
+                   int& nmsg, int mxmsg, string s)
 {
   // For float or double, need to determine equality while 
   // accounting for some degree of imprecision
@@ -442,25 +427,70 @@ bool close_enough(double a, double b)
   int exponent;
   frexp(fabs(value[0]) > fabs(value[1]) ? value[0] : value[1], &exponent);
   double delta = ldexp(epsilon,exponent);
-  double difference = value[0] - value[1];
+  //double 
+  difference = value[0] - value[1];
   if ( difference > delta || difference < -delta ) {
     double sum  = a+b;
     if ( TMath::Abs(sum) < 1.0e-30 ) sum = 1.0e-30;  // protect divide-by-0
-    double fdiff = TMath::Abs(2.0*(a-b)/(a+b));
+    //double
+    fdiff = TMath::Abs(2.0*(a-b)/(a+b));
     if ( fdiff > obs_frac_diff_max ) obs_frac_diff_max = fdiff;
     if ( fdiff < frac_diff_tolerance ) return true; // we'll allow it anyway
-
-    cout << "## delta " << delta << " difference " << difference
-         << " fdiff " << fdiff << endl;
+    ++nmsg;
+    if ( nmsg <= mxmsg ) {
+      cout << "## \"" << s << "\" " << a << " " << b 
+        //<< " delta " << delta
+           << " diff " << difference
+           << " fdiff " << fdiff << endl;
+      //cout << "## ndecay (dkproc) " << dk2nu->decay.ndecay << endl;
+      if ( nmsg == mxmsg ) 
+        cout << "## last message for tag \"" << s << "\"" << endl;
+    }
     return false;  // nope
   }
   return true; // these are close
 }
 
-void compare(double a, double b, string s)
+bool histCompare(double a, double b, string s)
 {
-  if ( ! close_enough(a,b) ) 
-    cout << "## " << s << " " << a << " " << b << endl;
+  // booking histograms should end up in the output file
+
+  static map<std::string,int> nmsg;
+  double diff, frac;
+  const int mxmsg = 10, nbins = 100;
+  static map<std::string,TH1D*> diffmap;
+  static map<std::string,TH1D*> fracmap;
+  ///  static bool first = true;
+  //if ( first ) {
+  //  first = false;
+  //  TH1::SetDefaultSumw2(true);
+  //}
+  if ( s == "WriteHist" ) { 
+    map<std::string,TH1D*>::iterator itr;
+    for ( itr=diffmap.begin(); itr != diffmap.end(); ++itr ) (*itr).second->Write();
+    for ( itr=fracmap.begin(); itr != fracmap.end(); ++itr ) (*itr).second->Write();
+    return true;
+  }
+
+  bool close = isCloseEnough(a,b,diff,frac,nmsg[s],mxmsg,s);
+  TH1D* diffh = diffmap[s];
+  TH1D* frach = fracmap[s];
+  if ( ! diffh  ) {
+    string sdh = "difference " + s;
+    diffh = new TH1D(sdh.c_str(),sdh.c_str(),nbins,1,-1); // autoadjust limits by reversed values
+    diffh->Sumw2();
+    diffmap[s] = diffh;
+  }
+  if ( ! frach  ) {
+    string sfh = "frac diff " + s;
+    frach = new TH1D(sfh.c_str(),sfh.c_str(),nbins,1,-1); // autoadjust limits by reversed values
+    frach->Sumw2();
+    fracmap[s] = frach;
+  }
+  diffh->Fill(diff);
+  frach->Fill(frac);
+
+  return close;
 }
 
 //____________________________________________________________________________

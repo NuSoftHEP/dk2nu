@@ -1,8 +1,10 @@
 #include <iostream>
-#include <fstream>
 #include <iomanip>
+#include <fstream>
+#include <string>
 
 #include "dk2nu/tree/readWeightLocations.h"
+
 #include "dk2nu/tree/dkmeta.h"
 
 #include "TSystem.h"
@@ -12,11 +14,8 @@
 /// lines.  Fill the supplied vectors.  Trim off leading/trailing 
 /// blanks and quotes (single/double) from the string.
 /// Convention has it that positions are given in (cm).
-void readWeightLocations(std::string locfilename,
-                         std::vector<std::string>& nameloc,
-                         std::vector<double>& xloc,
-                         std::vector<double>& yloc,
-                         std::vector<double>& zloc)
+void bsim::readWeightLocations(std::string locfilename,
+                               std::vector<bsim::Location>& locations)
 {
 
   const char* path = gSystem->ExpandPathName(locfilename.c_str());
@@ -60,30 +59,37 @@ void readWeightLocations(std::string locfilename,
       //  std::cout << "stopped reading on line " << iline << std::endl;
       break;
     }
-    nameloc.push_back(name);
-    xloc.push_back(x);
-    yloc.push_back(y);
-    zloc.push_back(z);
+    bsim::Location alocation(x,y,z,name);
+    locations.push_back(alocation);
   }
 
 }
 
 /// a variant that will fill the dkmeta object
-void readWeightLocations(std::string locfilename, dkmeta* dkmetaObj)
+void bsim::readWeightLocations(std::string locfilename, bsim::DkMeta* dkmeta)
 {
   ///  read & print the locations where weights are to be calculated
-  std::vector<std::string>& nameloc = dkmetaObj->nameloc;
-  std::vector<double>& xloc         = dkmetaObj->xloc;
-  std::vector<double>& yloc         = dkmetaObj->yloc;
-  std::vector<double>& zloc         = dkmetaObj->zloc;
 
+  std::vector<bsim::Location>& locations = dkmeta->location;
   /// make an entry for the random decay
-  nameloc.push_back("random decay");
-  xloc.push_back(0);  // positions for random case are bogus
-  yloc.push_back(0);
-  zloc.push_back(0);
+  bsim::Location rndmloc(0,0,0,"random decay");
+  locations.push_back(rndmloc);
 
   /// read and parse the text file for additional positions
   /// use the vector version
-  readWeightLocations(locfilename, nameloc, xloc, yloc, zloc);
+  readWeightLocations(locfilename, locations);
+}
+
+void bsim::printWeightLocations(std::vector<bsim::Location>& locations)
+{
+  size_t nl = locations.size();
+  std::cout << nl << " locations:\n";
+  for ( size_t l = 0; l < nl; ++l ) {
+    std::cout << " [" << std::setw(2) << l << "] " << locations[l] << "\n";
+  }
+}
+
+void bsim::printWeightLocations(bsim::DkMeta* dkmeta)
+{
+  bsim::printWeightLocations(dkmeta->location);
 }

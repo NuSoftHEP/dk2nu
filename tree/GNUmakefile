@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.2 2012-11-07 21:11:30 rhatcher Exp $
+# $Id: GNUmakefile,v 1.3 2012-11-15 09:09:27 rhatcher Exp $
 #
 ########################################################################
 
@@ -8,7 +8,7 @@ NAME     = all
 MAKEFILE = GNUmakefile
 
 PACKAGE  = dk2nuTree
-LIBDEPS  = -lEG    # TVector3
+LIBDEPS  = -lPhysics    # TVector3
 
 all:  FORCE lib
 	@echo "make all $(PACKAGE)"

@@ -1,15 +1,27 @@
 #include <iostream>
 #include <cassert>
 
-#include "dkmeta.h"
-#include "dk2nu.h"
+namespace bsim {
+  class Decay;
+  class Dk2Nu;
+  class DkMeta;
+}
 
 #include "TMath.h"
 #include "TVector3.h"
 
-// forward declarations
-int CalcEnuWgt(const dk2nu* dk2nuObj, const TVector3& xyz,
-               double& enu, double& wgt_xy);
+/// bsim namespace for beam simulation classes and functions
+namespace bsim { 
 
-// user interface
-void calcLocationWeights(dkmeta* dkmetaObj, dk2nu* dk2nuObj);
+  /// workhorse routine
+  int calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
+                 double& enu, double& wgt_xy);
+
+  /// alternate interface
+  int calcEnuWgt(const bsim::Dk2Nu* dk2nu, const TVector3& xyz,
+                 double& enu, double& wgt_xy);
+
+  /// user interface
+  void calcLocationWeights(const bsim::DkMeta* dkmeta, bsim::Dk2Nu* dk2nu);
+
+} // end-of-namespace "bsim"

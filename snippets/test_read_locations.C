@@ -11,20 +11,20 @@
 #include <fstream>
 #include <iomanip>
 
+//#include "dk2nu/tree/dk2nu.h"
+#include "dk2nu/tree/dkmeta.h"
+#include "dk2nu/tree/readWeightLocations.h"
+
 void test_read_locations(std::string locfilename = "${DK2NU}/etc/locations.txt") 
 {
-  std::vector<std::string> nameloc;
-  std::vector<double> xloc, yloc, zloc;
+  std::vector<bsim::Location> location;
+  bsim::readWeightLocations(locfilename, location);
 
-  readWeightLocations(locfilename, nameloc, xloc, yloc, zloc);
-
-  std::cout << "Read " << nameloc.size() << " locations" << std::endl;
-  for (size_t iloc = 0; iloc < nameloc.size(); ++iloc ) {
-    std::cout << "{ " << setw(10) << xloc[iloc]
-              << ", " << setw(10) << yloc[iloc]
-              << ", " << setw(10) << zloc[iloc]
-              << " } \"" << nameloc[iloc] << "\""
-              << std::endl;
+  size_t nl = location.size();
+  std::cout << nl << " locations:\n";
+  for ( size_t l = 0; l < nl; ++l ) {
+    std::cout << " [" << std::setw(2) << l << "] " << location[l] << "\n";
   }
+  std::cout << endl;
 
 }
