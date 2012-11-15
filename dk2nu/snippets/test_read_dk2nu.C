@@ -5,8 +5,13 @@ using namespace std;
 
 #include "TChain.h"
 
+#ifndef __CINT__
+// hide header stuff from CINT, assume load_dk2nu.C run first
+
 #include "dk2nu/tree/dk2nu.h"
 #include "dk2nu/tree/dkmeta.h"
+
+#endif  // ifndef __CINT__
 
 void test_read_dk2nu(string pattern="generic_*_to_dk2nu.root")
 {
