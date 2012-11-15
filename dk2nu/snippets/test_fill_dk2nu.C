@@ -15,48 +15,43 @@
 ///
 /// \created   2012-04-03
 /// \modified  2012-10-03
-/// \version $Id: test_fill_dk2nu.C,v 1.1 2012-11-07 05:21:56 rhatcher Exp $
+/// \version $Id: test_fill_dk2nu.C,v 1.2 2012-11-15 09:09:27 rhatcher Exp $
 ///==========================================================================
 
 #include <iostream>
 #include <iomanip>
+
 #include "TFile.h"
 #include "TTree.h"
 #include "TRandom3.h"
 
-#include "dk2nu.h"
-#include "dkmeta.h"
+#include "dk2nu/tree/dk2nu.h"
+#include "dk2nu/tree/dkmeta.h"
 
-/// include these because we're not linking to anything external
-/// so we need to include the source for dk2nu::Clear() and dkmeta::Clear()
-#include "dk2nu.cc"
-#include "dkmeta.cc"
-
+#define ADD_NONSTD
+#ifdef ADD_NONSTD
 /// example class for extending the tree with non-standard extras
 /// that doesn't require modifying the basic "dk2nu" class
-class nonstd {
+class NonStd {
   public:
-    nonstd() { }
-    virtual ~nonstd() { }
+    NonStd() { }
+    virtual ~NonStd() { }
     void Clear() { }
     double foo;  ///< data for my one-off test
     double bar;  ///< more data  
-  ClassDef(nonstd,1)
+  ClassDef(NonStd,1)
 };
 
 /// make a dictionary for classes used in the tree
 /// again do this because we have no external linkages to libraries
-#ifdef __CINT__
-#pragma link C++ class dk2nu+;
-#pragma link C++ class dkmeta+;
-#pragma link C++ class nonstd+;
+#pragma link C++ class NonStd+;
 #endif
 
 /// include standardized code for reading location text file
-#include "readWeightLocations.C"
+#include "dk2nu/tree/readWeightLocations.h"
 
 /// include standardized code for getting energy/weight vectors for locations
-#include "calcLocationWeights.C"
+#include "dk2nu/tree/calcLocationWeights.h"
 
 // flugg 500K POT lowth files seem to have 510000 as an upper limit on 
 // # of entries.   So to test for estimate of file size one needs to have 
@@ -75,24 +70,23 @@ void test_fill_dk2nu(unsigned int nentries=1000)
   ///-----------------------------------------------------------------------
 
   // create objects
-  dk2nu*  dk2nuObj  = new dk2nu;
-  dkmeta* dkmetaObj = new dkmeta;
-  nonstd* nonstdObj = new nonstd;
+  bsim::Dk2Nu*  dk2nu  = new bsim::Dk2Nu;
+  bsim::DkMeta* dkmeta = new bsim::DkMeta;
+#ifdef ADD_NONSTD
+  NonStd* nonstd = new NonStd;
+#endif
 
   // read the text file for locations, fill the dkmeta object
-  std::string locfilename = "locfile.txt";
-  readWeightLocations(locfilename,dkmetaObj);
+  std::string locfilename = "$DK2NU/etc/locations.txt";
+  bsim::readWeightLocations(locfilename,dkmeta);
 
   // print out what we have for locations
-  size_t nloc = dkmetaObj->nameloc.size();
+  size_t nloc = dkmeta->location.size();
   std::cout << "Read " << nloc << " locations read from \"" 
             << locfilename << "\"" << std::endl;
   for (size_t iloc = 0; iloc < nloc; ++iloc ) {
-    std::cout << "{" << std::setw(10) << dkmetaObj->xloc[iloc]
-              << "," << std::setw(10) << dkmetaObj->yloc[iloc]
-              << "," << std::setw(10) << dkmetaObj->zloc[iloc]
-              << " } \"" << dkmetaObj->nameloc[iloc] << "\""
-              << std::endl;
+    std::cout << "[ " << std::setw(2) << iloc << "] "
+              << dkmeta->location[iloc] << std::endl;
   }
 
   ///-----------------------------------------------------------------------
@@ -104,13 +98,15 @@ void test_fill_dk2nu(unsigned int nentries=1000)
   // create file, book tree, set branch address to created object 
   TFile* treeFile = new TFile("test_dk2nu.root","RECREATE");
 
-  TTree* dk2nu_tree = new TTree("dk2nu","FNAL neutrino ntuple");
-  dk2nu_tree->Branch("dk2nu","dk2nu",&dk2nuObj,32000,1);
+  TTree* dk2nuTree = new TTree("dk2nuTree","neutrino ntuple");
+  dk2nuTree->Branch("dk2nu","bsim::Dk2Nu",&dk2nu,32000,1);
+#ifdef ADD_NONSTD
   // extend the tree with additional branches without modifying std class
-  dk2nu_tree->Branch("nonstd","nonstd",&nonstdObj,32000,1);
+  dk2nuTree->Branch("nonstdb","NonStd",&nonstd,32000,1);
+#endif
 
-  TTree* dkmeta_tree  = new TTree("dkmeta","FNAL neutrino ntuple metadata");
-  dkmeta_tree->Branch("dkmeta","dkmeta",&dkmetaObj,32000,1);
+  TTree* dkmetaTree  = new TTree("dkmetaTree","neutrino ntuple metadata");
+  dkmetaTree->Branch("dkmeta","bsim::DkMeta",&dkmeta,32000,1);
 
   int myjob = 42;  // unique identifying job # for this series
 
@@ -129,11 +125,11 @@ void test_fill_dk2nu(unsigned int nentries=1000)
     ///
 
     // clear the object in preparation for filling an entry
-    dk2nuObj->Clear();
+    dk2nu->clear();
 
     // fill with info ... only a few elements, just for test purposes
-    dk2nuObj->job    = myjob;
-    dk2nuObj->potnum = ipot;
+    dk2nu->job    = myjob;
+    dk2nu->potnum = ipot;
 
     // pick a bogus particle type to decay, and a neutrino flavor
     int ptype = 211;  // pi+
@@ -147,39 +143,40 @@ void test_fill_dk2nu(unsigned int nentries=1000)
     //   ntype, ptype, vx, vy, vz, pdpx, pdpy, pdpz, necm, 
     //   ppenergy, ppdxdz, ppdydz, pppz, 
     //   muparpx, muparpy, muparpz, mupare
-    dk2nuObj->ptype  = ptype;  
-    dk2nuObj->ntype  = ntype;
+    dk2nu->decay.ptype  = ptype;  
+    dk2nu->decay.ntype  = ntype;
 
     // fill nupx, nupy, nupz, nuenergy, nuwgt(=1) for random decay
     // should be the 0-th entry
-    if ( dkmetaObj->nameloc[0] == "random decay" ) {
-      dk2nuObj->nupx.push_back(p3nu.x());
-      dk2nuObj->nupy.push_back(p3nu.y());
-      dk2nuObj->nupz.push_back(p3nu.z());
-      dk2nuObj->nuenergy.push_back(p3nu.Mag());
-      dk2nuObj->nuwgt.push_back(1.0);
+    if ( dkmeta->location[0].name == "random decay" ) {
+      bsim::NuRay nurndm(p3nu.x(),p3nu.y(),p3nu.z(),p3nu.Mag(),1.0);
+      dk2nu->nuray.push_back(nurndm);
     }
     // fill location specific p3, energy and weights; locations in metadata
-    calcLocationWeights(dkmetaObj,dk2nuObj);
+    calcLocationWeights(dkmeta,dk2nu);
 
     // test the filling of vector where entries vary in length
     // ... really need to fill whole dk2nu object
     unsigned int nancestors = rndm->Integer(12) + 1;  // at least one entry
     for (unsigned int janc = 0; janc < nancestors; ++janc ) {
       int xpdg = rndm->Integer(100);
-      dk2nuObj->apdg.push_back(janc*10000+xpdg);
+      bsim::Ancestor anc;
+      anc.pdg = janc*10000+xpdg;
+      dk2nu->ancestor.push_back(anc);
     }
 
     // push a couple of user defined values for each entry
-    dk2nuObj->vint.push_back(42);
-    dk2nuObj->vint.push_back(ipot);
+    dk2nu->vint.push_back(42);
+    dk2nu->vint.push_back(ipot);
 
+#ifdef ADD_NONSTD
     // fill non-standard extension to tree with user additions
-    nonstdObj->foo = ptype + 1000000;
-    nonstdObj->bar = ipot + ptype;
+    nonstd->foo = ptype + 1000000;
+    nonstd->bar = ipot + ptype;
+#endif
 
     // push entry out to tree
-    dk2nu_tree->Fill();
+    dk2nuTree->Fill();
 
   } // end of fill loop
 
@@ -190,22 +187,23 @@ void test_fill_dk2nu(unsigned int nentries=1000)
   ///-----------------------------------------------------------------------
 
   /// fill the rest of the metadata (locations filled above)
-  //no! would clear location info // dkmetaObj->Clear();
-  dkmetaObj->job  = myjob;  // needs to match the value in each dk2nu entry
-  dkmetaObj->pots = 50000;  // ntuple represents this many protons-on-target 
-  dkmetaObj->beamsim = "test_fill_dk2nu.C";
-  dkmetaObj->physics = "bogus";
-  dkmetaObj->vintnames.push_back("mytemp_42");
-  dkmetaObj->vintnames.push_back("mytemp_ipot");
+  //no! would clear location info // dkmeta->Clear();
+  dkmeta->job  = myjob;  // needs to match the value in each dk2nu entry
+  dkmeta->pots = 50000;  // ntuple represents this many protons-on-target 
+  dkmeta->beamsim = "test_fill_dk2nu.C";
+  dkmeta->physics = "bogus";
+  dkmeta->vintnames.push_back("mytemp_42");
+  dkmeta->vintnames.push_back("mytemp_ipot");
   // push entry out to meta-data tree
-  dkmeta_tree->Fill();
+  dkmetaTree->Fill();
 
   // finish and clean-up
   treeFile->cd();
-  dk2nu_tree->Write();
-  dkmeta_tree->Write();
+  dk2nuTree->Write();
+  dkmetaTree->Write();
   treeFile->Close();
   delete treeFile; treeFile=0;
-  dk2nu_tree=0;
-  dkmeta_tree=0;
+  dk2nuTree=0;
+  dkmetaTree=0;
+
 }

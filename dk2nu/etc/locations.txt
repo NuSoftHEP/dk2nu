@@ -7,3 +7,6 @@
   1112900.0  -416400.0   81055000.0   NOvA FarDet
 # from:  numisoft/g4numi/src/NumiDataInput.cc
      2584.0     7842.0      74525.0   MiniBooNE
+# from:  (minerva) g4numi/src/NumiDataInput.cc
+     2881.258  8139.258  81140000.0   Ash River per Minerva
+
