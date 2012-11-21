@@ -5,7 +5,6 @@
 #pragma link off all functions;
 
 #pragma link C++ class genie::flux::GDk2NuFlux+;
-#pragma link C++ class genie::flux::GDk2NuFluxPassThroughInfo+;
 
 #endif
 

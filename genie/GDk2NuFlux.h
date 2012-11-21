@@ -3,8 +3,8 @@
 
 \class    genie::flux::GDk2NuFlux
 
-\brief    A GENIE flux driver encapsulating the "dk2nu" neutrino flux.
-          It reads-in the official unified neutrino flux ntuples.
+\brief    An implementation of the GENIE GFluxI interface ("flux driver")
+          encapsulating reading/processing the "dk2nu" tree structure.
 
 \author   Robert Hatcher <rhatcher \at fnal.gov>
           Fermi National Accelerator Laboratory
@@ -24,6 +24,7 @@
 #include <iostream>
 #include <vector>
 #include <set>
+#include <map>
 
 #include <TVector3.h>
 #include <TLorentzVector.h>
@@ -37,62 +38,15 @@ class TChain;
 class TTree;
 class TBranch;
 
-#include "dk2nu/tree/dk2nu.h"
-#include "dk2nu/tree/dkmeta.h"
+namespace bsim {
+  class Dk2Nu;
+  class DkMeta;
+  class NuChoice;
+}
 
 namespace genie {
 namespace flux  {
 
-/// GDk2NuFluxPassThroughInfo:
-/// =========================
-/// A small persistable C-struct -like class that mirrors (some of) the 
-/// structure of the gnumi ntuples.  This can then be stored as an extra 
-/// branch of the output event tree -alongside with the generated event 
-/// branch- for use further upstream in the analysis chain - e.g. beam 
-/// reweighting etc.
-/// To do future x-y reweighting users must retain the info found in:
-//     Ntype   Vx      Vy      Vz      
-//     pdPx    pdPy    pdPz    
-//     ppdxdz  ppdydz  pppz    ppenergy ptype
-//     muparpx muparpy muparpz mupare   Necm
-//     Nimpwt  
-///
-class GDk2NuFluxPassThroughInfo: public TObject {
-public:
-   GDk2NuFluxPassThroughInfo();
-   GDk2NuFluxPassThroughInfo(const dk2nu*);
-   /* allow default copy constructor ... for now nothing special
-   GDk2NuFluxPassThroughInfo(const GDk2NuFluxPassThroughInfo & info);
-   */
-   virtual ~GDk2NuFluxPassThroughInfo() { };
-
-   void ResetCopy();     // reset portion copied from ntuple
-   void ResetCurrent();  // reset generated xy positioned info
-   void Print(const Option_t* opt = "") const;
-
-   friend ostream & operator << (ostream & stream, const GDk2NuFluxPassThroughInfo & info);
-
-   // values from ntuple
-   dk2nu          dk2nuObj;
-
-   // Values for GDk2NuFlux chosen x-y-z position, not from flux ntuple
-   int            fgPdgC;   ///< generated nu pdg-code
-   double         fgXYWgt;  ///< generated nu x-y weight
-                            ///   not the same as GDk2NuFlux::Weight()
-                            ///   which include importance wgt and deweighting
-   TLorentzVector fgP4;     ///< generated nu 4-momentum beam coord
-   TLorentzVector fgX4;     ///< generated nu 4-position beam coord
-   TLorentzVector fgP4User; ///< generated nu 4-momentum user coord
-   TLorentzVector fgX4User; ///< generated nu 4-position user coord
-
-ClassDef(GDk2NuFluxPassThroughInfo,1)
-};
-
-/// GDk2NuFlux:
-/// ==========
-/// An implementation of the GFluxI interface that provides flux
-/// from the unified dk2nu ntuples
-///
 class GDk2NuFlux: public GFluxI {
 
 public :
@@ -105,10 +59,10 @@ public :
   const PDGCodeList &    FluxParticles (void) { return *fPdgCList;            }
   double                 MaxEnergy     (void) { return  fMaxEv;               }
   bool                   GenerateNext  (void);
-  int                    PdgCode       (void) { return  fCurEntry->fgPdgC;    }
+  int                    PdgCode       (void);
   double                 Weight        (void) { return  fWeight;              }
-  const TLorentzVector & Momentum      (void) { return  fCurEntry->fgP4User;  }
-  const TLorentzVector & Position      (void) { return  fCurEntry->fgX4User;  }
+  const TLorentzVector & Momentum      (void);
+  const TLorentzVector & Position      (void);
   bool                   End           (void) { return  fEnd;                 }
   long int               Index         (void) { return  fIEntry;              }
   void                   Clear            (Option_t * opt);
@@ -123,8 +77,10 @@ public :
   //
   // information about or actions on current entry
   //
-  const GDk2NuFluxPassThroughInfo &
-     PassThroughInfo(void) { return *fCurEntry; } ///< GDk2NuFluxPassThroughInfo
+  const bsim::NuChoice &  GetNuChoice(void) { return *fCurNuChoice; };
+  const bsim::Dk2Nu &     GetDk2Nu(void)    { return *fCurDk2Nu; };
+  const bsim::DkMeta &    GetDkMeta(void)   { LoadDkMeta(); return *fCurDkMeta; };
+  
   Long64_t GetEntryNumber() { return fIEntry; }   ///< index in chain
 
   double    GetDecayDist() const; ///< dist (user units) from dk to current pos
@@ -146,8 +102,10 @@ public :
   //
   // configuration of GDk2NuFlux
   //
-  void      SetXMLFile(string xmlbasename="GDk2NuFlux.xml") { fXMLbasename = xmlbasename; }  ///< set the name of the file that hold XML config param_sets
+  void      SetXMLFile(string xmlbasename="GNuMIFlux.xml") { fXMLbasename = xmlbasename; }  ///< set the name of the file that hold XML config param_sets
   std::string GetXMLFile() const { return fXMLbasename; }  ///< return the name of the file that hold XML config param_sets
+
+  void      SetTreeNames(string fname = "dk2nuTree", string mname = "dkmetaTree") { fTreeNames[0] = fname; fTreeNames[1] = mname; }
 
   void      LoadBeamSimData(std::vector<string> filenames, string det_loc);     ///< load root flux ntuple files and config
   void      LoadBeamSimData(std::set<string>    filenames, string det_loc);     ///< load root flux ntuple files and config
@@ -224,10 +182,10 @@ private:
   void SetDefaults           (void);
   void CleanUp               (void);
   void ResetCurrent          (void);
-  void AddFile               (string fname);
-  void AddTreeFile           (TTree* tree, string fname);
+  void AddFile               (TTree* fluxtree, TTree* metatree, string fname);
   void CalcEffPOTsPerNu      (void);
-  
+  void LoadDkMeta            (void);
+
   // Private data members
   //
   double         fMaxEv;          ///< maximum energy
@@ -238,13 +196,21 @@ private:
   string    fXMLbasename;         ///< XML filename for config data
   std::vector<string> fNuFluxFilePatterns;   ///< (potentially wildcarded) path(s)
 
+  std::string fTreeNames[2];      ///< pair of names "dk2nuTree", "dkmetaTree"
   TChain*   fNuFluxTree;          ///< TTree // REF ONLY!
+  TChain*   fNuMetaTree;          ///< TTree // REF ONLY!
+
+  bsim::Dk2Nu*     fCurDk2Nu;
+  bsim::DkMeta*    fCurDkMeta;
+  bsim::NuChoice*  fCurNuChoice;
 
   int       fNFiles;              ///< number of files in chain
   Long64_t  fNEntries;            ///< number of flux ntuple entries
   Long64_t  fIEntry;              ///< current flux ntuple entry
   Long64_t  fNuTot;               ///< cummulative # of entries (=fNEntries)
   Long64_t  fFilePOTs;            ///< # of protons-on-target represented by all files
+
+  std:: map<int,int>  fJobToMetaIndex;  ///< quick lookup from job# to meta chain
 
   double    fWeight;              ///< current neutrino weight, =1 if generating unweighted entries
   double    fMaxWeight;           ///< max flux neutrino weight in input file
@@ -281,8 +247,6 @@ private:
   double           fFluxWindowLen2;
 
   TLorentzVector   fgX4dkvtx;       ///< decay 4-position beam coord
-
-  GDk2NuFluxPassThroughInfo* fCurEntry;  ///< copy of current ntuple entry info (owned structure)
 
 };
 
