@@ -22,6 +22,8 @@
 
 #pragma link C++ class std::vector<bsim::Location>+;
 
+#pragma link C++ class bsim::NuChoice+;
+
 #pragma link C++ function bsim::readWeightLocations;
 #pragma link C++ function bsim::printWeightLocations;
 #pragma link C++ function bsim::calcLocationWeights;
@@ -39,5 +41,6 @@
 #pragma link C++ function operator<<(std::ostream&, const bsim::Location&);
 #pragma link C++ function operator<<(std::ostream&, const bsim::DkMeta&);
 
+#pragma link C++ function operator<<(std::ostream&, const bsim::NuChoice&);
 #endif
 

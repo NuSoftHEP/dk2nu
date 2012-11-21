@@ -9,20 +9,20 @@
  *
  * \author (last to touch it) $Author: rhatcher $
  *
- * \version $Revision: 1.2 $
+ * \version $Revision: 1.3 $
  *
- * \date $Date: 2012-11-15 09:09:27 $
+ * \date $Date: 2012-11-21 04:44:50 $
  *
  * Contact: rhatcher@fnal.gov
  *
- * $Id: dk2nu.h,v 1.2 2012-11-15 09:09:27 rhatcher Exp $
+ * $Id: dk2nu.h,v 1.3 2012-11-21 04:44:50 rhatcher Exp $
  *
  * Notes tagged with "DK2NU" are questions that should be answered
  */
 ///----------------------------------------------------------------------------
 
-#ifndef DK2NU_H
-#define DK2NU_H
+#ifndef BSIM_DK2NU_H
+#define BSIM_DK2NU_H
 
 #include "TROOT.h"
 #include "TObject.h"
@@ -30,7 +30,7 @@
 #include <vector>
 #include <string>
 
-#define DK2NUVER 6   // KEEP THIS UP-TO-DATE!  increment for each change
+#define DK2NUVER 7   // KEEP THIS UP-TO-DATE!  increment for each change
 
 namespace bsim {
   /**
@@ -181,7 +181,8 @@ namespace bsim {
     Double_t startx;   ///< particle x initial position
     Double_t starty;   ///< particle y initial position
     Double_t startz;   ///< particle z initial position
-    
+    Double_t startt;   ///< particle initial time
+
     Double_t startpx;  ///< particle x initial momentum
     Double_t startpy;  ///< particle y initial momentum
     Double_t startpz;  ///< particle z initial momentum
@@ -211,7 +212,7 @@ namespace bsim {
     std::string AsString(const std::string& opt = "") const;
     
     /// set triplets
-    void        SetStartXYZ(Double_t x, Double_t y, Double_t z);
+    void        SetStartXYZT(Double_t x, Double_t y, Double_t z, Double_t t);
     void        SetStartP(Double_t px, Double_t py, Double_t pz);
     void        SetStopP(Double_t px, Double_t py, Double_t pz);
     void        SetPProdP(Double_t px, Double_t py, Double_t pz);
@@ -228,7 +229,7 @@ namespace bsim {
   private:
     ClassDef(bsim::Ancestor,DK2NUVER)
   };  // end-of-class bsim::Ancestor
-  
+
   ///---------------------------------------------------------------------------
   /**
    *============================================================================
@@ -293,21 +294,21 @@ namespace bsim {
   class Dk2Nu
   {
   public:
-   Int_t job;              ///< identifying job #
-   Int_t potnum;           ///< proton # processed by simulation
-   bsim::Decay decay;
-   std::vector<bsim::NuRay> nuray;
-   std::vector<bsim::Ancestor> ancestor;
+   Int_t job;                        ///< identifying job #
+   Int_t potnum;                     ///< proton # processed by simulation
+   bsim::Decay decay;                ///< basic decay information
+   std::vector<bsim::NuRay> nuray;   ///< rays through detector fixed points
+   std::vector<bsim::Ancestor> ancestor;  ///< chain from proton to neutrino
 
    /**
     * These are ancestor.vx[size-2]  kept, for now, for convenience
     */
-   Double_t ppvx;         ///< production vertex x of nu parent
-   Double_t ppvy;         ///< production vertex y of nu parent
-   Double_t ppvz;         ///< production vertex z of nu parent
+   Double_t ppvx;                   ///< production vertex x of nu parent
+   Double_t ppvy;                   ///< production vertex y of nu parent
+   Double_t ppvz;                   ///< production vertex z of nu parent
 
-   bsim::TgtExit tgtexit;
-   std::vector<bsim::Traj> traj;
+   bsim::TgtExit tgtexit;           ///< info about leaving the target
+   std::vector<bsim::Traj> traj;    ///< [optional] trajectory points
 
    /**
     *=======================================================================
@@ -349,4 +350,4 @@ std::ostream& operator<<(std::ostream& os, const bsim::Ancestor& ancestor);
 std::ostream& operator<<(std::ostream& os, const bsim::TgtExit& tgtexit);
 std::ostream& operator<<(std::ostream& os, const bsim::Traj& traj);
 
-#endif
+#endif  // BSIM_DK2NU_H
