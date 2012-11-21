@@ -253,9 +253,10 @@ void copy_g4minerva_to_dk2nu(const g4minerva& g4minervaObj)
     */
 
     ancestor.pdg = g4minervaObj.pdg[ian];
-    ancestor.SetStartXYZ(g4minervaObj.startx[ian]*mm2cm,
-                         g4minervaObj.starty[ian]*mm2cm,
-                         g4minervaObj.startz[ian]*mm2cm);
+    ancestor.SetStartXYZT(g4minervaObj.startx[ian]*mm2cm,
+                          g4minervaObj.starty[ian]*mm2cm,
+                          g4minervaObj.startz[ian]*mm2cm,
+                          0);  // don't have a time
     ancestor.SetStartP(g4minervaObj.startpx[ian]*mev2gev,
                        g4minervaObj.startpy[ian]*mev2gev,
                        g4minervaObj.startpz[ian]*mev2gev);
