@@ -1,5 +1,5 @@
 #
-# $Id: GNUmakefile,v 1.1 2012-11-07 01:36:55 rhatcher Exp $
+# $Id: GNUmakefile,v 1.2 2012-11-21 04:48:40 rhatcher Exp $
 #
 ########################################################################
 
@@ -8,7 +8,7 @@ NAME     = all
 MAKEFILE = GNUmakefile
 
 PACKAGE  = dk2nuGenie
-LIBDEPS  = -ldk2nuTree -lEG   # TVector3
+LIBDEPS  = -ldk2nuTree -lPhysics   # TVector3, TLorentzVector
 
 all: lib
 	@echo "make all $(PACKAGE)"
