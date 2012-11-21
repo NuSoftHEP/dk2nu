@@ -8,13 +8,13 @@
  *
  * \author (last to touch it) $Author: rhatcher $
  *
- * \version $Revision: 1.4 $
+ * \version $Revision: 1.5 $
  *
- * \date $Date: 2012-11-15 09:09:27 $
+ * \date $Date: 2012-11-21 04:44:50 $
  *
  * Contact: rhatcher@fnal.gov
  *
- * $Id: dk2nu.cc,v 1.4 2012-11-15 09:09:27 rhatcher Exp $
+ * $Id: dk2nu.cc,v 1.5 2012-11-21 04:44:50 rhatcher Exp $
  */
 
 #include "dk2nu.h"
@@ -34,7 +34,7 @@ bsim::NuRay::NuRay(double pxi, double pyi, double pzi, double Ei, double wgti)
   : px(pxi), py(pyi), pz(pzi), E(Ei), wgt(wgti) { ; }
 void bsim::NuRay::clear(const std::string &)
 { 
-  px = py = pz = E = wgt = bsim::kDfltDouble;
+  px = py = pz = E = wgt = 0;
 }
 std::string bsim::NuRay::AsString(const std::string& /* opt */) const
 {
@@ -96,6 +96,7 @@ void bsim::Ancestor::clear(const std::string &)
 {
   pdg = 0;  // 0 is not a legal PDG code
   startx = starty = startz = bsim::kDfltDouble;
+  startt = 0;  // in case user doesn't set it
   startpx = startpy = startpz = bsim::kDfltDouble;
   stoppx = stoppy = stoppz = bsim::kDfltDouble;
   polx = poly = polz = bsim::kDfltDouble;
@@ -108,13 +109,17 @@ std::string bsim::Ancestor::AsString(const std::string& /* opt */) const
 {
   std::ostringstream s;
   s << "pdg=" << std::setw(5) << pdg << " \"" << proc << "\""
-    << " \"" << ivol << "\" " << nucleus << "\n";
-  s << " startx {" << startx << "," << starty << "," << startz << "}";
+    << " \"" << ivol << "\" nucleus " << nucleus << "\n";
+  s << "     startx  {" << startx << "," << starty << "," << startz 
+    << ";t=" << startt << "}\n";
+  s << "     startpx {" << startpx << "," << startpy << "," << startpz << "}\n";
+  s << "     pprodpx {" << pprodpx << "," << pprodpy << "," << pprodpz << "}\n";
+  s << "     stoppx  {" << stoppx << "," << stoppy << "," << stoppz << "}";
   //last line shouldn't have endl << "\n";
   return s.str();
 }
-void bsim::Ancestor::SetStartXYZ(Double_t x, Double_t y, Double_t z)
-{ startx = x; starty = y; startz = z; }
+void bsim::Ancestor::SetStartXYZT(Double_t x, Double_t y, Double_t z, Double_t t)
+{ startx = x; starty = y; startz = z; startt = t; }
 void bsim::Ancestor::SetStartP(Double_t px, Double_t py, Double_t pz)
 { startpx = px; startpy = py; startpz = pz; }
 void bsim::Ancestor::SetStopP(Double_t px, Double_t py, Double_t pz)
@@ -239,11 +244,12 @@ std::string bsim::Dk2Nu::AsString(const std::string& opt) const
   }
 
   s << "ppv{xyz}={" << ppvx << "," << ppvy << "," << ppvz << "}\n";
+
   s << tgtexit << "\n";
 
   size_t ntraj = traj.size();
   bool printtraj = true; // ( opt.find("t") != std::string::npos);
-  s << ntraj << " trajectories " << (printtraj?"":"(suppressed)") << "\n";
+  s << ntraj << " trajectory points " << (printtraj?"":"(suppressed)") << "\n";
   if ( ! printtraj ) ntraj = 0;
   for ( size_t itraj = 0; itraj < ntraj; ++itraj ) {
     s << "[" << std::setw(2) << itraj << "] " << traj[itraj] << "\n";
@@ -274,7 +280,6 @@ size_t bsim::Dk2Nu::indxnu() const { return ancestor.size()-1; }
 size_t bsim::Dk2Nu::indxp() const { return ancestor.size()-2; }
 size_t bsim::Dk2Nu::indxgp() const { return ancestor.size()-3; }
 bool   bsim::Dk2Nu::overflow() const { return (flagbits&bsim::kFlgOverflow); }
-
 std::ostream& operator<<(std::ostream& os, const bsim::Dk2Nu& dk2nu)
 {
   os << dk2nu.AsString(); // << std::endl;

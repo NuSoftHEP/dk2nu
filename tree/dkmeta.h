@@ -10,19 +10,19 @@
  *
  * \author (last to touch it) $Author: rhatcher $
  *
- * \version $Revision: 1.2 $
+ * \version $Revision: 1.3 $
  *
- * \date $Date: 2012-11-15 09:09:27 $
+ * \date $Date: 2012-11-21 04:44:50 $
  *
  * Contact: rhatcher@fnal.gov
  *
- * $Id: dkmeta.h,v 1.2 2012-11-15 09:09:27 rhatcher Exp $
+ * $Id: dkmeta.h,v 1.3 2012-11-21 04:44:50 rhatcher Exp $
  *
  * Notes tagged with "DKMETA" are questions that should be answered
  */
 
-#ifndef DKMETA_H
-#define DKMETA_H
+#ifndef BSIM_DKMETA_H
+#define BSIM_DKMETA_H
 
 #include "TROOT.h"
 #include "TObject.h"
@@ -146,4 +146,4 @@ namespace bsim {
 std::ostream& operator<<(std::ostream& os, const bsim::DkMeta& dkmeta);
 std::ostream& operator<<(std::ostream& os, const bsim::Location& location);
 
-#endif
+#endif   // BSIM_DKMETA_H
