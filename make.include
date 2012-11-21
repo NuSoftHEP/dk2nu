@@ -21,10 +21,11 @@ ARCHNAME = $(shell uname -s)
 #
 # set compile/link flags
 #
+DEBUG = -g
 CXX      = g++
-CXXFLAGS += -O2 -fPIC -Wall  -pedantic-errors -W -Wno-long-long 
+CXXFLAGS += -O2 $(DEBUG) -fPIC -Wall  -pedantic-errors -W -Wno-long-long 
 CXXFLAGS += -Wwrite-strings -Wno-inline  -Woverloaded-virtual -Wno-inline
-LDFLAGS  += -L$(ROOTSYS)/lib -L$(libdir)
+LDFLAGS  += $(DEBUG) -L$(ROOTSYS)/lib -L$(libdir)
 INCLUDE  += -I$(DK2NU) -I$(includedir) -I$(ROOTSYS)/include
 
 ifneq ($(ARCHNAME),Darwin)
