@@ -13,6 +13,8 @@
 */
 //____________________________________________________________________________
 
+//#define __GENIE_LOW_LEVEL_MESG_ENABLED__
+
 #include <cstdlib>
 #include <fstream>
 #include <vector>
@@ -36,8 +38,11 @@
 #include "Conventions/GBuild.h"
 
 #include "dk2nu/genie/GDk2NuFlux.h"
+
 #include "dk2nu/tree/dk2nu.h"
 #include "dk2nu/tree/dkmeta.h"
+#include "dk2nu/tree/NuChoice.h"
+#include "dk2nu/tree/calcLocationWeights.h"
 
 #include "Messenger/Messenger.h"
 #include "Numerical/RandomGen.h"
@@ -61,14 +66,15 @@ namespace genie {
   namespace flux  {
     class GDk2NuFluxXMLHelper {
     public:
-       GDk2NuFluxXMLHelper(GDk2NuFlux* gnumi) : fVerbose(0), fGNuMI(gnumi) { ; }
+      GDk2NuFluxXMLHelper(GDk2NuFlux* dk2nuFlux) 
+        : fVerbose(0), fGDk2NuFlux(dk2nuFlux) { ; }
       ~GDk2NuFluxXMLHelper() { ; }
-       bool LoadConfig(std::string cfg);
+      bool LoadConfig(std::string cfg);
 
       // these should go in a more general package
-       std::vector<double>   GetDoubleVector(std::string str);
-       std::vector<long int> GetIntVector(std::string str);
-
+      std::vector<double>   GetDoubleVector(std::string str);
+      std::vector<long int> GetIntVector(std::string str);
+      
     private:
       bool     LoadParamSet(xmlDocPtr&, std::string cfg);
       void     ParseParamSet(xmlDocPtr&, xmlNodePtr&);
@@ -82,7 +88,7 @@ namespace genie {
 
       int         fVerbose;  ///< how noisy to be when parsing XML
       // who to apply these changes to
-      GDk2NuFlux*  fGNuMI;
+      GDk2NuFlux*  fGDk2NuFlux;
 
       // derived offsets/rotations
       TVector3    fBeamPosXML;
@@ -102,7 +108,21 @@ GDk2NuFlux::~GDk2NuFlux()
 {
   this->CleanUp();
 }
-
+//___________________________________________________________________________
+int GDk2NuFlux::PdgCode(void)
+{
+  return fCurNuChoice->pdgNu;
+}
+//___________________________________________________________________________
+const TLorentzVector& GDk2NuFlux::Momentum(void)
+{
+  return fCurNuChoice->p4NuUser;
+}
+//___________________________________________________________________________
+const TLorentzVector& GDk2NuFlux::Position(void)
+{
+  return fCurNuChoice->x4NuUser;
+}
 //___________________________________________________________________________
 bool GDk2NuFlux::GenerateNext(void)
 {
@@ -143,7 +163,7 @@ bool GDk2NuFlux::GenerateNext(void)
        LOG("Flux", pERROR)
          << "** Fractional weight = " << f 
          << " > 1 !! Bump fMaxWeight estimate to " << fMaxWeight
-         << PassThroughInfo();
+         << fCurDk2Nu->AsString() << "\n" << fCurNuChoice->AsString();
        std::cout << std::flush;
      }
      double r = (f < 1.) ? rnd->RndFlux().Rndm() : 0;
@@ -153,11 +173,11 @@ bool GDk2NuFlux::GenerateNext(void)
 #ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
        LOG("Flux", pNOTICE)
          << "Generated beam neutrino: "
-         << "\n pdg-code: " << fCurEntry->fgPdgC
-         << "\n p4: " << utils::print::P4AsShortString(&(fCurEntry->fgP4))
-         << "\n x4: " << utils::print::X4AsString(&(fCurEntry->fgX4))
-         << "\n p4: " << utils::print::P4AsShortString(&(fCurEntry->fgP4User))
-         << "\n x4: " << utils::print::X4AsString(&(fCurEntry->fgX4User));
+         << "\n pdg-code: " << fCurNuChoice->pdgNu
+         << "\n p4: " << utils::print::P4AsShortString(&(fCurNuChoice->p4NuBeam))
+         << "\n x4: " << utils::print::X4AsString(&(fCurNuChoice->x4NuBeam))
+         << "\n p4: " << utils::print::P4AsShortString(&(fCurNuChoice->p4NuUser))
+         << "\n x4: " << utils::print::X4AsString(&(fCurNuChoice->x4NuUser));
 #endif
 
        fWeight = 1.;
@@ -215,27 +235,28 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
 #ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
   LOG("Flux",pDEBUG) 
     << "got " << fNNeutrinos << " new fIEntry " << fIEntry 
-    << " evtno " << fCurEntry->evtno;
+    << " pot# " << fCurDk2Nu->potnum;
 #endif
 
     fIUse = 1; 
 
     // here we might want to do flavor oscillations or simple mappings
-    fCurEntry->fgPdgC = fCurEntry->dk2nuObj.ntype;
+    fCurNuChoice->pdgNu  = fCurDk2Nu->decay.ntype;
+    fCurNuChoice->impWgt = fCurDk2Nu->decay.nimpwt;
   }
 
   // Check neutrino pdg against declared list of neutrino species declared
-  // by the current instance of the NuMI neutrino flux driver.
+  // by the current instance of the neutrino flux driver.
   // No undeclared neutrino species will be accepted at this point as GENIE
   // has already been configured to handle the specified list.
   // Make sure that the appropriate list of flux neutrino species was set at
   // initialization via GDk2NuFlux::SetFluxParticles(const PDGCodeList &)
 
-  if ( ! fPdgCList->ExistsInPDGCodeList(fCurEntry->fgPdgC) ) {
+  if ( ! fPdgCList->ExistsInPDGCodeList(fCurNuChoice->pdgNu) ) {
      /// user might modify list via SetFluxParticles() in order to reject certain
      /// flavors, even if they're found in the file.  So don't make a big fuss.
      /// Spit out a single message and then stop reporting that flavor as problematic.
-     int badpdg = fCurEntry->fgPdgC;
+     int badpdg = fCurNuChoice->pdgNu;
      if ( ! fPdgCListRej->ExistsInPDGCodeList(badpdg) ) {
        fPdgCListRej->push_back(badpdg);
        LOG("Flux", pWARN)
@@ -249,26 +270,24 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
   // Update the curr neutrino weight and energy
 
   // Check current neutrino energy against the maximum flux neutrino energy 
-  // declared by the current instance of the NuMI neutrino flux driver.
+  // declared by the current instance of the neutrino flux driver.
   // No flux neutrino exceeding that maximum energy will be accepted at this 
   // point as that maximum energy has already been used for normalizing the
   // interaction probabilities.
   // Make sure that the appropriate maximum flux neutrino energy was set at
   // initialization via GDk2NuFlux::SetMaxEnergy(double Ev)
 
-  fCurEntry->fgX4 = fFluxWindowBase;
+  fCurNuChoice->x4NuBeam = fFluxWindowBase;
 
   double Ev = 0;
-  double& wgt_xy = fCurEntry->fgXYWgt;
+  double& wgt_xy = fCurNuChoice->xyWgt;
   // recalculate on x-y window
   RandomGen * rnd = RandomGen::Instance();
-  fCurEntry->fgX4 += ( rnd->RndFlux().Rndm()*fFluxWindowDir1 +
-                       rnd->RndFlux().Rndm()*fFluxWindowDir2   );
-  //RWH!  fCurEntry->CalcEnuWgt(fCurEntry->fgX4,Ev,wgt_xy);
-  LOG("Flux", pFATAL)
-    << "Do something here";
+  fCurNuChoice->x4NuBeam += ( rnd->RndFlux().Rndm()*fFluxWindowDir1 +
+                              rnd->RndFlux().Rndm()*fFluxWindowDir2   );
+  bsim::calcEnuWgt(fCurDk2Nu->decay,fCurNuChoice->x4NuBeam.Vect(),Ev,wgt_xy);
 
-  fWeight = fCurEntry->dk2nuObj.nimpwt * fCurEntry->fgXYWgt;  // full weight
+  fWeight = fCurNuChoice->impWgt * fCurNuChoice->xyWgt;  // full weight
 
   if (Ev > fMaxEv) {
      LOG("Flux", pWARN)
@@ -278,32 +297,55 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
 
   // Set the current flux neutrino 4-momentum
   // this is in *beam* coordinates
-  fgX4dkvtx = TLorentzVector( fCurEntry->dk2nuObj.vx,
-                              fCurEntry->dk2nuObj.vy,
-                              fCurEntry->dk2nuObj.vz, 0.);
+  fgX4dkvtx = TLorentzVector( fCurDk2Nu->decay.vx,
+                              fCurDk2Nu->decay.vy,
+                              fCurDk2Nu->decay.vz, 0.);
   // don't use TLorentzVector here for Mag() due to - on metric
-  TVector3 dirNu = fCurEntry->fgX4.Vect() - fgX4dkvtx.Vect();
+  TVector3 dirNu = fCurNuChoice->x4NuBeam.Vect() - fgX4dkvtx.Vect();
   double dirnorm = 1.0 / dirNu.Mag();
-  fCurEntry->fgP4.SetPxPyPzE( Ev*dirnorm*dirNu.X(), 
-                              Ev*dirnorm*dirNu.Y(),
-                              Ev*dirnorm*dirNu.Z(), Ev);
+  fCurNuChoice->p4NuBeam.SetPxPyPzE( Ev*dirnorm*dirNu.X(), 
+                                     Ev*dirnorm*dirNu.Y(),
+                                     Ev*dirnorm*dirNu.Z(), Ev);
 
   // Set the current flux neutrino 4-position, direction in user coord
-  Beam2UserP4(fCurEntry->fgP4,fCurEntry->fgP4User);
-  Beam2UserPos(fCurEntry->fgX4,fCurEntry->fgX4User);
+  Beam2UserP4(fCurNuChoice->p4NuBeam,fCurNuChoice->p4NuUser);
+  Beam2UserPos(fCurNuChoice->x4NuBeam,fCurNuChoice->x4NuUser);
+
+  // set the time component of the Lorentz vectors
+  double dist_dk2start = GetDecayDist();
+  size_t inu = fCurDk2Nu->indxnu();
+  double t_dk = 0;
+  if ( ! fCurDk2Nu->overflow() && ! fCurDk2Nu->ancestor.empty() ) {
+    t_dk = fCurDk2Nu->ancestor[inu].startt; // units?  seconds, hopefully
+  }
+  const double c_mbys  = 299792458;
+  const double c_cmbys = c_mbys * 100.;
+  double tstart = t_dk + ( dist_dk2start / c_cmbys );
+  fCurNuChoice->x4NuBeam.SetT(tstart);
+  fCurNuChoice->x4NuUser.SetT(tstart);
+  if ( t_dk == 0 ) {
+    // probably wasn't set
+    static int nmsg = 5;
+    if ( nmsg > 0 ) {
+      --nmsg;
+      LOG("Flux", pNOTICE)
+        << "Setting time at flux window, \n"
+        << "noticed that t_dk from ancestor list was 0, "
+        << "this probably means that the calculated time is wrong";
+    }
+  }
 
   // if desired, move to user specified user coord z
   if ( TMath::Abs(fZ0) < 1.0e30 ) this->MoveToZ0(fZ0);
 
 #ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
   LOG("Flux", pINFO)
-    << "Generated neutrino: " << fIEntry << " " << fCurEntry->evtno
-    << " nenergyn " << fCurEntry->nenergyn
-    << "\n pdg-code: " << fCurEntry->fgPdgC
-    << "\n p4 beam: " << utils::print::P4AsShortString(&fCurEntry->fgP4)
-    << "\n x4 beam: " << utils::print::X4AsString(&fCurEntry->fgX4)
-    << "\n p4 user: " << utils::print::P4AsShortString(&(fCurEntry->fgP4User))
-    << "\n x4 user: " << utils::print::X4AsString(&(fCurEntry->fgX4User));
+    << "Generated neutrino: " << fIEntry << " " << fCurDk2Nu->potnum
+    << "\n pdg-code: " << fCurNuChoice->pdgNu
+    << "\n p4 beam: " << utils::print::P4AsShortString(&fCurNuChoice->p4NuBeam)
+    << "\n x4 beam: " << utils::print::X4AsString(&fCurNuChoice->x4NuBeam)
+    << "\n p4 user: " << utils::print::P4AsShortString(&(fCurNuChoice->p4NuUser))
+    << "\n x4 user: " << utils::print::X4AsString(&(fCurNuChoice->x4NuUser));
 #endif
   if ( Ev > fMaxEv ) {
     LOG("Flux", pFATAL)
@@ -325,7 +367,7 @@ double GDk2NuFlux::GetDecayDist() const
 {
   // return distance (user units) between dk point and start position
   // these are in beam units
-  TVector3 x3diff = fCurEntry->fgX4.Vect() - fgX4dkvtx.Vect();
+  TVector3 x3diff = fCurNuChoice->x4NuBeam.Vect() - fgX4dkvtx.Vect();
   return x3diff.Mag() * fLengthScaleB2U;
 }
 //___________________________________________________________________________
@@ -335,13 +377,13 @@ void GDk2NuFlux::MoveToZ0(double z0usr)
   // move beam coord entry correspondingly
 
 #ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
-  LOG("Flux", pNOTICE)
+  LOG("Flux", pDEBUG)
     << "MoveToZ0 (z0usr=" << z0usr << ") before:"
-    << "\n p4 user: " << utils::print::P4AsShortString(&(fCurEntry->fgP4User))
-    << "\n x4 user: " << utils::print::X4AsString(&(fCurEntry->fgX4User));
+    << "\n p4 user: " << utils::print::P4AsShortString(&(fCurNuChoice->p4NuUser))
+    << "\n x4 user: " << utils::print::X4AsString(&(fCurNuChoice->x4NuUser));
 #endif
 
-  double pzusr    = fCurEntry->fgP4User.Pz();
+  double pzusr    = fCurNuChoice->p4NuUser.Pz();
   if ( TMath::Abs(pzusr) < 1.0e-30 ) {
     // neutrino is moving almost entirely in x-y plane
     LOG("Flux", pWARN)
@@ -349,17 +391,17 @@ void GDk2NuFlux::MoveToZ0(double z0usr)
     return;
   }
 
-  double scale = (z0usr - fCurEntry->fgX4User.Z()) / pzusr; 
-  fCurEntry->fgX4User += (scale*fCurEntry->fgP4User);
-  fCurEntry->fgX4     += ((fLengthScaleU2B*scale)*fCurEntry->fgP4);
+  double scale = (z0usr - fCurNuChoice->x4NuUser.Z()) / pzusr; 
+  fCurNuChoice->x4NuUser += (scale*fCurNuChoice->p4NuUser);
+  fCurNuChoice->x4NuBeam += ((fLengthScaleU2B*scale)*fCurNuChoice->p4NuBeam);
   // this scaling works for distances, but not the time component
-  fCurEntry->fgX4.SetT(0);
-  fCurEntry->fgX4User.SetT(0);
+  fCurNuChoice->x4NuBeam.SetT(0);
+  fCurNuChoice->x4NuUser.SetT(0);
 
 #ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
-  LOG("Flux", pNOTICE)
+  LOG("Flux", pDEBUG)
     << "MoveToZ0 (" << z0usr << ") after:"
-    << "\n x4 user: " << utils::print::X4AsString(&(fCurEntry->fgX4User));
+    << "\n x4 user: " << utils::print::X4AsString(&(fCurNuChoice->x4NuUser));
 #endif
 
 }
@@ -387,6 +429,52 @@ void GDk2NuFlux::CalcEffPOTsPerNu()
   }
   double area_ratio = TMath::Pi() * kRDET2 / flux_area;
   fEffPOTsPerNu = area_ratio * ( (double)fFilePOTs / (double)fNEntries );
+}
+
+//___________________________________________________________________________
+void GDk2NuFlux::LoadDkMeta(void)
+{
+  // load the matching bsim::dkmeta entry that goes w/ bsim::dk2nu entry
+
+  if ( fJobToMetaIndex.empty() ) {
+    int nmeta = fNuMetaTree->GetEntries();
+    for (int imeta =0; imeta < nmeta; ++imeta ) {
+      fNuMetaTree->GetEntry(imeta);
+      int mjob = fCurDkMeta->job;
+      // there shouldn't already be an entry in the map
+      // complain if there is
+      std::map<int,int>::const_iterator mitr = fJobToMetaIndex.find(mjob);
+      if ( mitr == fJobToMetaIndex.end() ) {
+        fJobToMetaIndex[mjob] = imeta;  // make an entry
+      } else {
+        LOG("Flux", pERROR) << "LoadDkMeta already had an entry for job "
+                            << mjob << " at " << mitr->second
+                            << " which conflicts with new entry at "
+                            << imeta;
+      }
+    }
+  }
+  
+  int job = fCurDk2Nu->job;
+  if ( fCurDkMeta->job == job ) return;  // already loaded
+
+  std::map<int,int>::const_iterator lookat = fJobToMetaIndex.find(job);
+  if ( lookat != fJobToMetaIndex.end() ) {
+    int indx = lookat->second;
+    fNuMetaTree->GetEntry(indx);
+    if ( fCurDkMeta->job != job ) {
+      LOG("Flux", pFATAL) << "Failed to get right metadata " << job
+                          << " => " << fCurDkMeta->job
+                          << " indx " << indx;
+      assert(0);
+    }
+  } else {
+    // wasn't already indexed
+    LOG("Flux", pFATAL) << "Failed index metadata for job " << job
+                        << " indx " << lookat->second;
+    assert(0);
+  }
+    
 }
 
 //___________________________________________________________________________
@@ -431,8 +519,7 @@ void GDk2NuFlux::LoadBeamSimData(std::set<string> fileset, string config )
 //___________________________________________________________________________
 void GDk2NuFlux::LoadBeamSimData(std::vector<string> patterns, string config )
 {
-// Loads in a gnumi beam simulation root file (converted from hbook format)
-// into the GDk2NuFlux driver.
+// Loads in a beam simulation root file into the GDk2NuFlux driver.
 
   bool found_cfg = this->LoadConfig(config);
   if ( ! found_cfg ) {
@@ -456,7 +543,7 @@ void GDk2NuFlux::LoadBeamSimData(std::vector<string> patterns, string config )
     nfiles_from_pattern.push_back(0);
 
     LOG("Flux", pNOTICE)
-      << "Loading gnumi flux tree from ROOT file pattern ["
+      << "Loading dk2nu flux tree from ROOT file pattern ["
       << std::setw(3) << ipatt << "] \"" << pattern << "\"";
 
     // !WILDCARD only works for file name ... NOT directory
@@ -495,22 +582,18 @@ void GDk2NuFlux::LoadBeamSimData(std::vector<string> patterns, string config )
     //          << filename << "\"" << std::endl;
     bool isok = ! (gSystem->AccessPathName(filename.c_str()));
     if ( isok ) {
-      // open the file to see what it contains
-      // h10    => g3numi _or_ flugg
-      // nudata => g4numi
-      // for now distinguish between g3numi/flugg using file name
       TFile tf(filename.c_str());
-      TTree* atree = (TTree*)tf.Get("dk2nu");
-      if ( atree ) {
-        // create chain if none exists
-        if ( ! fNuFluxTree ) {
-          fNuFluxTree = new TChain("dk2nu");
-          // here we should scan for estimated POTs/file
-          // also maybe the check on max weight
-        }
-        // add the file to the chain
-        this->AddTreeFile(atree,filename);
-      } // found a tree
+      TTree* ftree = (TTree*)tf.Get(fTreeNames[0].c_str());
+      TTree* mtree = (TTree*)tf.Get(fTreeNames[1].c_str());
+      if ( ftree && mtree ) {
+        // found both trees
+        this->AddFile(ftree,mtree,filename);
+      } else {
+        LOG("Flux", pNOTICE) << "File " << filename << " lacked a tree: "
+                             << " \"" << fTreeNames[0] << "\" " << ftree 
+                             << " \"" << fTreeNames[1] << "\" " << mtree
+                             << " and was not added to the file list";
+      }
       tf.Close();
     } // loop over tree type
   } // loop over sorted file names
@@ -583,40 +666,6 @@ void GDk2NuFlux::ScanForMaxWeight(void)
 
   // scan for the maximum weight
 
-  LOG("Flux", pFATAL)
-    << "Do something here";
-  /*
-  //// one can't really be sure which Nwtfar/Nwtnear this refers to
-  //// some gnumi files have "NOvA" weights
-  const char* ntwgtstrv[4] = { "Nimpwt*Nwtnear", 
-                               "Nimpwt*Nwtfar",
-                               "Nimpwt*NWtNear[0]",
-                               "Nimpwt*NWtFar[0]"  };
-  int strindx = 0;
-  if ( ipos_estimator > 0 ) strindx = 1;
-  if ( fG4NuMI ) strindx += 2;
-  // set upper limit on how many entries to scan
-  Long64_t nscan = TMath::Min(fNEntries,200000LL);
-  
-  fNuFluxTree->Draw(ntwgtstrv[strindx],"","goff",nscan);
-  //std::cout << " Draw \"" << ntwgtstrv[strindx] << "\"" << std::endl;
-  //std::cout << " SelectedRows " << fNuFluxTree->GetSelectedRows()
-  //          << " V1 " << fNuFluxTree->GetV1() << std::endl;
-  
-  Long64_t idx = TMath::LocMax(fNuFluxTree->GetSelectedRows(),
-                               fNuFluxTree->GetV1());
-  //std::cout << "idx " << idx << " of " << fNuFluxTree->GetSelectedRows() << std::endl;
-  fMaxWeight = fNuFluxTree->GetV1()[idx];
-  LOG("Flux", pNOTICE) << "Maximum flux weight from Nwt in ntuple = " 
-                       << fMaxWeight;
-  if ( fMaxWeight <= 0 ) {
-    LOG("Flux", pFATAL) << "Non-positive maximum flux weight!";
-    exit(1);
-  }
-  */
-
-  // the above works only for things close to the MINOS stored weight
-  // values.  otherwise we need to work out our own estimate.
   double wgtgenmx = 0, enumx = 0;
   TStopwatch t;
   t.Start();
@@ -624,7 +673,7 @@ void GDk2NuFlux::ScanForMaxWeight(void)
     this->GenerateNext_weighted();
     double wgt = this->Weight();
     if ( wgt > wgtgenmx ) wgtgenmx = wgt;
-    double enu = fCurEntry->fgP4.Energy();
+    double enu = fCurNuChoice->p4NuBeam.Energy();
     if ( enu > enumx ) enumx = enu;
   }
   t.Stop();
@@ -698,7 +747,7 @@ void GDk2NuFlux::SetEntryReuse(long int nuse)
 
   fNUse    = TMath::Max(1L, nuse);
 }
-//___________________________________________________________________________
+
 //___________________________________________________________________________
 void GDk2NuFlux::SetFluxWindow(TVector3 p0, TVector3 p1, TVector3 p2)
                              // bool inDetCoord)  future extension
@@ -837,7 +886,9 @@ void GDk2NuFlux::User2BeamP4 (const TLorentzVector& usrp4,
 //___________________________________________________________________________
 void GDk2NuFlux::PrintCurrent(void)
 {
-  LOG("Flux", pNOTICE) << "CurrentEntry:" << *fCurEntry;
+  LOG("Flux", pNOTICE) << "CurrentEntry:\n" 
+                       << fCurDk2Nu->AsString() << "\n" 
+                       << fCurNuChoice->AsString();
 }
 //___________________________________________________________________________
 void GDk2NuFlux::Clear(Option_t * opt)
@@ -869,9 +920,14 @@ void GDk2NuFlux::Initialize(void)
   fEnd             =  false;
   fPdgCList        = new PDGCodeList;
   fPdgCListRej     = new PDGCodeList;
-  fCurEntry        = new GDk2NuFluxPassThroughInfo;
 
+  fTreeNames[0]    = "dk2nuTree";
+  fTreeNames[1]    = "dkmetaTree";
   fNuFluxTree      =  0;
+  fNuMetaTree      =  0;
+  fCurDk2Nu        =  0;
+  fCurDkMeta       =  0;
+  fCurNuChoice     =  0;
   fNFiles          =  0;
 
   fNEntries        =  0;
@@ -896,8 +952,8 @@ void GDk2NuFlux::Initialize(void)
   fAccumPOTs       =  0;
 
   fGenWeighted     = false;
-  fDetLocIsSet        = false;
-  // by default assume user length is cm
+  fDetLocIsSet     = false;
+  // by default assume user length is m
   SetLengthUnits(genie::utils::units::UnitFromString("m"));
 
   this->SetDefaults();
@@ -938,17 +994,17 @@ void GDk2NuFlux::ResetCurrent(void)
 // reset running values of neutrino pdg-code, 4-position & 4-momentum
 // and the input ntuple leaves
 
-  fCurEntry->ResetCurrent();
-  fCurEntry->ResetCopy();
+  if ( fCurDk2Nu )    fCurDk2Nu->clear();
+  if ( fCurNuChoice ) fCurNuChoice->clear();
 }
 //___________________________________________________________________________
 void GDk2NuFlux::CleanUp(void)
 {
   LOG("Flux", pNOTICE) << "Cleaning up...";
 
-  if (fPdgCList)    delete fPdgCList;
-  if (fPdgCListRej) delete fPdgCListRej;
-  if (fCurEntry)    delete fCurEntry;
+  if ( fPdgCList )    delete fPdgCList;
+  if ( fPdgCListRej ) delete fPdgCListRej;
+  if ( fCurNuChoice ) delete fCurNuChoice;
 
   LOG("Flux", pNOTICE)
     << " flux file cycles: " << fICycle << " of " << fNCycles 
@@ -956,97 +1012,59 @@ void GDk2NuFlux::CleanUp(void)
 }
 
 //___________________________________________________________________________
-void GDk2NuFlux::AddFile(string fname)
-{
-  // open the file to see what it contains
-  TFile tf(fname.c_str());
-
-  TTree* atree = (TTree*)tf.Get("dk2nu");
-  if ( atree ) {
-    if ( ! fNuFluxTree ) {
-      fNuFluxTree = new TChain("dk2nu");
-      // here we should scan for estimated POTs/file
-      // also maybe the check on max weight
-    }
-    // add the file to the chain
-    this->AddTreeFile(atree,fname);
-  } // found a tree
-  tf.Close();
-}
-
-//___________________________________________________________________________
-void GDk2NuFlux::AddTreeFile(TTree* thetree, string fname)
+void GDk2NuFlux::AddFile(TTree* ftree, TTree* mtree, string fname)
 {
   // Add a file to the chain
 
-  ULong64_t nentries = thetree->GetEntries();
+  ULong64_t nentries = ftree->GetEntries();
 
-  // first/last "evtno" are the proton # of the first/last proton
-  // that generated a neutrino ... not necessarily true first/last #
-  // estimate we're probably not off by more than 100 ...
-  // !Important change
-  // Some files (due to some intermediate flugg issues) list evtno==0
-  // when it isn't really true, we need to scan nearby values in case the
-  // last entry is one of these (otherwise file contributes 0 POTs).  
-  // Also assume quantization of 500 (instead of 100).
-
-  thetree->SetMakeClass(1); // need full ntuple decomposition for
-  // the SetBranchAddress to work on g4numi ntuples.  Works fine
-  // without it on gnumi (geant3) and flugg ntuples [each with their
-  // own slight differences] but shouldn't harm them either.
-
-  Int_t evtno = 0;
-  TBranch* br_evtno = 0;
-  thetree->SetBranchAddress("evtno",&evtno, &br_evtno);
-  Int_t evt_1 = 0x7FFFFFFF;
-  Int_t evt_N = 1;
-#define OLDGUESS
-#ifdef OLDGUESS
-  for (int j=0; j<50; ++j) {
-    thetree->GetEntry(j);
-    if (evtno != 0) evt_1 = TMath::Min(evtno,evt_1);
-    thetree->GetEntry(nentries-1 -j );
-    if (evtno != 0) evt_N = TMath::Max(evtno,evt_N);
+  // generally files will only have one meta data entry, but if they've
+  // been combined (i.e. "hadd") there might be more than one.
+  int nmeta = mtree->GetEntries();
+  double potsum = 0;
+  bsim::DkMeta* dkmeta = new bsim::DkMeta;
+  mtree->SetBranchAddress("dkmeta",&dkmeta);
+  for (int imeta = 0; imeta < nmeta; ++imeta ) {
+    mtree->GetEntry(imeta);
+    double potentry = dkmeta->pots;
+    potsum += potentry;
   }
-  // looks like low counts are due to "evtno" not including
-  // protons that miss the actual target (hit baffle, etc)
-  // this will vary with beam conditions parameters
-  // so we should round way up, those generating flugg files
-  // aren't going to quantize less than 1000
-  // though 500 would probably be okay, 100 would not.
-  const Int_t    nquant = 1000; // 500;  // 100
-  const Double_t rquant = nquant;
-#else
-  for (int j=0; j<50; ++j) {
-    thetree->GetEntry(j);
-    if (evtno != 0) evt_1 = TMath::Min(evtno,evt_1);
-    std::cout << "[" << j << "] evtno=" << evtno 
-              << " evt_1=" << evt_1 << std::endl;
-  }
-  for (int j=0; j<50; ++j) {
-    thetree->GetEntry(nentries-1 -j );
-    if (evtno != 0) evt_N = TMath::Max(evtno,evt_N);
-    std::cout << "[" << (nentries-1-j) << "] evtno=" << evtno 
-              << " evt_N=" << evt_N << std::endl;
+  delete dkmeta;
+
+  // don't need these anymore
+  delete ftree;
+  delete mtree;
+
+  // make sure the chains are defined and a branch object attached
+  if ( ! fNuFluxTree ) {
+    fNuFluxTree  = new TChain(fTreeNames[0].c_str());
+    fNuMetaTree  = new TChain(fTreeNames[1].c_str());
+    fCurDk2Nu    = new bsim::Dk2Nu;
+    fCurDkMeta   = new bsim::DkMeta;
+    fCurNuChoice = new bsim::NuChoice;
+    fNuFluxTree->SetBranchAddress("dk2nu",&fCurDk2Nu);
+    fNuMetaTree->SetBranchAddress("dkmeta",&fCurDkMeta);
   }
 
-  Int_t    nquant = 1000; // 500;
-  Double_t rquant = nquant;
-#endif
+  // add the file to the chains
+  int stat0 = fNuFluxTree->AddFile(fname.c_str());
+  int stat1 = fNuMetaTree->AddFile(fname.c_str());
 
-  Int_t est_1 = (TMath::FloorNint(evt_1/rquant))*nquant + 1;
-  Int_t est_N = (TMath::FloorNint((evt_N-1)/rquant)+1)*nquant;
-  ULong64_t npots = est_N - est_1 + 1;
-  LOG("Flux",pNOTICE) //INFO)
-    << "AddFile() of " << nentries << " entries ["
-    << evt_1 << ":" << evt_N << "%" << nquant 
-    << "(" <<  est_1 << ":" << est_N << ")=" 
-    << npots <<" POTs] in dk2nu file: " << fname;
+  LOG("Flux",pINFO)
+    << "flux->AddFile() of " << nentries
+    << " " << ((mtree)?"[+meta]":"[no-meta]")
+    << " [status=" << stat0 << "," << stat1 << "]"
+    << nentries << " (" << nmeta << ")"
+    << " entries in file: " << fname;
+
+  if ( stat0 != 1 || stat1 != 1 ) {
+    SLOG("GDk2NuFlux", pFATAL) << "Add: \"" << fname << "\" failed";
+  }
+
   fNuTot    += nentries;
-  fFilePOTs += npots;
+  fFilePOTs += potsum;
   fNFiles++;
 
-  fNuFluxTree->AddFile(fname.c_str());
 }
 
 //___________________________________________________________________________
@@ -1070,11 +1088,11 @@ void GDk2NuFlux::SetLengthUnits(double user_units)
 
   // in case we're changing units without resetting transform/window
   // not recommended, but should work
-  fCurEntry->fgX4User  *= rescale;
-  fBeamZero            *= rescale;
-  fFluxWindowPtUser[0] *= rescale;
-  fFluxWindowPtUser[1] *= rescale;
-  fFluxWindowPtUser[2] *= rescale;
+  if (fCurNuChoice) fCurNuChoice->x4NuUser  *= rescale;
+  fBeamZero               *= rescale;
+  fFluxWindowPtUser[0]    *= rescale;
+  fFluxWindowPtUser[1]    *= rescale;
+  fFluxWindowPtUser[2]    *= rescale;
 
   // case GDk2NuFlux::kmeter:  fLengthScaleB2U =   0.01  ; break;
   // case GDk2NuFlux::kcm:     fLengthScaleB2U =   1.    ; break;
@@ -1090,68 +1108,6 @@ double GDk2NuFlux::LengthUnits(void) const
   double cm = genie::utils::units::UnitFromString("cm");
   return fLengthScaleB2U * cm ;
 }
-
-//___________________________________________________________________________
-GDk2NuFluxPassThroughInfo::GDk2NuFluxPassThroughInfo()
-  : TObject()
-{ 
-  ResetCopy(); 
-  ResetCurrent();
-}
-
-//___________________________________________________________________________
-void GDk2NuFluxPassThroughInfo::ResetCopy()
-{
-  dk2nuObj.Clear();
-}
-
-//___________________________________________________________________________
-void GDk2NuFluxPassThroughInfo::ResetCurrent()
-{
-  // reset the state of the "generated" entry
-  fgPdgC  = 0;
-  fgXYWgt = 0;
-  fgP4.SetPxPyPzE(0.,0.,0.,0.);
-  fgX4.SetXYZT(0.,0.,0.,0.);
-}
-
-//___________________________________________________________________________
-void GDk2NuFluxPassThroughInfo::Print(const Option_t* /* opt */ ) const
-{
-  std::cout << *this << std::endl;
-}
-
-//___________________________________________________________________________
-GDk2NuFluxPassThroughInfo::GDk2NuFluxPassThroughInfo(const dk2nu* inFilePtr )
-{
-  ResetCopy();
-  ResetCurrent();
-  dk2nuObj = *inFilePtr;
-}
-
-//___________________________________________________________________________
-
-
-namespace genie {
-namespace flux  {
-  ostream & operator << (
-    ostream & stream, const genie::flux::GDk2NuFluxPassThroughInfo & info)
-    {
-      // stream << "\n ndecay   = " << info.ndecay << std::endl;
-      stream << info.dk2nuObj;
-      stream << "\nCurrent: pdg " << info.fgPdgC 
-             << " xywgt " << info.fgXYWgt
-             << "\n p4 (beam): " << utils::print::P4AsShortString(&info.fgP4)
-             << "\n x4 (beam): " << utils::print::X4AsString(&info.fgX4)
-             << "\n p4 (user): " << utils::print::P4AsShortString(&info.fgP4User)
-             << "\n x4 (user): " << utils::print::X4AsString(&info.fgX4User);
-        ;        
-
-     return stream;
-  }
-
-}//flux
-}//genie
 
 //___________________________________________________________________________
 
@@ -1317,13 +1273,12 @@ std::vector<long int> GDk2NuFluxXMLHelper::GetIntVector(std::string str)
       std::cout << "(" << vect.size() << ") = " << val << std::endl;
     vect.push_back(val);
   }
-
   return vect;
 }
 
 bool GDk2NuFluxXMLHelper::LoadConfig(string cfg)
 {
-  string fname = utils::xml::GetXMLFilePath(fGNuMI->GetXMLFile());
+  string fname = utils::xml::GetXMLFilePath(fGDk2NuFlux->GetXMLFile());
 
   bool is_accessible = ! (gSystem->AccessPathName(fname.c_str()));
   if (!is_accessible) {
@@ -1424,16 +1379,16 @@ void GDk2NuFluxXMLHelper::ParseParamSet(xmlDocPtr& xml_doc, xmlNodePtr& xml_pset
       SLOG("GDk2NuFlux", pWARN) << "done using_param_set: \"" << pval << "\"";
     } else if ( pname == "units" ) {
       double scale = genie::utils::units::UnitFromString(pval);
-      fGNuMI->SetLengthUnits(scale);
+      fGDk2NuFlux->SetLengthUnits(scale);
       SLOG("GDk2NuFlux", pINFO) << "set user units to \"" << pval << "\"";
 
     } else if ( pname == "beamdir" ) {
       ParseBeamDir(xml_doc,xml_child);
-      fGNuMI->SetBeamRotation(fBeamRotXML);
+      fGDk2NuFlux->SetBeamRotation(fBeamRotXML);
 
     } else if ( pname == "beampos" ) {
       ParseBeamPos(pval);
-      fGNuMI->SetBeamCenter(fBeamPosXML);
+      fGDk2NuFlux->SetBeamCenter(fBeamPosXML);
 
     } else if ( pname == "window" ) {
       ParseWindowSeries(xml_doc,xml_child);
@@ -1443,7 +1398,7 @@ void GDk2NuFluxXMLHelper::ParseParamSet(xmlDocPtr& xml_doc, xmlNodePtr& xml_pset
       //          << " [1] " << utils::print::X4AsString(new TLorentzVector(fFluxWindowPt[1],0)) << std::endl
       //          << " [2] " << utils::print::X4AsString(new TLorentzVector(fFluxWindowPt[2],0)) << std::endl;
 
-      fGNuMI->SetFluxWindow(fFluxWindowPtXML[0],
+      fGDk2NuFlux->SetFluxWindow(fFluxWindowPtXML[0],
                             fFluxWindowPtXML[1],
                             fFluxWindowPtXML[2]);
 
@@ -1454,14 +1409,14 @@ void GDk2NuFluxXMLHelper::ParseParamSet(xmlDocPtr& xml_doc, xmlNodePtr& xml_pset
       double z0usr = -3.4e38;
       std::vector<double> v = GetDoubleVector(pval);
       if ( v.size() > 0 ) z0usr = v[0];
-      fGNuMI->SetUpstreamZ(z0usr);
+      fGDk2NuFlux->SetUpstreamZ(z0usr);
       SLOG("GDk2NuFlux", pINFO) << "set upstreamz = " << z0usr;
 
     } else if ( pname == "reuse" ) {
       long int nreuse = 1;
       std::vector<long int> v = GetIntVector(pval);
       if ( v.size() > 0 ) nreuse = v[0];
-      fGNuMI->SetEntryReuse(nreuse);
+      fGDk2NuFlux->SetEntryReuse(nreuse);
       SLOG("GDk2NuFlux", pINFO) << "set entry reuse = " << nreuse;
 
     } else {
@@ -1580,23 +1535,23 @@ void GDk2NuFluxXMLHelper::ParseEnuMax(std::string str)
   std::vector<double> v = GetDoubleVector(str);
   size_t n = v.size();
   if ( n > 0 ) {
-    fGNuMI->SetMaxEnergy(v[0]);
+    fGDk2NuFlux->SetMaxEnergy(v[0]);
     if ( fVerbose > 1 ) 
       std::cout << "ParseEnuMax SetMaxEnergy(" << v[0] << ") " << std::endl;
   }
   if ( n > 1 ) {
-    fGNuMI->SetMaxEFudge(v[1]);
+    fGDk2NuFlux->SetMaxEFudge(v[1]);
     if ( fVerbose > 1 ) 
       std::cout << "ParseEnuMax SetMaxEFudge(" << v[1] << ")" << std::endl;
   }
   if ( n > 2 ) {
     if ( n == 3 ) {
-      fGNuMI->SetMaxWgtScan(v[2]);
+      fGDk2NuFlux->SetMaxWgtScan(v[2]);
       if ( fVerbose > 1 ) 
         std::cout << "ParseEnuMax SetMaxWgtScan(" << v[2] << ")" << std::endl;
     } else {
       long int nentries = (long int)v[3];
-      fGNuMI->SetMaxWgtScan(v[2],nentries);
+      fGDk2NuFlux->SetMaxWgtScan(v[2],nentries);
       if ( fVerbose > 1 ) 
         std::cout << "ParseEnuMax SetMaxWgtScan(" << v[2] << "," << nentries << ")" << std::endl;
     }
