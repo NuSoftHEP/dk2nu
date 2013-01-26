@@ -245,6 +245,14 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
     fCurNuChoice->impWgt = fCurDk2Nu->decay.nimpwt;
   }
 
+  // update the # POTs & number of neutrinos 
+  // Do this HERE (before rejecting flavors that users might be weeding out)
+  // in order to keep the POT accounting correct.  This allows one to get
+  // the right normalization for generating only events from the intrinsic
+  // nu_e entries.
+  fAccumPOTs += fEffPOTsPerNu / fMaxWeight;
+  fNNeutrinos++;
+
   // Check neutrino pdg against declared list of neutrino species declared
   // by the current instance of the neutrino flux driver.
   // No undeclared neutrino species will be accepted at this point as GENIE
@@ -354,11 +362,8 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
     assert(0);
   }
 
-
-  // update the # POTs, sum of weights & number of neutrinos 
-  fAccumPOTs += fEffPOTsPerNu / fMaxWeight;
+  // update sum of weights
   fSumWeight += this->Weight();
-  fNNeutrinos++;
 
   return true;
 }
