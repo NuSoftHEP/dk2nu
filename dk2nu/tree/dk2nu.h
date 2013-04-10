@@ -30,7 +30,7 @@
 #include <vector>
 #include <string>
 
-#define DK2NUVER 7   // KEEP THIS UP-TO-DATE!  increment for each change
+#define DK2NUVER 8   // KEEP THIS UP-TO-DATE!  increment for each change
 
 namespace bsim {
   /**
@@ -137,10 +137,7 @@ namespace bsim {
    Double_t pppz;         ///< % z momentum of nu parent at its production point
    Double_t ppenergy;     ///< % energy of nu parent at its production point
 
-   /**
-    * DK2NU: why is ppmedium a double?
-    */
-   Double_t ppmedium;     ///< material nu parent was produced in
+   Int_t    ppmedium;     ///< material nu parent was produced in
    Int_t    ptype;        ///< % nu parent species (PDG? code)
 
    /** momentum and energy of nu grandparent at
@@ -204,6 +201,7 @@ namespace bsim {
     
     std::string proc;  ///< name of the process that creates this particle
     std::string ivol;  ///< name of the volume where the particle starts
+    std::string imat;  ///< name of the material where the particle starts
 
   public:
     Ancestor();
