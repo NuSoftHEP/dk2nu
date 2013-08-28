@@ -295,8 +295,6 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
                               rnd->RndFlux().Rndm()*fFluxWindowDir2   );
   bsim::calcEnuWgt(fCurDk2Nu->decay,fCurNuChoice->x4NuBeam.Vect(),Ev,wgt_xy);
 
-  fWeight = fCurNuChoice->impWgt * fCurNuChoice->xyWgt;  // full weight
-
   if (Ev > fMaxEv) {
      LOG("Flux", pWARN)
           << "Flux neutrino energy exceeds declared maximum neutrino energy"
@@ -309,15 +307,21 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
                               fCurDk2Nu->decay.vy,
                               fCurDk2Nu->decay.vz, 0.);
   // don't use TLorentzVector here for Mag() due to - on metric
-  TVector3 dirNu = fCurNuChoice->x4NuBeam.Vect() - fgX4dkvtx.Vect();
-  double dirnorm = 1.0 / dirNu.Mag();
-  fCurNuChoice->p4NuBeam.SetPxPyPzE( Ev*dirnorm*dirNu.X(), 
-                                     Ev*dirnorm*dirNu.Y(),
-                                     Ev*dirnorm*dirNu.Z(), Ev);
+  TVector3 dirNu = (fCurNuChoice->x4NuBeam.Vect() - fgX4dkvtx.Vect()).Unit();
+  fCurNuChoice->p4NuBeam.SetPxPyPzE( Ev*dirNu.X(), 
+                                     Ev*dirNu.Y(),
+                                     Ev*dirNu.Z(), Ev);
 
   // Set the current flux neutrino 4-position, direction in user coord
   Beam2UserP4(fCurNuChoice->p4NuBeam,fCurNuChoice->p4NuUser);
   Beam2UserPos(fCurNuChoice->x4NuBeam,fCurNuChoice->x4NuUser);
+
+  fWeight = fCurNuChoice->impWgt * fCurNuChoice->xyWgt;  // full weight
+  if ( fApplyTiltWeight ) {
+    // additional weight due to window tilt relative to flux direction
+    double tiltwgt = dirNu.Dot( FluxWindowNormal() );
+    fWeight *= TMath::Abs( tiltwgt );
+  }
 
   // set the time component of the Lorentz vectors
   double dist_dk2start = GetDecayDist();
@@ -760,6 +764,7 @@ void GDk2NuFlux::SetFluxWindow(TVector3 p0, TVector3 p1, TVector3 p2)
   // set flux window
   // NOTE: internally these are in "cm", but user might have set a preference
   fDetLocIsSet         = true;
+  fIsSphere            = false;
 
   fFluxWindowPtUser[0] = p0;
   fFluxWindowPtUser[1] = p1;
@@ -776,16 +781,49 @@ void GDk2NuFlux::SetFluxWindow(TVector3 p0, TVector3 p1, TVector3 p2)
   fFluxWindowDir1 = ptbm1 - ptbm0;
   fFluxWindowDir2 = ptbm2 - ptbm0;
 
-  fFluxWindowLen1 = fFluxWindowDir1.Mag();
-  fFluxWindowLen2 = fFluxWindowDir2.Mag();
+  fFluxWindowLen1   = fFluxWindowDir1.Mag();
+  fFluxWindowLen2   = fFluxWindowDir2.Mag();
+  fFluxWindowNormal = fFluxWindowDir1.Vect().Cross(fFluxWindowDir2.Vect()).Unit();
 
   double dot = fFluxWindowDir1.Dot(fFluxWindowDir2);
-  if ( TMath::Abs(dot) > 1.0e-8 ) 
+  if ( TMath::Abs(dot) > 1.0e-8 )
     LOG("Flux",pWARN) << "Dot product between window direction vectors was "
                       << dot << "; please check for orthoganality";
   
   LOG("Flux",pNOTICE) << "about to CalcEffPOTsPerNu";
   this->CalcEffPOTsPerNu();
+}
+
+//___________________________________________________________________________
+void GDk2NuFlux::SetFluxSphere(TVector3 center, double radius,
+                               bool inDetCoord)
+{
+  fIsSphere = true;
+  fFluxSphereRadius = radius;
+  if ( inDetCoord ) {
+    fFluxSphereCenterUser = center;
+    TLorentzVector v4beam;
+    User2BeamPos(TLorentzVector(center,0),v4beam);
+    fFluxSphereCenterBeam = v4beam.Vect();
+  } else {
+    fFluxSphereCenterBeam = center;
+    TLorentzVector v4user;
+    Beam2UserPos(TLorentzVector(center,0),v4user);
+    fFluxSphereCenterBeam = v4user.Vect();
+  }
+
+  // not yet supported
+  LOG("Flux", pFATAL) << "use of spherical flux window not yet fully supported";
+  assert(0);
+
+}
+
+//___________________________________________________________________________
+void GDk2NuFlux::GetFluxSphere(TVector3& center, double& radius,
+                               bool inDetCoord) const
+{
+  center = ( inDetCoord ) ? fFluxSphereCenterUser : fFluxSphereCenterBeam;
+  radius = fFluxSphereRadius;
 }
 
 //___________________________________________________________________________
@@ -830,6 +868,14 @@ TVector3 GDk2NuFlux::GetBeamCenter() const
 {
   TVector3 beam0 = fBeamZero.Vect();
   return beam0;
+}
+
+//___________________________________________________________________________
+TVector3  GDk2NuFlux::SphereNormal() const
+{
+  // return the normal for this current location on the sphere
+  TVector3 dir = (fCurNuChoice->x4NuBeam.Vect() - fFluxSphereCenterBeam);
+  return dir.Unit();
 }
 
 //___________________________________________________________________________
@@ -957,6 +1003,8 @@ void GDk2NuFlux::Initialize(void)
   fAccumPOTs       =  0;
 
   fGenWeighted     = false;
+  fApplyTiltWeight = true;
+  fIsSphere        = false;
   fDetLocIsSet     = false;
   // by default assume user length is m
   SetLengthUnits(genie::utils::units::UnitFromString("m"));
@@ -970,7 +1018,7 @@ void GDk2NuFlux::SetDefaults(void)
 // - Set default neutrino species list (nue, nuebar, numu, numubar) and
 //   maximum energy (120 GeV).
 //   These defaults can be overwritten by user calls (at the driver init) to
-//   GNuMIlux::SetMaxEnergy(double Ev) and
+//   GDk2NuFlux::SetMaxEnergy(double Ev) and
 //   GDk2NuFlux::SetFluxParticles(const PDGCodeList & particles)
 // - Set the default file normalization to 1E+21 POT
 // - Set the default flux neutrino start z position at -5m (z=0 is the
@@ -1118,7 +1166,7 @@ double GDk2NuFlux::LengthUnits(void) const
 
 bool GDk2NuFlux::LoadConfig(string cfg)
 {
-  const char* altxml = gSystem->Getenv("GNUMIFLUXXML");
+  const char* altxml = gSystem->Getenv("GDK2NUFLUXXML");
   if ( altxml ) {
     SetXMLFile(altxml);
   }
@@ -1183,7 +1231,8 @@ void GDk2NuFlux::PrintConfig()
     << std::setw(w) << fBeamRotInv.ZY() << " "
     << std::setw(w) << fBeamRotInv.ZZ() << " ]";
 
-  LOG("Flux", pNOTICE)
+  std::ostringstream config_str;
+  config_str
     << "GDk2NuFlux Config:"
     << "\n Enu_max " << fMaxEv 
     << "\n pdg-codes: " << s.str() << "\n "
@@ -1200,25 +1249,37 @@ void GDk2NuFlux::PrintConfig()
     << " times, in " << fICycle << "/" << fNCycles << " cycles"
     << "\n SumWeight " << fSumWeight << " for " << fNNeutrinos << " neutrinos"
     << "\n EffPOTsPerNu " << fEffPOTsPerNu << " AccumPOTs " << fAccumPOTs
-    << "\n GenWeighted \"" << (fGenWeighted?"true":"false") << ", "
-    << "\", Detector location set \"" << (fDetLocIsSet?"true":"false") << "\""
+    << "\n GenWeighted: \"" << (fGenWeighted?"true":"false") << "\", "
+    << "ApplyTiltWeight: \"" << (fApplyTiltWeight?"true":"false") << "\""
+    << "Detector location set: \"" << (fDetLocIsSet?"true":"false") << "\", "
     << "\n LengthUnits " << fLengthUnits << ", scale b2u " << fLengthScaleB2U
-    << ", scale u2b " << fLengthScaleU2B
-    << "\n User Flux Window: "
-    << "\n       " << utils::print::Vec3AsString(&(fFluxWindowPtUser[0]))
-    << "\n       " << utils::print::Vec3AsString(&(fFluxWindowPtUser[1]))
-    << "\n       " << utils::print::Vec3AsString(&(fFluxWindowPtUser[2]))
-    << "\n Flux Window (cm, beam coord): "
-    << "\n  base " << utils::print::X4AsString(&fFluxWindowBase)
-    << "\n  dir1 " << utils::print::X4AsString(&fFluxWindowDir1) << " len " << fFluxWindowLen1
-    << "\n  dir2 " << utils::print::X4AsString(&fFluxWindowDir2) << " len " << fFluxWindowLen2
-    << "\n User Beam Origin: "
-    << "\n  base " << utils::print::X4AsString(&fBeamZero)
-    << "\n " << beamrot_str.str() << " "
-    << "\n Detector Origin (beam coord): "
-    << "\n  base " << utils::print::X4AsString(&usr0asbeam)
-    << "\n " << beamrotinv_str.str();
+    << ", scale u2b " << fLengthScaleU2B;
 
+  if ( IsFluxSphere() ) {
+    config_str
+      << "\n Flux Sphere radius: " << fFluxSphereRadius
+      << "\n   User Center: " << utils::print::Vec3AsString(&fFluxSphereCenterUser)
+      << "\n   Beam Center: " << utils::print::Vec3AsString(&fFluxSphereCenterBeam);
+  } else {
+    config_str
+      << "\n User Flux Window: "
+      << "\n       " << utils::print::Vec3AsString(&(fFluxWindowPtUser[0]))
+      << "\n       " << utils::print::Vec3AsString(&(fFluxWindowPtUser[1]))
+      << "\n       " << utils::print::Vec3AsString(&(fFluxWindowPtUser[2]))
+      << "\n Flux Window (cm, beam coord): "
+      << "\n  base " << utils::print::X4AsString(&fFluxWindowBase)
+      << "\n  dir1 " << utils::print::X4AsString(&fFluxWindowDir1) << " len " << fFluxWindowLen1
+      << "\n  dir2 " << utils::print::X4AsString(&fFluxWindowDir2) << " len " << fFluxWindowLen2;
+  }
+  config_str
+      << "\n User Beam Origin: "
+      << "\n  base " << utils::print::X4AsString(&fBeamZero)
+      << "\n " << beamrot_str.str() << " "
+      << "\n Detector Origin (beam coord): "
+      << "\n  base " << utils::print::X4AsString(&usr0asbeam)
+      << "\n " << beamrotinv_str.str();
+
+  LOG("Flux", pNOTICE) << config_str.str();
 }
 
 //___________________________________________________________________________
@@ -1306,8 +1367,10 @@ bool GDk2NuFluxXMLHelper::LoadConfig(string cfg)
     return false;
   }
 
-  string rootele = "gnumi_config";
-  if ( xmlStrcmp(xml_root->name, (const xmlChar*)rootele.c_str() ) ) {
+  string rootele    = "gdk2nu_config";
+  string rooteleAlt = "gnumi_config";  // read older GNuMIFlux files
+  if ( xmlStrcmp(xml_root->name, (const xmlChar*)rootele.c_str() ) &&
+       xmlStrcmp(xml_root->name, (const xmlChar*)rooteleAlt.c_str() ) ) {
     SLOG("GDk2NuFlux", pERROR)
       << "The XML doc has invalid root element! (filename: " << fname << ")"
       << " expected \"" << rootele << "\", saw \"" << xml_root->name << "\"";

@@ -126,6 +126,9 @@ public :
   void      SetMaxEFudge(double fudge = 1.05)                  ///< extra fudge factor in estimating maximum energy
             { fMaxEFudge = fudge; }
 
+  void      SetApplyWindowTiltWeight(bool apply = true)           ///< apply wgt due to tilt of flux window relative to beam                                   
+            { fApplyTiltWeight = apply; }
+
   // GDk2NuFlux uses "cm" as the length unit consistently internally (this is 
   // the length units used by the dk2nu ntuples).  User interactions 
   // setting the beam-to-detector coordinate transform, flux window, and the 
@@ -152,8 +155,11 @@ public :
 
   // rwh: potential upgrade: allow flux window set/get in beam coords 
   // as optional flag to *etFluxWindow
-  void      SetFluxWindow(TVector3  p1, TVector3  p2, TVector3  p3); ///< 3 points define a plane (by default in user coordinates)
+  bool      IsFluxSphere() const { return fIsSphere; }                     ///< flat window or sphere
+  void      SetFluxWindow(TVector3  p1, TVector3  p2, TVector3  p3);       ///< 3 points define a plane (by default in user coordinates)
   void      GetFluxWindow(TVector3& p1, TVector3& p2, TVector3& p3) const; ///< 3 points define a plane in beam coordinate 
+  void      SetFluxSphere(TVector3  center, double  radius, bool inDetCoord=true);       ///< specification of a sphere
+  void      GetFluxSphere(TVector3& center, double& radius, bool inDetCoord=true) const; ///< specification of a sphere
 
   void      SetUpstreamZ(double z0);                           ///< set flux neutrino initial z position (upstream of the detector) pushed back from the flux window
 
@@ -172,6 +178,9 @@ public :
                                TLorentzVector& beamdir ) const;
   void      User2BeamP4 (const TLorentzVector& usrp4,
                                TLorentzVector& beamp4  ) const;
+
+  TVector3  FluxWindowNormal() const { return (fIsSphere) ? SphereNormal() : fFluxWindowNormal; }
+  TVector3  SphereNormal() const;
 
 private:
 
@@ -228,6 +237,7 @@ private:
   double    fAccumPOTs;           ///< POTs used so far
 
   bool      fGenWeighted;         ///< does GenerateNext() give weights?
+  bool      fApplyTiltWeight;     ///< wgt due to window normal not || beam
   bool      fDetLocIsSet;         ///< is a flux location (near/far) set?
   
   double           fLengthUnits;    ///< units for coord in user exchanges
@@ -239,14 +249,19 @@ private:
   TLorentzRotation fBeamRotInv;
   double           fZ0;             ///< configurable starting z position for each flux neutrino (in detector coord system)
 
-  TVector3         fFluxWindowPtUser[3]; ///<  user points of flux window
-  TLorentzVector   fFluxWindowBase; ///< base point for flux window - beam coord
-  TLorentzVector   fFluxWindowDir1; ///< extent for flux window (direction 1)
-  TLorentzVector   fFluxWindowDir2; ///< extent for flux window (direction 2)
+  bool             fIsSphere;             ///< doing this on a sphere rather than a flat window?
+  TVector3         fFluxWindowPtUser[3];  ///<  user points of flux window
+  TLorentzVector   fFluxWindowBase;       ///< base point for flux window - beam coord
+  TLorentzVector   fFluxWindowDir1;       ///< extent for flux window (direction 1)
+  TLorentzVector   fFluxWindowDir2;       ///< extent for flux window (direction 2)
   double           fFluxWindowLen1;
   double           fFluxWindowLen2;
+  TVector3         fFluxWindowNormal;     ///< normal direction for flux window -- beam coord
+  TVector3         fFluxSphereCenterUser; ///< center for flux sphere - user coords
+  TVector3         fFluxSphereCenterBeam; ///< center for flux sphere - beam coords
+  double           fFluxSphereRadius;     ///< radius for flux sphere
 
-  TLorentzVector   fgX4dkvtx;       ///< decay 4-position beam coord
+  TLorentzVector   fgX4dkvtx;             ///< decay 4-position beam coord
 
 };
 
