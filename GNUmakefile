@@ -9,9 +9,9 @@ MAKEFILE = GNUmakefile
 
 SUBDIRS = tree
 ### for now don't try to build GENIE interface
-#ifneq ($(GENIE),)
-#  SUBDIRS += genie
-#endif
+ifneq ($(GENIE),)
+  SUBDIRS += genie
+endif
 
 all:  directories FORCE
 	@echo "make all"
