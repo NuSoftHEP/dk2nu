@@ -22,15 +22,19 @@ void copy_g4lbne_to_dk2nu(const g4lbne& g4lbneObj);
 void g4lbneCrossChecks(const g4lbne& g4lbneObj);
 
 void convert_g4lbne(string ifname="../fluxfiles/generic_g4lbne.root",
-                       int jobnum=42,
-                       Long64_t maxentries=-1,
-                       Long64_t moddump=-1) // modulo for dump
+                    int jobnum=42,
+                    string locfile="${DK2NU}/etc/LBNElocations.txt",
+                    Long64_t maxentries=-1,
+                    Long64_t moddump=-1)  // modulo for dump
 {
   // set globals
-  myjob = jobnum; // allow override because g4lbne files forgot to set this
+  myjob = jobnum; // allow override because perhaps g4lbne files forgot to set this
   pots  = 0;
   // allowance in location energy/weight cross-check
   frac_diff_tolerance = 2.5e-4;
+
+  cout << "locations from " << locfile << endl;
+
 
   int highest_potnum = 0;
 
@@ -57,7 +61,7 @@ void convert_g4lbne(string ifname="../fluxfiles/generic_g4lbne.root",
   string ofname = construct_outfilename(ifname);
   cout << "Output file: " << ofname << endl << endl;
 
-  ConvertInit();
+  ConvertInit(locfile);
   ConvertBookNtuple(ofname);
 
   ///
