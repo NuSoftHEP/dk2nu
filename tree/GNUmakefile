@@ -8,7 +8,7 @@ NAME     = all
 MAKEFILE = GNUmakefile
 
 PACKAGE  = dk2nuTree
-LIBDEPS  = -lPhysics    # TVector3
+LIBDEPS  = -lPhysics -lMatrix  # Physics for TVector3, Physics need Matrix
 
 all:  FORCE lib
 	@echo "make all $(PACKAGE)"
