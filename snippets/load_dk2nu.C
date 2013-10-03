@@ -45,7 +45,7 @@ int load_dk2nu(bool genie_too = false, bool cnvtinc = false,
       ip += " -I";
       ip += path;
       ip += "/convert/";
-      ip += cnvt;
+      ip += cnvt[i];
     }
   }
 
@@ -70,7 +70,7 @@ int load_dk2nu(bool genie_too = false, bool cnvtinc = false,
       dip = ".include ";
       dip += path;
       dip += "/convert/";
-      dip += cnvt;
+      dip += cnvt[i];
       gROOT->ProcessLine(dip.Data());
     }
   }
