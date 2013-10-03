@@ -46,6 +46,15 @@ ifneq ($(GENIE),)
   GOPT_LOG4CPP_INC=$(shell grep LOG4CPP_INC $(GENIE)/src/make/Make.config | cut -d'=' -f2)
   LDFLAGS += -L$(GOPT_LIBXML2_LIB) -L$(GOPT_LOG4CPP_LIB)
   INCLUDE += -I$(GOPT_LIBXML2_INC) -I$(GOPT_LOG4CPP_INC)
+# try other ways too ... (semi-)standard UPS packaging paths
+  ifneq ($(LIBXML2_FQ_DIR),)
+    LDFLAGS += -L$(LIBXML2_FQ_DIR)/lib
+    INCLUDE += -I$(LIBXML2_FQ_DIR)/include/libxml2
+  endif
+  ifneq ($(LOG4CPP_FQ_DIR),)
+    LDFLAGS += -L$(LOG4CPP_FQ_DIR)/lib
+    INCLUDE += -I$(LOG4CPP_FQ_DIR)/include -I$(LOG4CPP_FQ_DIR)/include/log4cpp
+  endif
 endif
 #
 # make sure architecture is consistent in case of old 32-bit builds
