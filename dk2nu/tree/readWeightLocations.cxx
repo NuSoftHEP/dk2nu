@@ -3,9 +3,9 @@
 #include <fstream>
 #include <string>
 
-#include "dk2nu/tree/readWeightLocations.h"
+#include "tree/readWeightLocations.h"
 
-#include "dk2nu/tree/dkmeta.h"
+#include "tree/dkmeta.h"
 
 #include "TSystem.h"
 
