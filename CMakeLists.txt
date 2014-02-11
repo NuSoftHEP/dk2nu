@@ -34,6 +34,7 @@ set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
 option(WITH_GENIE "Build GENIE flux driver" ON)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake
+                      $ENV{ROOTSYS}/cmake/modules
                       $ENV{ROOTSYS}/../source/root/cmake/modules
                       $ENV{ROOTSYS}/etc/cmake 
                       ${CMAKE_MODULE_PATH})
