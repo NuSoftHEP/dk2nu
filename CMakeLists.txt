@@ -39,8 +39,8 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake
                       $ENV{ROOTSYS}/etc/cmake 
                       ${CMAKE_MODULE_PATH})
 
-MESSAGE("CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
-MESSAGE(" ")
+#MESSAGE("CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
+#MESSAGE(" ")
 
 find_package(ROOT REQUIRED)
 
@@ -50,7 +50,7 @@ set(INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/..
                         ${PROJECT_SOURCE_DIR}/genie
                         ${ROOT_INCLUDE_DIR})
 set(LINK_DIRECTORIES ${ROOT_LIBRARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/lib )
-MESSAGE("CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}")
+#MESSAGE("CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}")
 
 if(WITH_GENIE)
   set(GENIE $ENV{GENIE})
@@ -61,7 +61,7 @@ if(WITH_GENIE)
                           $ENV{LOG4CPP_INC}
                           ${GENIE}/src)
   set(LINK_DIRECTORIES ${LINK_DIRECTORIES} ${GENIE}/lib)
-  MESSAGE("--DK2NU- INCLUDE_DIRECTORIES=${INCLUDE_DIRECTORIES}")
+  #MESSAGE("--DK2NU- INCLUDE_DIRECTORIES=${INCLUDE_DIRECTORIES}")
 endif()
 
 include_directories( ${INCLUDE_DIRECTORIES} )
@@ -80,31 +80,31 @@ include(Darwin)
 
 include(CMakeParseArguments)
 
-MESSAGE("--DK2NU- PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}")
-MESSAGE("--DK2NU- ROOT_LIBRARIES=${ROOT_LIBRARIES}")
-MESSAGE("--DK2NU-")
+#MESSAGE("--DK2NU- PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}")
+#MESSAGE("--DK2NU- ROOT_LIBRARIES=${ROOT_LIBRARIES}")
+#MESSAGE("--DK2NU-")
 
 #----------------------------------------------------------------------------
 #
 # libdk2nuTree.so
 #
-MESSAGE("--DK2NU- dk2nuTree section begin")
+#MESSAGE("--DK2NU- dk2nuTree section begin")
 file(GLOB dk2nuTree_SRCS ${PROJECT_SOURCE_DIR}/tree/*.cc 
                          ${PROJECT_SOURCE_DIR}/tree/*.cxx)
 file(GLOB dk2nuTree_HDRS ${PROJECT_SOURCE_DIR}/tree/*.h)
 list(REMOVE_ITEM dk2nuTree_HDRS ${PROJECT_SOURCE_DIR}/tree/LinkDef.h)
 
-MESSAGE("dk2nuTree_SRCS=${dk2nuTree_SRCS}")
-MESSAGE(" ")
-MESSAGE("dk2nuTree_HDRS=${dk2nuTree_HDRS}")
-MESSAGE(" ")
+#MESSAGE("dk2nuTree_SRCS=${dk2nuTree_SRCS}")
+#MESSAGE(" ")
+#MESSAGE("dk2nuTree_HDRS=${dk2nuTree_HDRS}")
+#MESSAGE(" ")
 
 set(dk2nuTree_LINKDEF ${PROJECT_SOURCE_DIR}/tree/LinkDef.h)
 # do not include ".cxx" here!!!!
 set(dk2nuTree_DICTIONARY ${CMAKE_CURRENT_BINARY_DIR}/dk2nuTreeDict)
 
-MESSAGE("--DK2NU- about to ROOT_GENERATE_DICTIONARY ${dk2nuTree_DICTIONARY}")
-MESSAGE("--rwh- ROOT_GENERATE_DICTIONARY ${dk2nuTree_DICTIONARY} ${dk2nuTree_HDRS} ${dk2nuTree_LINKDEF} ")
+#MESSAGE("--DK2NU- about to ROOT_GENERATE_DICTIONARY ${dk2nuTree_DICTIONARY}")
+#MESSAGE("--rwh- ROOT_GENERATE_DICTIONARY ${dk2nuTree_DICTIONARY} ${dk2nuTree_HDRS} ${dk2nuTree_LINKDEF} ")
 ROOT_GENERATE_DICTIONARY("${dk2nuTree_DICTIONARY}" "${dk2nuTree_HDRS}" LINKDEF "${dk2nuTree_LINKDEF}" )
 
 # add dictionary to list of source files
@@ -113,8 +113,8 @@ SET(dk2nuTree_SRCS ${dk2nuTree_SRCS} ${dk2nuTree_DICTIONARY})
 add_library(dk2nuTree SHARED ${dk2nuTree_SRCS})
 target_link_libraries(dk2nuTree ${ROOT_LIBRARIES} -lPhysics -lMatrix )
 
-MESSAGE("--DK2NU- dk2nuTree section done")
-MESSAGE(" ")
+#MESSAGE("--DK2NU- dk2nuTree section done")
+#MESSAGE(" ")
 
 #----------------------------------------------------------------------------
 #
@@ -122,22 +122,22 @@ MESSAGE(" ")
 #
 if(WITH_GENIE)
 
-MESSAGE("--DK2NU- dk2nuTree section begin")
+#MESSAGE("--DK2NU- dk2nuTree section begin")
 file(GLOB dk2nuGenie_SRCS ${PROJECT_SOURCE_DIR}/genie/*.cc 
                           ${PROJECT_SOURCE_DIR}/genie/*.cxx)
 file(GLOB dk2nuGenie_HDRS ${PROJECT_SOURCE_DIR}/genie/*.h)
 list(REMOVE_ITEM dk2nuGenie_HDRS ${PROJECT_SOURCE_DIR}/genie/LinkDef.h)
 
-MESSAGE("dk2nuGenie_SRCS=${dk2nuGenie_SRCS}")
-MESSAGE(" ")
-MESSAGE("dk2nuGenie_HDRS=${dk2nuGenie_HDRS}")
-MESSAGE(" ")
+#MESSAGE("dk2nuGenie_SRCS=${dk2nuGenie_SRCS}")
+#MESSAGE(" ")
+#MESSAGE("dk2nuGenie_HDRS=${dk2nuGenie_HDRS}")
+#MESSAGE(" ")
 
 set(dk2nuGenie_LINKDEF ${PROJECT_SOURCE_DIR}/genie/LinkDef.h)
 # do not include ".cxx" here!!!!
 set(dk2nuGenie_DICTIONARY ${CMAKE_CURRENT_BINARY_DIR}/dk2nuGenieDict)
 
-MESSAGE("--DK2NU- about to ROOT_GENERATE_DICTIONARY ${dk2nuGenie_DICTIONARY}")
+#MESSAGE("--DK2NU- about to ROOT_GENERATE_DICTIONARY ${dk2nuGenie_DICTIONARY}")
 ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}" LINKDEF "${dk2nuGenie_LINKDEF}" )
 
 # add dictionary to list of source files
@@ -151,7 +151,7 @@ target_link_libraries(dk2nuGenie ${ROOT_LIBRARIES} -lPhysics -lMatrix dk2nuTree 
 #set_property(TARGET dk2nuGenie PROPERTY DEPENDS dk2nuTree)
 #add_custom_command(OUTPUT dk2nuGenie COMMAND echo hey there DEPENDS dk2nuTree)
 
-MESSAGE("--DK2NU- dk2nuGenie section done")
+#MESSAGE("--DK2NU- dk2nuGenie section done")
 
 endif()
 
