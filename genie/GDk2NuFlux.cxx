@@ -1242,15 +1242,15 @@ void GDk2NuFlux::PrintConfig()
     << flistout.str()
     << "\n from file patterns:"
     << fpattout.str()
-    << "\n wgt max=" << fMaxWeight << " fudge=" << fMaxWgtFudge << " using "
+    << "\n wgt max=" << fMaxWeight << " fudge=" << fMaxWgtFudge << " using scan of "
     << fMaxWgtEntries << " entries"
     << "\n Z0 pushback " << fZ0
     << "\n used entry " << fIEntry << " " << fIUse << "/" << fNUse
     << " times, in " << fICycle << "/" << fNCycles << " cycles"
-    << "\n SumWeight " << fSumWeight << " for " << fNNeutrinos << " neutrinos"
+    << "\n SumWeight " << fSumWeight << " for " << fNNeutrinos << " neutrino entries"
     << "\n EffPOTsPerNu " << fEffPOTsPerNu << " AccumPOTs " << fAccumPOTs
     << "\n GenWeighted: \"" << (fGenWeighted?"true":"false") << "\", "
-    << "ApplyTiltWeight: \"" << (fApplyTiltWeight?"true":"false") << "\""
+    << "ApplyTiltWeight: \"" << (fApplyTiltWeight?"true":"false") << "\", "
     << "Detector location set: \"" << (fDetLocIsSet?"true":"false") << "\", "
     << "\n LengthUnits " << fLengthUnits << ", scale b2u " << fLengthScaleB2U
     << ", scale u2b " << fLengthScaleU2B;
