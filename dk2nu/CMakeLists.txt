@@ -181,6 +181,8 @@ endif()
 #----------------------------------------------------------------------------
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
 #
-##install(TARGETS g4numi DESTINATION bin)
-
+install(TARGETS dk2nuTree DESTINATION lib)
+if(WITH_GENIE)
+  install(TARGETS dk2nuGenie DESTINATION lib)
+endif()
 
