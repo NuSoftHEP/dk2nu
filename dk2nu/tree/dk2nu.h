@@ -151,7 +151,7 @@ namespace bsim {
    Double_t mupare;       ///< % energy of nu grandparent
 
    Double_t necm;         ///< % nu energy in center-of-mass frame
-   Double_t nimpwt;       ///< % production vertex z of nu parent
+   Double_t nimpwt;       ///< % cumulative importance weight prod to decay
 
   public:
     Decay();
