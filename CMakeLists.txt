@@ -48,7 +48,9 @@ set(INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/..
                         ${PROJECT_SOURCE_DIR}
                         ${PROJECT_SOURCE_DIR}/tree
                         ${PROJECT_SOURCE_DIR}/genie
-                        ${ROOT_INCLUDE_DIR})
+                        ${ROOT_INCLUDE_DIR}
+                        / ) # add abs path for find_file() in FindROOT.cmake
+
 set(LINK_DIRECTORIES ${ROOT_LIBRARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/lib )
 #MESSAGE("CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}")
 
