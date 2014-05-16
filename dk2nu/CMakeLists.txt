@@ -187,4 +187,10 @@ install(TARGETS dk2nuTree DESTINATION lib)
 if(WITH_GENIE)
   install(TARGETS dk2nuGenie DESTINATION lib)
 endif()
+#--------------------
+# Install the headers
+install(FILES ${dk2nuTree_HDRS} DESTINATION include/dk2nu/tree)
+if(WITH_GENIE)
+  install(FILES ${dk2nuGenie_HDRS} DESTINATION include/dk2nu/genie)
+endif()
 
