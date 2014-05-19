@@ -22,7 +22,7 @@
 #
 cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 project(dk2nu)
-set (CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Debug)
 set(LIBRARY_OUTPUT_PATH "${CMAKE_BINARY_DIR}/lib")
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
 
@@ -32,6 +32,7 @@ set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
 # to build only the base class library
 #
 option(WITH_GENIE "Build GENIE flux driver" ON)
+option(COPY_AUX "install etc, convert, snippets subdirectories" ON)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake
                       $ENV{ROOTSYS}/cmake/modules
@@ -193,4 +194,33 @@ install(FILES ${dk2nuTree_HDRS} DESTINATION include/dk2nu/tree)
 if(WITH_GENIE)
   install(FILES ${dk2nuGenie_HDRS} DESTINATION include/dk2nu/genie)
 endif()
-
+# Install support files and scripts
+if(COPY_AUX)
+#  install(FILES README DESTINATION doc RENAME dk2nu.README)
+  install(FILES etc/locations.txt etc/LBNElocations.txt DESTINATION etc)
+  install(FILES convert/common_convert.C   DESTINATION convert)
+  install(FILES convert/aux/mkgclasses3.sh DESTINATION convert/aux)
+  install(FILES       convert/g3numi/g3numi.C 
+                      convert/g3numi/g3numi.h 
+          DESTINATION convert/g3numi)
+  install(FILES       convert/g4numi/g4numi.C 
+                      convert/g4numi/g4numi.h 
+          DESTINATION convert/g4numi)
+  install(FILES       convert/g4lbne/g4lbne.C 
+                      convert/g4lbne/g4lbne.h 
+                      convert/g4lbne/convert_g4lbne.C
+          DESTINATION convert/g4lbne)
+  install(FILES       convert/g4minerva/g4minerva.C 
+                      convert/g4minerva/g4minerva.h 
+                      convert/g4minerva/convert_g4minerva.C
+          DESTINATION convert/g4minerva)
+  install(FILES       convert/flugg/flugg.C 
+                      convert/flugg/flugg.h 
+                      convert/flugg/convert_flugg.C
+          DESTINATION convert/flugg)
+  install(FILES       snippets/load_dk2nu.C
+                      snippets/test_read_locations.C
+                      snippets/test_fill_dk2nu.C
+                      snippets/test_read_dk2nu.C
+          DESTINATION snippets)
+endif()
