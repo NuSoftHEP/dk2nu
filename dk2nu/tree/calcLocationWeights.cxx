@@ -1,10 +1,10 @@
 #include <iostream>
 #include <iomanip>
 
-#include "dk2nu/tree/calcLocationWeights.h"
+#include "tree/calcLocationWeights.h"
 
-#include "dk2nu/tree/dkmeta.h"
-#include "dk2nu/tree/dk2nu.h"
+#include "tree/dkmeta.h"
+#include "tree/dk2nu.h"
 
 /// user interface
 void bsim::calcLocationWeights(const bsim::DkMeta* dkmeta, bsim::Dk2Nu* dk2nu)
