@@ -14,9 +14,8 @@ using namespace std;
 
 #include "TMath.h"
 
-#include "dk2nu/convert/common_convert.C"
-
-#include "dk2nu/convert/flugg/flugg.C"
+#include "convert/common_convert.C"
+#include "convert/flugg/flugg.C"
 
 void copy_flugg_to_dk2nu(const flugg& fluggObj);
 void fluggCrossChecks(const flugg& fluggObj, string inputloc);

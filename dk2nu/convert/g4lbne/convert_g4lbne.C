@@ -14,9 +14,8 @@ using namespace std;
 
 #include "TMath.h"
 
-#include "dk2nu/convert/common_convert.C"
-
-#include "dk2nu/convert/g4lbne/g4lbne.C"
+#include "convert/common_convert.C"
+#include "convert/g4lbne/g4lbne.C"
 
 void copy_g4lbne_to_dk2nu(const g4lbne& g4lbneObj);
 void g4lbneCrossChecks(const g4lbne& g4lbneObj);

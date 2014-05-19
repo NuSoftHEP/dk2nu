@@ -20,13 +20,13 @@
 #include "TRandom3.h"
 #include "TH1D.h"
 
-#include "dk2nu/tree/dk2nu.h"
-#include "dk2nu/tree/dkmeta.h"
-
+// dk2nu headers
+#include "tree/dk2nu.h"
+#include "tree/dkmeta.h"
 /// functions for reading location text file and calculating
 /// energy and weight vectors for locations
-#include "dk2nu/tree/readWeightLocations.h"
-#include "dk2nu/tree/calcLocationWeights.h"
+#include "tree/readWeightLocations.h"
+#include "tree/calcLocationWeights.h"
 
 // some globals
 TRandom3* rndm            = 0;

@@ -39,6 +39,10 @@ int load_dk2nu(bool genie_too = false, bool cnvtinc = false,
   ip += path;
   ip += "/include";
 
+  ip += " -I";
+  ip += path;
+  ip += "/include/dk2nu";
+
   const char* cnvt[4] = { "g3numi", "flugg", "g4numi", "g4minerva" };
   if ( cnvtinc ) {
     for (int i = 0; i < 4; ++i ) {
@@ -63,6 +67,11 @@ int load_dk2nu(bool genie_too = false, bool cnvtinc = false,
   dip = ".include ";
   dip += path;
   dip += "/include";
+  gROOT->ProcessLine(dip.Data());
+
+  dip = ".include ";
+  dip += path;
+  dip += "/include/dk2nu";
   gROOT->ProcessLine(dip.Data());
 
   if ( cnvtinc ) {

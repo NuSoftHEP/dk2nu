@@ -14,9 +14,8 @@ using namespace std;
 
 #include "TMath.h"
 
-#include "dk2nu/convert/common_convert.C"
-
-#include "dk2nu/convert/g4minerva/g4minerva.C"
+#include "convert/common_convert.C"
+#include "convert/g4minerva/g4minerva.C"
 
 void copy_g4minerva_to_dk2nu(const g4minerva& g4minervaObj);
 void g4minervaCrossChecks(const g4minerva& g4minervaObj);
