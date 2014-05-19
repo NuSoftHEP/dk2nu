@@ -14,8 +14,9 @@
 #include <fstream>
 #include <iomanip>
 
-#include "dk2nu/tree/dkmeta.h"
-#include "dk2nu/tree/readWeightLocations.h"
+// dk2nu includes
+#include "tree/dkmeta.h"
+#include "tree/readWeightLocations.h"
 
 #endif  // ifndef __CINT__
 

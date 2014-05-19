@@ -28,14 +28,14 @@
 #ifndef __CINT__
 // hide header stuff from CINT, assume load_dk2nu.C run first
 
-#include "dk2nu/tree/dk2nu.h"
-#include "dk2nu/tree/dkmeta.h"
+#include "tree/dk2nu.h"
+#include "tree/dkmeta.h"
 
 /// include standardized code for reading location text file
-#include "dk2nu/tree/readWeightLocations.h"
+#include "tree/readWeightLocations.h"
 
 /// include standardized code for getting energy/weight vectors for locations
-#include "dk2nu/tree/calcLocationWeights.h"
+#include "tree/calcLocationWeights.h"
 
 #endif  // ifndef __CINT__
 
