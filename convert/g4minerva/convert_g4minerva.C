@@ -270,7 +270,7 @@ void copy_g4minerva_to_dk2nu(const g4minerva& g4minervaObj)
     // ancestor.nucleau = ?
     ancestor.proc = g4minervaObj.proc[ian].Data();
     ancestor.ivol = g4minervaObj.ivol[ian].Data();
-    ancestor.imat = g4minervaObj.imat[ian].Data();
+    // ancestor.imat = g4minervaObj.imat[ian].Data();
 
     dk2nu->ancestor.push_back(ancestor);
   }
