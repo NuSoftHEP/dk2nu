@@ -25,25 +25,16 @@
 #include "libxml/xmlmemory.h"
 #include "libxml/parser.h"
 
-#include "Utils/XmlParserUtils.h"
-#include "Utils/StringUtils.h"
-
+// ROOT headers
 #include <TFile.h>
 #include <TChain.h>
 #include <TChainElement.h>
 #include <TSystem.h>
 #include <TStopwatch.h>
 
-#include "Conventions/Units.h"
+// GENIE headers
 #include "Conventions/GBuild.h"
-
-#include "dk2nu/genie/GDk2NuFlux.h"
-
-#include "dk2nu/tree/dk2nu.h"
-#include "dk2nu/tree/dkmeta.h"
-#include "dk2nu/tree/NuChoice.h"
-#include "dk2nu/tree/calcLocationWeights.h"
-
+#include "Conventions/Units.h"
 #include "Messenger/Messenger.h"
 #include "Numerical/RandomGen.h"
 #include "PDG/PDGCodes.h"
@@ -51,6 +42,15 @@
 #include "Utils/MathUtils.h"
 #include "Utils/PrintUtils.h"
 #include "Utils/UnitUtils.h"
+#include "Utils/XmlParserUtils.h"
+#include "Utils/StringUtils.h"
+
+// Dk2Nu headers
+#include "genie/GDk2NuFlux.h"
+#include "tree/dk2nu.h"
+#include "tree/dkmeta.h"
+#include "tree/NuChoice.h"
+#include "tree/calcLocationWeights.h"
 
 #include <vector>
 #include <algorithm>
