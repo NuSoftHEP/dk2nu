@@ -43,12 +43,17 @@ int load_dk2nu(bool genie_too = false, bool cnvtinc = false,
   ip += path;
   ip += "/include/dk2nu";
 
-  const char* cnvt[4] = { "g3numi", "flugg", "g4numi", "g4minerva" };
+  ip += " -I";
+  ip += path;
+  ip += "/scripts";
+
+  const char* cnvt[5] = { "g3numi", "flugg", "g4numi", "g4minerva", "g4lbne" };
+  size_t ncnvt = sizeof(cnvt)/sizeof(const char*);
   if ( cnvtinc ) {
-    for (int i = 0; i < 4; ++i ) {
+    for (size_t i = 0; i < ncnvt; ++i ) {
       ip += " -I";
       ip += path;
-      ip += "/convert/";
+      ip += "/scripts/convert/";
       ip += cnvt[i];
     }
   }
@@ -74,11 +79,16 @@ int load_dk2nu(bool genie_too = false, bool cnvtinc = false,
   dip += "/include/dk2nu";
   gROOT->ProcessLine(dip.Data());
 
+  dip = ".include ";
+  dip += path;
+  dip += "/scripts";
+  gROOT->ProcessLine(dip.Data());
+
   if ( cnvtinc ) {
-    for (int i = 0; i < 4; ++i ) {
+    for (int i = 0; i < ncnvt; ++i ) {
       dip = ".include ";
       dip += path;
-      dip += "/convert/";
+      dip += "/scripts/convert/";
       dip += cnvt[i];
       gROOT->ProcessLine(dip.Data());
     }
