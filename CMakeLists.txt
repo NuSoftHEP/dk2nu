@@ -197,30 +197,36 @@ endif()
 # Install support files and scripts
 if(COPY_AUX)
 #  install(FILES README DESTINATION doc RENAME dk2nu.README)
-  install(FILES etc/locations.txt etc/LBNElocations.txt DESTINATION etc)
-  install(FILES convert/common_convert.C   DESTINATION convert)
-  install(FILES convert/aux/mkgclasses3.sh DESTINATION convert/aux)
-  install(FILES       convert/g3numi/g3numi.C 
-                      convert/g3numi/g3numi.h 
-          DESTINATION convert/g3numi)
-  install(FILES       convert/g4numi/g4numi.C 
-                      convert/g4numi/g4numi.h 
-          DESTINATION convert/g4numi)
-  install(FILES       convert/g4lbne/g4lbne.C 
-                      convert/g4lbne/g4lbne.h 
-                      convert/g4lbne/convert_g4lbne.C
-          DESTINATION convert/g4lbne)
-  install(FILES       convert/g4minerva/g4minerva.C 
-                      convert/g4minerva/g4minerva.h 
-                      convert/g4minerva/convert_g4minerva.C
-          DESTINATION convert/g4minerva)
-  install(FILES       convert/flugg/flugg.C 
-                      convert/flugg/flugg.h 
-                      convert/flugg/convert_flugg.C
-          DESTINATION convert/flugg)
-  install(FILES       snippets/load_dk2nu.C
-                      snippets/test_read_locations.C
-                      snippets/test_fill_dk2nu.C
-                      snippets/test_read_dk2nu.C
-          DESTINATION snippets)
+  install(FILES       etc/locations.txt
+                      etc/NuMIlocations.txt
+                      etc/LBNElocations.txt 
+          DESTINATION etc)
+  install(FILES       scripts/load_dk2nu.C
+          DESTINATION scripts)
+  install(FILES       scripts/convert/common_convert.C
+          DESTINATION scripts/convert)
+  install(FILES       scripts/convert/aux/mkgclasses3.sh 
+          DESTINATION scripts/convert/aux)
+  install(FILES       scripts/convert/g3numi/g3numi.C 
+                      scripts/convert/g3numi/g3numi.h 
+          DESTINATION scripts/convert/g3numi)
+  install(FILES       scripts/convert/g4numi/g4numi.C 
+                      scripts/convert/g4numi/g4numi.h 
+          DESTINATION scripts/convert/g4numi)
+  install(FILES       scripts/convert/g4minerva/g4minerva.C 
+                      scripts/convert/g4minerva/g4minerva.h 
+                      scripts/convert/g4minerva/convert_g4minerva.C
+          DESTINATION scripts/convert/g4minerva)
+  install(FILES       scripts/convert/flugg/flugg.C 
+                      scripts/convert/flugg/flugg.h 
+                      scripts/convert/flugg/convert_flugg.C
+          DESTINATION scripts/convert/flugg)
+  install(FILES       scripts/convert/g4lbne/g4lbne.C 
+                      scripts/convert/g4lbne/g4lbne.h 
+                      scripts/convert/g4lbne/convert_g4lbne.C
+          DESTINATION scripts/convert/g4lbne)
+  install(FILES       scripts/examples/test_read_locations.C
+                      scripts/examples/test_fill_dk2nu.C
+                      scripts/examples/test_read_dk2nu.C
+          DESTINATION scripts/examples)
 endif()
