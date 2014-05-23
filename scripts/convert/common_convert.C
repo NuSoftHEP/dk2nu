@@ -385,7 +385,7 @@ string construct_outfilename(string infilename)
 {
   string ofname = infilename;
   size_t dot = ofname.find(".root");
-  ofname.insert(dot,"_to_dk2nu");
+  ofname.insert(dot,".dk2nu");
   size_t slash = ofname.find_last_of("/");
   if ( slash != std::string::npos ) {
     ofname.erase(0,slash+1);
