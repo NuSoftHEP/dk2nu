@@ -79,10 +79,10 @@ void ConvertBookNtuple(std::string ofname = "test_dk2nu.root")
   treeFile = new TFile(ofname.c_str(),"RECREATE");
 
   dk2nuTree = new TTree("dk2nuTree","neutrino ntuple");
-  dk2nuTree->Branch("dk2nu","bsim::Dk2Nu",&dk2nu,32000,1);
+  dk2nuTree->Branch("dk2nu","bsim::Dk2Nu",&dk2nu,32000,99);
 
   dkmetaTree  = new TTree("dkmetaTree","neutrino ntuple metadata");
-  dkmetaTree->Branch("dkmeta","bsim::DkMeta",&dkmeta,32000,1);
+  dkmetaTree->Branch("dkmeta","bsim::DkMeta",&dkmeta,32000,99);
 }
 
 void ConvertFinish()
