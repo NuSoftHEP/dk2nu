@@ -85,7 +85,7 @@ int load_dk2nu(bool genie_too = false, bool cnvtinc = false,
   gROOT->ProcessLine(dip.Data());
 
   if ( cnvtinc ) {
-    for (int i = 0; i < ncnvt; ++i ) {
+    for (size_t i = 0; i < ncnvt; ++i ) {
       dip = ".include ";
       dip += path;
       dip += "/scripts/convert/";
