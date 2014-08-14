@@ -106,14 +106,14 @@ void test_fill_dk2nu(unsigned int nentries=1000)
   TFile* treeFile = new TFile("test_dk2nu.root","RECREATE");
 
   TTree* dk2nuTree = new TTree("dk2nuTree","neutrino ntuple");
-  dk2nuTree->Branch("dk2nu","bsim::Dk2Nu",&dk2nu,32000,1);
+  dk2nuTree->Branch("dk2nu","bsim::Dk2Nu",&dk2nu,32000,99);
 #ifdef ADD_NONSTD
   // extend the tree with additional branches without modifying std class
-  dk2nuTree->Branch("nonstdb","NonStd",&nonstd,32000,1);
+  dk2nuTree->Branch("nonstdb","NonStd",&nonstd,32000,99);
 #endif
 
   TTree* dkmetaTree  = new TTree("dkmetaTree","neutrino ntuple metadata");
-  dkmetaTree->Branch("dkmeta","bsim::DkMeta",&dkmeta,32000,1);
+  dkmetaTree->Branch("dkmeta","bsim::DkMeta",&dkmeta,32000,99);
 
   int myjob = 42;  // unique identifying job # for this series
 
