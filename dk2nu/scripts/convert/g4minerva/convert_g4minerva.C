@@ -22,6 +22,7 @@ void g4minervaCrossChecks(const g4minerva& g4minervaObj);
 
 void convert_g4minerva(string ifname="../fluxfiles/generic_g4minerva.root",
                        int jobnum=42,
+                       string dummyloc="",
                        Long64_t maxentries=-1,
                        Long64_t moddump=-1) // modulo for dump
 {
