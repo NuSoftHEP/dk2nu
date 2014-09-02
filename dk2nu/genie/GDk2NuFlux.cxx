@@ -162,7 +162,7 @@ bool GDk2NuFlux::GenerateNext(void)
        fMaxWeight = this->Weight() * fMaxWgtFudge; // bump the weight
        LOG("Flux", pERROR)
          << "** Fractional weight = " << f 
-         << " > 1 !! Bump fMaxWeight estimate to " << fMaxWeight
+         << " > 1 !! Bump fMaxWeight estimate to " << fMaxWeight << " "
          << fCurDk2Nu->AsString() << "\n" << fCurNuChoice->AsString();
        std::cout << std::flush;
      }
