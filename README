@@ -24,9 +24,14 @@ Subdirectories:
    genie    - interface to genie
    etc      - auxillary files (such a location text file)
    include  - 
+   lib      -
+   bin      -
    doc      - documentation
-   snippets - code fragments for common use
-   convert  - code to convert old ntuples to the new common format
+   scripts/  - 
+     load_dk2nu.C - example script for loading libraries into ROOT
+                    and making include/lib paths known to CINT/ACLiC
+     examples     - code fragments for common use
+     convert      - code to convert old ntuples to the new common format
 
 Building and packaging:
 
@@ -54,7 +59,10 @@ Environment variables:
 
 Use in ROOT or GENIE:
 
-   at the prompt use:
+   easy method:
+      root $DK2NU/scripts/load_dk2nu.C\(true,true\)
+
+   alternatively at the prompt use:
       .L $(DK2NU)/lib/libdk2nuTree.so
    or if export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${DK2NU}/lib"
       gSystem->Load("libdk2nuTree");
