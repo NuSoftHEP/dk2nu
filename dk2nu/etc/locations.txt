@@ -23,4 +23,5 @@
 # BooNE positions per Zarko Pavlovic private e-mail 2014-09-12
      2604.0     7864.0      74487.0   MiniBooNE
      5300.      7600.       67900.    MicroBooNE
+    19760.      5340.       33940.    SciBooNE
 #########################################################################
