@@ -15,7 +15,7 @@
 # 1112900.0  -416400.0   81055000.0   NOvA FarDet
 # updated from NuMIX-DocDB-17 v2 (Luke Corwin 2014-01-15)
      1157.0     -364.0      99335.0   NOvA NearDet
-  1103746.0  -416264.0   81042232.0   NOva FarDet
+  1103746.0  -416264.0   81042232.0   NOvA FarDet
 #########################################################################
 # BooNE
 # old from:  numisoft/g4numi/src/NumiDataInput.cc
