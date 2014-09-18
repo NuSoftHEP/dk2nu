@@ -1,6 +1,6 @@
 # "interesting" location in LBNE beam coordinates (cm)
 #
-        0.0        0.0       100000.  LBNE NearDet
+        0.0        0.0        45900.  LBNE NearDet
         0.0        0.0    129700000.  LBNE FarDet
 #                         1300km
 #
