@@ -17,6 +17,11 @@
      1157.0     -364.0      99335.0   NOvA NearDet
   1103746.0  -416264.0   81042232.0   NOvA FarDet
 #########################################################################
+# Minerva middle of the tracker (0,0,716.95cm) in the Minerva coord system.
+# from: private communication (Leo Aliaga Soplin 2014-09-17)
+#       and GENIE GNuMIFlux coordinate transformation R-2_8_4
+     -56.28  -53.29317     103231.9   Minerva
+#########################################################################
 # BooNE
 # old from:  numisoft/g4numi/src/NumiDataInput.cc
 #    2584.0     7842.0      74525.0   MiniBooNE
