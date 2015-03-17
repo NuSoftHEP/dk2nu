@@ -141,7 +141,9 @@ set(dk2nuGenie_LINKDEF ${PROJECT_SOURCE_DIR}/genie/LinkDef.h)
 set(dk2nuGenie_DICTIONARY ${CMAKE_CURRENT_BINARY_DIR}/dk2nuGenieDict)
 
 #MESSAGE("--DK2NU- about to ROOT_GENERATE_DICTIONARY ${dk2nuGenie_DICTIONARY}")
-ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}" LINKDEF "${dk2nuGenie_LINKDEF}" )
+# option -p = use compiler's preprocessor instead of CINT's
+# needed to handle GVersion.h  GRELCODE(2,9,0) construct
+ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}" LINKDEF "${dk2nuGenie_LINKDEF}" OPTIONS -p )
 
 # add dictionary to list of source files
 SET(dk2nuGenie_SRCS ${dk2nuGenie_SRCS} ${dk2nuGenie_DICTIONARY})
