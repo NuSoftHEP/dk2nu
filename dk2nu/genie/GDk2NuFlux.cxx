@@ -52,6 +52,13 @@
 #include "tree/NuChoice.h"
 #include "tree/calcLocationWeights.h"
 
+// need GDk2NuFlux header to register w/ factory
+#include "Conventions/GVersion.h"
+#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+#include "FluxDrivers/GFluxDriverFactory.h"
+FLUXDRIVERREG4(genie,flux,GDk2NuFlux,genie::flux::GDk2NuFlux)
+#endif
+
 #include <vector>
 #include <algorithm>
 #include <iomanip>
@@ -100,6 +107,9 @@ namespace genie {
 
 //____________________________________________________________________________
 GDk2NuFlux::GDk2NuFlux()
+#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+  : GFluxExposureI(genie::flux::kPOTs)
+#endif
 {
   this->Initialize();
 }
@@ -108,6 +118,14 @@ GDk2NuFlux::~GDk2NuFlux()
 {
   this->CleanUp();
 }
+//___________________________________________________________________________
+#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+double GDk2NuFlux::GetTotalExposure() const
+{
+  // complete the GFluxExposureI interface
+  return UsedPOTs();
+}
+#endif
 //___________________________________________________________________________
 int GDk2NuFlux::PdgCode(void)
 {
@@ -507,26 +525,8 @@ double GDk2NuFlux::POT_curr(void) {
 }
 
 //___________________________________________________________________________
-void GDk2NuFlux::LoadBeamSimData(string filename, string config )
-{
-// Loads a beam simulation root file into the GDk2NuFlux driver.
-  std::vector<std::string> filevec;
-  filevec.push_back(filename);
-  LoadBeamSimData(filevec,config); // call the one that takes a vector
-}
-
-//___________________________________________________________________________
-void GDk2NuFlux::LoadBeamSimData(std::set<string> fileset, string config )
-{
-// Loads a beam simulation root file into the GDk2NuFlux driver.
-  // have a set<> want a vector<>
-  std::vector<std::string> filevec;
-  std::copy(fileset.begin(),fileset.end(),std::back_inserter(filevec));
-  LoadBeamSimData(filevec,config); // call the one that takes a vector
-}
-
-//___________________________________________________________________________
-void GDk2NuFlux::LoadBeamSimData(std::vector<string> patterns, string config )
+void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
+                                 const std::string&         config )
 {
 // Loads in a beam simulation root file into the GDk2NuFlux driver.
 
@@ -1039,7 +1039,15 @@ void GDk2NuFlux::SetDefaults(void)
   this->SetNumOfCycles   (0);
   this->SetEntryReuse    (1);
 
-  this->SetXMLFile();
+  std::string xmlfile = "GNuMIFlux.xml";
+  const char* altxml = gSystem->Getenv("GDK2NUFLUXXML");
+  if ( ! altxml ) xmlfile = altxml;
+#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0) 
+  this->SetXMLFileBase(xmlfile);
+#else
+  this->SetXMLFile(xmlfile);
+#endif
+
 }
 //___________________________________________________________________________
 void GDk2NuFlux::ResetCurrent(void)
@@ -1166,10 +1174,6 @@ double GDk2NuFlux::LengthUnits(void) const
 
 bool GDk2NuFlux::LoadConfig(string cfg)
 {
-  const char* altxml = gSystem->Getenv("GDK2NUFLUXXML");
-  if ( altxml ) {
-    SetXMLFile(altxml);
-  }
   genie::flux::GDk2NuFluxXMLHelper helper(this);
   return helper.LoadConfig(cfg);
 }
@@ -1344,7 +1348,11 @@ std::vector<long int> GDk2NuFluxXMLHelper::GetIntVector(std::string str)
 
 bool GDk2NuFluxXMLHelper::LoadConfig(string cfg)
 {
+#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0) 
+  string fname = utils::xml::GetXMLFilePath(fGDk2NuFlux->GetXMLFileBase());
+#else
   string fname = utils::xml::GetXMLFilePath(fGDk2NuFlux->GetXMLFile());
+#endif
 
   bool is_accessible = ! (gSystem->AccessPathName(fname.c_str()));
   if (!is_accessible) {
