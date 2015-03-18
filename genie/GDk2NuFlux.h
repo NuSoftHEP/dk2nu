@@ -137,7 +137,6 @@ public :
 
   void      SetGenWeighted(bool genwgt=false) { fGenWeighted = genwgt; } ///< toggle whether GenerateNext() returns weight=1 flux (initial default false)
 
-  void      SetNumOfCycles(long int ncycle);                      ///< set how many times to cycle through the ntuple (default: 1 / n=0 means 'infinite')
   void      SetEntryReuse(long int nuse=1);                       ///<  # of times to use entry before moving to next
 
   void      ScanForMaxWeight(void);                               ///< scan for max flux weight (before generating unweighted flux neutrinos)
@@ -181,7 +180,12 @@ public :
   void      SetFluxSphere(TVector3  center, double  radius, bool inDetCoord=true);       ///< specification of a sphere
   void      GetFluxSphere(TVector3& center, double& radius, bool inDetCoord=true) const; ///< specification of a sphere
 
-  void      SetUpstreamZ(double z0);                           ///< set flux neutrino initial z position (upstream of the detector) pushed back from the flux window
+#if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
+  // migrated to GFluxFileConfigI
+  void      SetUpstreamZ(double z0);
+  void      SetNumOfCycles(long int ncycle);
+#endif
+
 
   //
   // Actual coordinate transformations  b=beam, u=user (e.g. detector)
@@ -250,7 +254,6 @@ private:
   long int  fMaxWgtEntries;       ///< # of entries in estimating max wgt
   double    fMaxEFudge;           ///< fudge factor for estmating max enu (0=> use fixed 120GeV)
 
-  long int  fNCycles;             ///< # times to cycle through the flux ntuple
   long int  fICycle;              ///< current file cycle
   long int  fNUse;                ///< how often to use same entry in a row
   long int  fIUse;                ///< current # of times an entry has been used
@@ -270,7 +273,6 @@ private:
   TLorentzVector   fBeamZero;       ///< beam origin in user coords
   TLorentzRotation fBeamRot;        ///< rotation applied beam --> user coord
   TLorentzRotation fBeamRotInv;
-  double           fZ0;             ///< configurable starting z position for each flux neutrino (in detector coord system)
 
   bool             fIsSphere;             ///< doing this on a sphere rather than a flat window?
   TVector3         fFluxWindowPtUser[3];  ///<  user points of flux window
