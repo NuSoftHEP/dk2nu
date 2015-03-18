@@ -32,6 +32,11 @@
 
 #include "EVGDrivers/GFluxI.h"
 #include "PDG/PDGUtils.h"
+#include "Conventions/GVersion.h"
+#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+  #include "FluxDrivers/GFluxExposureI.h"
+  #include "FluxDrivers/GFluxFileConfigI.h"
+#endif
 
 class TFile;
 class TChain;
@@ -47,7 +52,12 @@ namespace bsim {
 namespace genie {
 namespace flux  {
 
+#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0) 
+class GDk2NuFlux : public GFluxI, 
+    public GFluxExposureI, public GFluxFileConfigI {
+#else
 class GDk2NuFlux: public GFluxI {
+#endif
 
 public :
   GDk2NuFlux();
@@ -89,6 +99,14 @@ public :
   //
   // information about the current state
   //
+#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+  virtual double GetTotalExposure() const;  // GFluxExposureI interface
+#else
+  // these are elminated with the introduction of GFluxFileConfigI
+  void      SetXMLFile(string xmlbasename="GNuMIFlux.xml") 
+            { fXMLbasename = xmlbasename; }
+  std::string GetXMLFile() const { return fXMLbasename; }
+#endif
   double    POT_curr(void);             ///< current average POT (RWH?)
   double    UsedPOTs(void) const;       ///< # of protons-on-target used
   long int  NFluxNeutrinos(void) const { return fNNeutrinos; } ///< number of flux neutrinos looped so far
@@ -99,17 +117,19 @@ public :
 
   std::vector<std::string> GetFileList();  ///< list of files currently part of chain
 
+  // 
+  // GFluxFileConfigI interface
+  //
+  virtual void  LoadBeamSimData(const std::vector<string>& filenames,
+                                const std::string&         det_loc);
+  using GFluxFileConfigI::LoadBeamSimData; // inherit the rest
   //
   // configuration of GDk2NuFlux
   //
-  void      SetXMLFile(string xmlbasename="GNuMIFlux.xml") { fXMLbasename = xmlbasename; }  ///< set the name of the file that hold XML config param_sets
-  std::string GetXMLFile() const { return fXMLbasename; }  ///< return the name of the file that hold XML config param_sets
+  void      SetTreeNames(std::string fname = "dk2nuTree", 
+                         std::string mname = "dkmetaTree") 
+  { fTreeNames[0] = fname; fTreeNames[1] = mname; }
 
-  void      SetTreeNames(string fname = "dk2nuTree", string mname = "dkmetaTree") { fTreeNames[0] = fname; fTreeNames[1] = mname; }
-
-  void      LoadBeamSimData(std::vector<string> filenames, string det_loc);     ///< load root flux ntuple files and config
-  void      LoadBeamSimData(std::set<string>    filenames, string det_loc);     ///< load root flux ntuple files and config
-  void      LoadBeamSimData(string filename, string det_loc);     ///< older (obsolete) single file version
 
   bool      LoadConfig(string cfg);                               ///< load a named configuration
   void      SetFluxParticles(const PDGCodeList & particles);      ///< specify list of flux neutrino species
@@ -202,7 +222,10 @@ private:
   PDGCodeList *  fPdgCListRej;    ///< list of neutrino pdg-codes seen but rejected
   bool           fEnd;            ///< end condition reached
 
+#if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0) 
+  // incorporated into GFluxFileConfigI
   string    fXMLbasename;         ///< XML filename for config data
+#endif
   std::vector<string> fNuFluxFilePatterns;   ///< (potentially wildcarded) path(s)
 
   std::string fTreeNames[2];      ///< pair of names "dk2nuTree", "dkmetaTree"
