@@ -55,8 +55,8 @@
 // need GDk2NuFlux header to register w/ factory
 #include "Conventions/GVersion.h"
 #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
-#include "FluxDrivers/GFluxDriverFactory.h"
-FLUXDRIVERREG4(genie,flux,GDk2NuFlux,genie::flux::GDk2NuFlux)
+  #include "FluxDrivers/GFluxDriverFactory.h"
+  FLUXDRIVERREG4(genie,flux,GDk2NuFlux,genie::flux::GDk2NuFlux)
 #endif
 
 #include <vector>
@@ -664,6 +664,27 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
   this->CalcEffPOTsPerNu();
   
 }
+#if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
+// migrated to GFluxFileConfigI
+void GDk2NuFlux::SetUpstreamZ(double z0) { fZ0 = z0; }
+void GDk2NuFlux::SetNumOfCycles(long int ncycle) { fNCycles = TMath::Max(0L, ncycle); }
+void GDk2NuFlux::LoadBeamSimData(std::set<string> fileset, string config)
+{
+  // have a set<> want a vector<>
+  std::vector<std::string> filevec;
+  std::copy(fileset.begin(),fileset.end(),std::back_inserter(filevec));
+  LoadBeamSimData(filevec,config); // call the one that takes a vector
+}
+void GDk2NuFlux::LoadBeamSimData(string filename, string config)
+{
+  // Loads a beam simulation root file into the GDk2NuFlux driver.
+  std::vector<std::string> filevec;
+  filevec.push_back(filename);
+  LoadBeamSimData(filevec,config); // call the one that takes a vector
+}
+
+#endif
+
 //___________________________________________________________________________
 void GDk2NuFlux::ScanForMaxWeight(void)
 {
@@ -986,6 +1007,7 @@ void GDk2NuFlux::Initialize(void)
 
 #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
   // migrated to GFluxFileConfigI
+  fXMLbasename     = "GNuMIFlux.xml"; 
   fNCycles         =  0;
   fZ0              =  -3.4e38;
 #endif
@@ -993,11 +1015,6 @@ void GDk2NuFlux::Initialize(void)
   this->SetDefaults();
   this->ResetCurrent();
 }
-#if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
-// migrated to GFluxFileConfigI
-void GDk2NuFlux::SetUpstreamZ(double z0) { fZ0 = z0; }
-void GDk2NuFlux::SetNumOfCycles(long int ncycle) { fNCycles = TMath::Max(0L, ncycle); }
-#endif
 //___________________________________________________________________________
 void GDk2NuFlux::SetDefaults(void)
 {

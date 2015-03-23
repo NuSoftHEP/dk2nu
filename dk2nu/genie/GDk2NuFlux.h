@@ -122,7 +122,13 @@ public :
   //
   virtual void  LoadBeamSimData(const std::vector<string>& filenames,
                                 const std::string&         det_loc);
+#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0) 
   using GFluxFileConfigI::LoadBeamSimData; // inherit the rest
+#else
+  void      LoadBeamSimData(std::set<string>    filenames, string det_loc);     ///< load root flux ntuple files and config
+  void      LoadBeamSimData(string filename, string det_loc);     ///< older (obsolete) single file version
+
+#endif
   //
   // configuration of GDk2NuFlux
   //
@@ -186,7 +192,6 @@ public :
   void      SetNumOfCycles(long int ncycle);
 #endif
 
-
   //
   // Actual coordinate transformations  b=beam, u=user (e.g. detector)
   //
@@ -229,7 +234,10 @@ private:
 #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0) 
   // incorporated into GFluxFileConfigI
   string    fXMLbasename;         ///< XML filename for config data
+  double    fZ0;                  ///< configurable starting z position for each flux neutrino (in detector coord system)
+  long int  fNCycles;             ///< # times to cycle through the flux ntuple
 #endif
+
   std::vector<string> fNuFluxFilePatterns;   ///< (potentially wildcarded) path(s)
 
   std::string fTreeNames[2];      ///< pair of names "dk2nuTree", "dkmetaTree"
