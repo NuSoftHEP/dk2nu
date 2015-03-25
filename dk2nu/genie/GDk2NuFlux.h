@@ -138,7 +138,7 @@ public :
 
 
   bool      LoadConfig(string cfg);                               ///< load a named configuration
-  void      SetFluxParticles(const PDGCodeList & particles);      ///< specify list of flux neutrino species
+
   void      SetMaxEnergy(double Ev);                              ///< specify maximum flx neutrino energy
 
   void      SetGenWeighted(bool genwgt=false) { fGenWeighted = genwgt; } ///< toggle whether GenerateNext() returns weight=1 flux (initial default false)
@@ -190,6 +190,7 @@ public :
   // migrated to GFluxFileConfigI
   void      SetUpstreamZ(double z0);
   void      SetNumOfCycles(long int ncycle);
+  void      SetFluxParticles(const PDGCodeList & particles);
 #endif
 
   //
@@ -227,12 +228,12 @@ private:
   // Private data members
   //
   double         fMaxEv;          ///< maximum energy
-  PDGCodeList *  fPdgCList;       ///< list of neutrino pdg-codes to generate
   PDGCodeList *  fPdgCListRej;    ///< list of neutrino pdg-codes seen but rejected
   bool           fEnd;            ///< end condition reached
 
 #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0) 
   // incorporated into GFluxFileConfigI
+  PDGCodeList *  fPdgCList;       ///< list of neutrino pdg-codes to generate
   string    fXMLbasename;         ///< XML filename for config data
   double    fZ0;                  ///< configurable starting z position for each flux neutrino (in detector coord system)
   long int  fNCycles;             ///< # times to cycle through the flux ntuple

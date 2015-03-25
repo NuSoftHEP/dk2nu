@@ -682,7 +682,16 @@ void GDk2NuFlux::LoadBeamSimData(string filename, string config)
   filevec.push_back(filename);
   LoadBeamSimData(filevec,config); // call the one that takes a vector
 }
+void GDk2NuFlux::SetFluxParticles(const PDGCodeList & particles)
+{
+  if (!fPdgCList) {
+     fPdgCList = new PDGCodeList;
+  }
+  fPdgCList->Copy(particles);
 
+  LOG("Flux", pINFO)
+    << "Declared list of neutrino species: " << *fPdgCList;
+}
 #endif
 
 //___________________________________________________________________________
@@ -726,17 +735,6 @@ void GDk2NuFlux::ScanForMaxWeight(void)
   LOG("Flux", pNOTICE) << "Maximum flux weight = " << fMaxWeight 
                        << ", energy = " << fMaxEv;
 
-}
-//___________________________________________________________________________
-void GDk2NuFlux::SetFluxParticles(const PDGCodeList & particles)
-{
-  if (!fPdgCList) {
-     fPdgCList = new PDGCodeList;
-  }
-  fPdgCList->Copy(particles);
-
-  LOG("Flux", pINFO)
-    << "Declared list of neutrino species: " << *fPdgCList;
 }
 //___________________________________________________________________________
 void GDk2NuFlux::SetMaxEnergy(double Ev)
