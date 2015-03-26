@@ -1042,7 +1042,7 @@ void GDk2NuFlux::SetDefaults(void)
 
   std::string xmlfile = "GNuMIFlux.xml";
   const char* altxml = gSystem->Getenv("GDK2NUFLUXXML");
-  if ( ! altxml ) xmlfile = altxml;
+  if ( altxml ) xmlfile = altxml;
 #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0) 
   this->SetXMLFileBase(xmlfile);
 #else
