@@ -343,6 +343,12 @@ int ConvertGeantToPdg(int geant_code, std::string tag="?")
   if (geant_code == 47) return kPdgAlpha;
   if (geant_code == 49) return kPdgHe3;
 
+  // NuMI ntuples have an odd neutrino "geant" convention
+  if (geant_code == 56) return 14;    // NuMU  
+  if (geant_code == 55) return -14;   // ANuMU  
+  if (geant_code == 53) return 12;    // NuE  
+  if (geant_code == 52) return -12;   // ANuE 
+
   if (geant_code != 0 ) 
     std::cerr << "## Can not convert geant code: " << geant_code
               << " to PDG  (" << tag << ")" << std::endl;
@@ -364,6 +370,35 @@ int Convert5xToPdg(int old_ntype)
     assert(0);
   }
   return 0;
+}
+
+//____________________________________________________________________________
+
+TString ConvertFlukaInteractionCodeToString(int interactionCode)
+{
+
+  TString interactionString = "null";
+
+  if(interactionCode == 100) interactionString = "elastic";
+  if(interactionCode == 101) interactionString = "inelastic";
+  if(interactionCode == 102) interactionString = "decaySecondaries";
+  if(interactionCode == 103) interactionString = "deltaRay";
+  if(interactionCode == 104) interactionString = "pairProduction";
+  if(interactionCode == 105) interactionString = "bremsstrahlung";
+  if(interactionCode == 110) interactionString = "decayProducts";
+  if(interactionCode == 208) interactionString = "bremsstrahlung";
+  if(interactionCode == 210) interactionString = "moller";
+  if(interactionCode == 212) interactionString = "bhabha";
+  if(interactionCode == 214) interactionString = "inFlightAnnihilation";
+  if(interactionCode == 215) interactionString = "annihilationAtRest";
+  if(interactionCode == 217) interactionString = "pairProduction";
+  if(interactionCode == 219) interactionString = "comptonScattering";
+  if(interactionCode == 221) interactionString = "photoelectric";
+  if(interactionCode == 225) interactionString = "rayleighScattering";
+  if(interactionCode == 300) interactionString = "interactionSecndaries";
+  if(interactionCode == 400) interactionString = "deltaRay";
+
+  return interactionString;
 }
 
 //____________________________________________________________________________

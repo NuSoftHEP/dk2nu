@@ -17,11 +17,12 @@ using namespace std;
 #include "convert/common_convert.C"
 #include "convert/flugg/flugg.C"
 
-void copy_flugg_to_dk2nu(const flugg& fluggObj);
+void copy_flugg_to_dk2nu(const flugg& fluggObj, string volumeFilePath);
 void fluggCrossChecks(const flugg& fluggObj, string inputloc);
 
 void convert_flugg(string ifname="../fluxfiles/generic_flugg.root",
                    int jobnum=42,
+                   string volumeFilePath="../fluxfiles/g4numi001_Volumes_index.inp", // Fluka Volumes File 
                    string inputloc="MINOS",  // "MINOS"or "NOvA" for xcheck
                    Long64_t maxentries=-1,
                    Long64_t moddump=-1) // modulo for dump
@@ -82,7 +83,7 @@ void convert_flugg(string ifname="../fluxfiles/generic_flugg.root",
     dk2nu->clear(); //  !!! important !!! always do this
 
     // fill the dk2nu object from the flugg entry
-    copy_flugg_to_dk2nu(fluggObj);
+    copy_flugg_to_dk2nu(fluggObj, volumeFilePath);
 
     // fill location specific p3, energy and weights
     // locations to fill are in the metadata
@@ -127,7 +128,7 @@ void convert_flugg(string ifname="../fluxfiles/generic_flugg.root",
   fin->Close();
 }
 
-void copy_flugg_to_dk2nu(const flugg& fluggObj)
+void copy_flugg_to_dk2nu(const flugg& fluggObj, string volumeFilePath)
 {
   // fill the global dk2nu object
 
@@ -205,6 +206,45 @@ void copy_flugg_to_dk2nu(const flugg& fluggObj)
   //not-in-new//dk2nu->beampz   = fluggObj.protonPz;
 
   //no-equiv//  dk2nu->tgptype  = fluggObj.tgptype;
+
+
+
+  // now copy ancestor history - added by Marco on 4-29-2015
+
+  int nmx = fluggObj.ancestor; // number of intermediate levels
+  for (int ian=0; ian < nmx; ++ian) {
+
+    bsim::Ancestor ancestor;
+
+    ancestor.pdg = ConvertGeantToPdg(fluggObj.track_pdg[ian],"ancestor_track_pdg");
+    ancestor.SetStartXYZT(fluggObj.startx[ian],  // cm
+                          fluggObj.starty[ian],  // cm 
+                          fluggObj.startz[ian],  // cm 
+                          fluggObj.startt[ian]); // cm 
+    ancestor.SetStartP(fluggObj.startpx[ian],  // GeV
+                       fluggObj.startpy[ian],  // GeV
+                       fluggObj.startpz[ian]); // GeV
+    ancestor.SetStopP(fluggObj.stoppx[ian],
+                      fluggObj.stoppy[ian],
+                      fluggObj.stoppz[ian]);
+    //ancestor.SetPProdP(0,
+    //                   0,
+    //                   0);
+
+    // ancestor.polx = ancestor.poly = ancestor.polz = ?
+    // ancestor.nucleau = ?
+
+    TString procString, volumeString;
+    procString = ConvertFlukaInteractionCodeToString(fluggObj.proc[ian]);
+    ancestor.proc = procString.Data();
+    volumeString = ConvertVolumeCodeToString(fluggObj.ivol[ian],volumeFilePath);
+    ancestor.ivol = volumeString.Data();
+
+    ancestor.parIndex = fluggObj.parIndex[ian];
+
+    dk2nu->ancestor.push_back(ancestor);
+  }
+
 
 }
 
