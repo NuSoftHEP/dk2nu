@@ -96,6 +96,25 @@ public :
    Double_t        tp;
    Double_t        tpt;
 
+//   const Int_t ARRAY_MAX = 10000;
+
+   Int_t           ancestor;
+   Int_t           track_pdg[10000];
+   Int_t           parent_pdg[10000];
+   Double_t        startx[10000];
+   Double_t        starty[10000];
+   Double_t        startz[10000];
+   Double_t        startt[10000];
+   Double_t        startpx[10000];
+   Double_t        startpy[10000];
+   Double_t        startpz[10000];
+   Double_t        stoppx[10000];
+   Double_t        stoppy[10000];
+   Double_t        stoppz[10000];
+   Int_t           parIndex[10000];
+   Int_t           proc[10000];
+   Int_t           ivol[10000];
+
    // List of branches
    TBranch        *b_run;   //!
    TBranch        *b_evtno;   //!
@@ -170,6 +189,23 @@ public :
    TBranch        *b_tvr;   //!
    TBranch        *b_tp;   //!
    TBranch        *b_tpt;   //!
+
+   TBranch        *b_ancestor;   //!
+   TBranch        *b_track_pdg;   //!
+   TBranch        *b_parent_pdg;   //!
+   TBranch        *b_startx;   //!
+   TBranch        *b_starty;   //!
+   TBranch        *b_startz;   //!
+   TBranch        *b_startt;   //!
+   TBranch        *b_startpx;   //!
+   TBranch        *b_startpy;   //!
+   TBranch        *b_startpz;   //!
+   TBranch        *b_stoppx;   //!
+   TBranch        *b_stoppy;   //!
+   TBranch        *b_stoppz;   //!
+   TBranch        *b_parIndex;   //!
+   TBranch        *b_proc;   //!
+   TBranch        *b_ivol;   //!
 
    flugg(TTree *tree=0);
    virtual ~flugg();
@@ -314,6 +350,24 @@ void flugg::Init(TTree *tree)
    fChain->SetBranchAddress("tvr", &tvr, &b_tvr);
    fChain->SetBranchAddress("tp", &tp, &b_tp);
    fChain->SetBranchAddress("tpt", &tpt, &b_tpt);
+
+   fChain->SetBranchAddress("ancestor", &ancestor, &b_ancestor);
+   fChain->SetBranchAddress("track_pdg", track_pdg, &b_track_pdg);
+   fChain->SetBranchAddress("parent_pdg", parent_pdg, &b_parent_pdg);
+   fChain->SetBranchAddress("startx", startx, &b_startx);
+   fChain->SetBranchAddress("starty", starty, &b_starty);
+   fChain->SetBranchAddress("startz", startz, &b_startz);
+   fChain->SetBranchAddress("startt", startt, &b_startt);
+   fChain->SetBranchAddress("startpx", startpx, &b_startpx);
+   fChain->SetBranchAddress("startpy", startpy, &b_startpy);
+   fChain->SetBranchAddress("startpz", startpz, &b_startpz);
+   fChain->SetBranchAddress("stoppx", stoppx, &b_stoppx);
+   fChain->SetBranchAddress("stoppy", stoppy, &b_stoppy);
+   fChain->SetBranchAddress("stoppz", stoppz, &b_stoppz);
+   fChain->SetBranchAddress("parIndex", parIndex, &b_parIndex);
+   fChain->SetBranchAddress("proc", proc, &b_proc);
+   fChain->SetBranchAddress("ivol", ivol, &b_ivol);
+
    Notify();
 }
 

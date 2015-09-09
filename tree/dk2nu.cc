@@ -100,8 +100,9 @@ void bsim::Ancestor::clear(const std::string &)
   startpx = startpy = startpz = bsim::kDfltDouble;
   stoppx = stoppy = stoppz = bsim::kDfltDouble;
   polx = poly = polz = bsim::kDfltDouble;
-  pprodpx = pprodpy = pprodpz = bsim::kDfltDouble;
+  //pprodpx = pprodpy = pprodpz = bsim::kDfltDouble;
   nucleus = 0;  // not a legal PDG code
+  parIndex = -1; // not legal, should be a positive integer
   proc = "<<no-process>>";
   ivol = "<<no-volume>>";
 }
@@ -113,7 +114,7 @@ std::string bsim::Ancestor::AsString(const std::string& /* opt */) const
   s << "     startx  {" << startx << "," << starty << "," << startz 
     << ";t=" << startt << "}\n";
   s << "     startpx {" << startpx << "," << startpy << "," << startpz << "}\n";
-  s << "     pprodpx {" << pprodpx << "," << pprodpy << "," << pprodpz << "}\n";
+  //s << "     pprodpx {" << pprodpx << "," << pprodpy << "," << pprodpz << "}\n";
   s << "     stoppx  {" << stoppx << "," << stoppy << "," << stoppz << "}";
   //last line shouldn't have endl << "\n";
   return s.str();
@@ -124,8 +125,8 @@ void bsim::Ancestor::SetStartP(Double_t px, Double_t py, Double_t pz)
 { startpx = px; startpy = py; startpz = pz; }
 void bsim::Ancestor::SetStopP(Double_t px, Double_t py, Double_t pz)
 { stoppx = px; stoppy = py; stoppz = pz; }
-void bsim::Ancestor::SetPProdP(Double_t px, Double_t py, Double_t pz)
-{ pprodpx = px; pprodpy = py; pprodpz = pz; }
+//void bsim::Ancestor::SetPProdP(Double_t px, Double_t py, Double_t pz)
+//{ pprodpx = px; pprodpy = py; pprodpz = pz; }
 
 Double_t bsim::Ancestor::r() const 
 { return TMath::Sqrt(startx*startx+starty*starty); }
@@ -137,10 +138,83 @@ Double_t bsim::Ancestor::stoppt() const
 { return TMath::Sqrt(stoppx*stoppx+stoppy*stoppy); }
 Double_t bsim::Ancestor::stopp() const
 { return TMath::Sqrt(stoppx*stoppx+stoppy*stoppy+stoppz*stoppz); }
-Double_t bsim::Ancestor::pprodpt() const
-{ return TMath::Sqrt(pprodpx*pprodpx+pprodpy*pprodpy); }
-Double_t bsim::Ancestor::pprodp() const
-{ return TMath::Sqrt(pprodpx*pprodpx+pprodpy*pprodpy+pprodpz*pprodpz); }
+
+// helper function added by Marco
+bool bsim::Ancestor::IsInTarget()
+{
+  TString volumeString = ivol;
+  if(volumeString.CompareTo("TargetM")==0) return true;
+  if(volumeString.CompareTo("Budal_H")==0) return true;
+  if(volumeString.CompareTo("Budal_V")==0) return true;
+  if(volumeString.CompareTo("TGT1")==0)    return true;
+  if(volumeString.CompareTo("TGT1001")==0) return true;
+  if(volumeString.CompareTo("TGT1002")==0) return true;
+  if(volumeString.CompareTo("TGT1003")==0) return true;
+  if(volumeString.CompareTo("TGT1004")==0) return true;
+  if(volumeString.CompareTo("TGT1005")==0) return true;
+  if(volumeString.CompareTo("TGT1006")==0) return true;
+  if(volumeString.CompareTo("TGT1007")==0) return true;
+  if(volumeString.CompareTo("TGT1008")==0) return true;
+  if(volumeString.CompareTo("TGT1009")==0) return true;
+  if(volumeString.CompareTo("TGT1010")==0) return true;
+  if(volumeString.CompareTo("TGT1011")==0) return true;
+  if(volumeString.CompareTo("TGT1012")==0) return true;
+  if(volumeString.CompareTo("TGT1013")==0) return true;
+  if(volumeString.CompareTo("TGT1014")==0) return true;
+  if(volumeString.CompareTo("TGT1015")==0) return true;
+  if(volumeString.CompareTo("TGT1016")==0) return true;
+  if(volumeString.CompareTo("TGT1017")==0) return true;
+  if(volumeString.CompareTo("TGT1018")==0) return true;
+  if(volumeString.CompareTo("TGT1019")==0) return true;
+  if(volumeString.CompareTo("TGT1020")==0) return true;
+  if(volumeString.CompareTo("TGT1021")==0) return true;
+  if(volumeString.CompareTo("TGT1022")==0) return true;
+  if(volumeString.CompareTo("TGT1023")==0) return true;
+  if(volumeString.CompareTo("TGT1024")==0) return true;
+  if(volumeString.CompareTo("TGT1025")==0) return true;
+  if(volumeString.CompareTo("TGT1026")==0) return true;
+  if(volumeString.CompareTo("TGT1027")==0) return true;
+  if(volumeString.CompareTo("TGT1028")==0) return true;
+  if(volumeString.CompareTo("TGT1029")==0) return true;
+  if(volumeString.CompareTo("TGT1030")==0) return true;
+  if(volumeString.CompareTo("TGT1031")==0) return true;
+  if(volumeString.CompareTo("TGT1032")==0) return true;
+  if(volumeString.CompareTo("TGT1033")==0) return true;
+  if(volumeString.CompareTo("TGT1034")==0) return true;
+  if(volumeString.CompareTo("TGT1035")==0) return true;
+  if(volumeString.CompareTo("TGT1036")==0) return true;
+  if(volumeString.CompareTo("TGT1037")==0) return true;
+  if(volumeString.CompareTo("TGT1038")==0) return true;
+  if(volumeString.CompareTo("TGT1039")==0) return true;
+  if(volumeString.CompareTo("TGT1040")==0) return true;
+  if(volumeString.CompareTo("TGT1041")==0) return true;
+  if(volumeString.CompareTo("TGT1042")==0) return true;
+  if(volumeString.CompareTo("TGT1043")==0) return true;
+  if(volumeString.CompareTo("TGT1044")==0) return true;
+  if(volumeString.CompareTo("TGT1045")==0) return true;
+  if(volumeString.CompareTo("TGT1046")==0) return true;
+  if(volumeString.CompareTo("TGT1047")==0) return true;
+  if(volumeString.CompareTo("TGT1048")==0) return true;
+  if(volumeString.CompareTo("TargetB")==0) return true;
+  if(volumeString.CompareTo("Outside")==0) return true;
+  if(volumeString.CompareTo("CasingW")==0) return true;
+  if(volumeString.CompareTo("InsideC")==0) return true;
+  if(volumeString.CompareTo("TargetD")==0) return true;
+  if(volumeString.CompareTo("Target001")==0) return true;
+  if(volumeString.CompareTo("TargetU")==0) return true;
+  if(volumeString.CompareTo("Target002")==0) return true;
+  if(volumeString.CompareTo("Target003")==0) return true;
+  if(volumeString.CompareTo("Pressin")==0) return true;
+  if(volumeString.CompareTo("Cooling")==0) return true;
+  if(volumeString.CompareTo("Cooli001")==0) return true;
+  if(volumeString.CompareTo("Cooli002")==0) return true;
+  return false;
+}
+
+//Double_t bsim::Ancestor::pprodpt() const
+//{ return TMath::Sqrt(pprodpx*pprodpx+pprodpy*pprodpy); }
+//Double_t bsim::Ancestor::pprodp() const
+//{ return TMath::Sqrt(pprodpx*pprodpx+pprodpy*pprodpy+pprodpz*pprodpz); }
 
 std::ostream& operator<<(std::ostream& os, const bsim::Ancestor& ancestor)
 {
