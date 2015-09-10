@@ -30,7 +30,8 @@
 #include <vector>
 #include <string>
 
-#define DK2NUVER 9   // KEEP THIS UP-TO-DATE!  increment for each change
+#define DK2NUVER 10   // KEEP THIS UP-TO-DATE!  increment for each change
+#define KEEP_ANCESTOR_PPRODPXYZ 1
 
 namespace bsim {
   /**
@@ -207,9 +208,11 @@ namespace bsim {
     //                contains a parent elastic interaction.
     //                I'm gettint rid of these variables and I'll add a
     //                parIndex instead, see following.
-    // Double_t pprodpx;  ///< parent x momentum when producing this particle
-    // Double_t pprodpy;  ///< parent y momentum when producing this particle
-    // Double_t pprodpz;  ///< parent z momentum when producing this particle
+#ifdef KEEP_ANCESTOR_PPRODPXYZ
+    Double_t pprodpx;  ///< parent x momentum when producing this particle
+    Double_t pprodpy;  ///< parent y momentum when producing this particle
+    Double_t pprodpz;  ///< parent z momentum when producing this particle
+#endif
     
     Int_t    nucleus;  ///< nucleus (PDG) type causing the scatter
 
@@ -242,8 +245,10 @@ namespace bsim {
     // helper functions added by Marco
     bool        IsInTarget();
 
-    //Double_t    pprodpt() const;
-    //Double_t    pprodp() const;
+#ifdef KEEP_ANCESTOR_PPRODPXYZ
+    Double_t    pprodpt() const;
+    Double_t    pprodp() const;
+#endif
 
   private:
     ClassDef(bsim::Ancestor,DK2NUVER)

@@ -100,7 +100,9 @@ void bsim::Ancestor::clear(const std::string &)
   startpx = startpy = startpz = bsim::kDfltDouble;
   stoppx = stoppy = stoppz = bsim::kDfltDouble;
   polx = poly = polz = bsim::kDfltDouble;
-  //pprodpx = pprodpy = pprodpz = bsim::kDfltDouble;
+#ifdef KEEP_ANCESTOR_PPRODPXYZ
+  pprodpx = pprodpy = pprodpz = bsim::kDfltDouble;
+#endif
   nucleus = 0;  // not a legal PDG code
   parIndex = -1; // not legal, should be a positive integer
   proc = "<<no-process>>";
@@ -114,7 +116,9 @@ std::string bsim::Ancestor::AsString(const std::string& /* opt */) const
   s << "     startx  {" << startx << "," << starty << "," << startz 
     << ";t=" << startt << "}\n";
   s << "     startpx {" << startpx << "," << startpy << "," << startpz << "}\n";
-  //s << "     pprodpx {" << pprodpx << "," << pprodpy << "," << pprodpz << "}\n";
+#ifdef KEEP_ANCESTOR_PPRODPXYZ
+  s << "     pprodpx {" << pprodpx << "," << pprodpy << "," << pprodpz << "}\n";
+#endif
   s << "     stoppx  {" << stoppx << "," << stoppy << "," << stoppz << "}";
   //last line shouldn't have endl << "\n";
   return s.str();
@@ -125,8 +129,11 @@ void bsim::Ancestor::SetStartP(Double_t px, Double_t py, Double_t pz)
 { startpx = px; startpy = py; startpz = pz; }
 void bsim::Ancestor::SetStopP(Double_t px, Double_t py, Double_t pz)
 { stoppx = px; stoppy = py; stoppz = pz; }
-//void bsim::Ancestor::SetPProdP(Double_t px, Double_t py, Double_t pz)
-//{ pprodpx = px; pprodpy = py; pprodpz = pz; }
+
+#ifdef KEEP_ANCESTOR_PPRODPXYZ
+void bsim::Ancestor::SetPProdP(Double_t px, Double_t py, Double_t pz)
+{ pprodpx = px; pprodpy = py; pprodpz = pz; }
+#endif
 
 Double_t bsim::Ancestor::r() const 
 { return TMath::Sqrt(startx*startx+starty*starty); }
@@ -211,10 +218,12 @@ bool bsim::Ancestor::IsInTarget()
   return false;
 }
 
-//Double_t bsim::Ancestor::pprodpt() const
-//{ return TMath::Sqrt(pprodpx*pprodpx+pprodpy*pprodpy); }
-//Double_t bsim::Ancestor::pprodp() const
-//{ return TMath::Sqrt(pprodpx*pprodpx+pprodpy*pprodpy+pprodpz*pprodpz); }
+#ifdef KEEP_ANCESTOR_PPRODPXYZ
+Double_t bsim::Ancestor::pprodpt() const
+{ return TMath::Sqrt(pprodpx*pprodpx+pprodpy*pprodpy); }
+Double_t bsim::Ancestor::pprodp() const
+{ return TMath::Sqrt(pprodpx*pprodpx+pprodpy*pprodpy+pprodpz*pprodpz); }
+#endif
 
 std::ostream& operator<<(std::ostream& os, const bsim::Ancestor& ancestor)
 {
