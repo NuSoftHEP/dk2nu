@@ -11,6 +11,9 @@
 #include <iomanip>
 #include <cassert>
 #include <map>
+#include <cstring>
+#include <fstream>
+#include <stdlib.h>
   
 #include <float.h> // FLT_EPSILON and DBL_EPSILON definitions used for
                    // floating point comparisons
@@ -19,6 +22,7 @@
 #include "TTree.h"
 #include "TRandom3.h"
 #include "TH1D.h"
+#include "TString.h"
 
 // dk2nu headers
 #include "tree/dk2nu.h"
@@ -344,10 +348,10 @@ int ConvertGeantToPdg(int geant_code, std::string tag="?")
   if (geant_code == 49) return kPdgHe3;
 
   // NuMI ntuples have an odd neutrino "geant" convention
-  if (geant_code == 56) return 14;    // NuMU  
-  if (geant_code == 55) return -14;   // ANuMU  
-  if (geant_code == 53) return 12;    // NuE  
-  if (geant_code == 52) return -12;   // ANuE 
+  if (geant_code == 56) return  14;   // nu_mu  
+  if (geant_code == 55) return -14;   // nu_mu_bar 
+  if (geant_code == 53) return  12;   // nu_e
+  if (geant_code == 52) return -12;   // nu_e_bar  
 
   if (geant_code != 0 ) 
     std::cerr << "## Can not convert geant code: " << geant_code
@@ -399,6 +403,74 @@ TString ConvertFlukaInteractionCodeToString(int interactionCode)
   if(interactionCode == 400) interactionString = "deltaRay";
 
   return interactionString;
+}
+
+//____________________________________________________________________________
+
+TString ConvertVolumeCodeToString(int volumeCode, string volumeFilePath){
+
+  TString FlukaName;
+  TString GeantName;
+
+  // Open the Fluka Volumes file
+  ifstream volumeFile;
+  volumeFile.open(volumeFilePath.c_str());
+
+  if(volumeCode==-2222){
+    FlukaName = "not-defined";
+    return FlukaName;
+  }
+
+  // Make sure the file opened properly
+  if(!volumeFile.good()) {
+    std::cout << "Error opening Volumes file." << std::endl;
+    FlukaName="ErrorOpeningVolumeFile";
+    return FlukaName;
+  }
+
+  // Variables for file reading
+  const int maxChar = 1024;    // Max number of characters to read from a single line from the input file
+  char volumeLine[maxChar];   // Array to hold a single line from the input file
+  bool volumeFound = false;   // Flag whether the requested input volume has been found
+
+  // Loop over lines from the input file until the volume is found or the end of the file is reached
+  while(!(volumeFound || volumeFile.eof())) {
+    // Get the next line
+    if(volumeFile.getline(volumeLine, maxChar).fail()) {
+      std::cout << "Error accessing the next line. " << std::endl
+                << "It may just be the end of the file, "
+                << "and the EOF bit may not have been set as expected." << std::endl;
+      break;
+    }
+
+    // Make a std::string from the char array
+    // This must be done BEFORE tokenizing the character array,
+    // as strtok "destroys" the array as it goes
+    std::string stringLine(volumeLine);
+
+    // Get the first set of contiguous characters that skips leading and contains no spaces
+    // token is the number that labels the volume
+    char* token = strtok(volumeLine, " ");
+    double number = atof(token);
+
+
+    if(number==volumeCode) {
+      // If the input volume number is in the current line, set the boolean flag to terminate the while loop
+      volumeFound = true;
+      GeantName = strtok(NULL, " ");  // this is Geant volume name
+      FlukaName = strtok(NULL, " ");  // this is Fluka volume name
+    }
+  } // end of loop until volume number is found or end of the location file is reached
+
+    // If the volume was not found, warn the user and exit
+  if(!volumeFound) {
+    std::cout << "Could not find the following volume " <<volumeCode << "." << std::endl;
+    FlukaName="FlukaVolumeNameNotFound";
+    return FlukaName;
+  }
+
+  //If everything went smoothly, return the FlukaName of the volume 
+  return FlukaName;
 }
 
 //____________________________________________________________________________
