@@ -965,8 +965,11 @@ void GDk2NuFlux::Initialize(void)
 
   fMaxEv           =  0;
   fEnd             =  false;
+
+#if __GENIE_RELEASE_CODE__ <= GRELCODE(2,9,0)
   fPdgCList        = new PDGCodeList;
   fPdgCListRej     = new PDGCodeList;
+#endif
 
   fTreeNames[0]    = "dk2nuTree";
   fTreeNames[1]    = "dkmetaTree";

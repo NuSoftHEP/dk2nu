@@ -103,9 +103,9 @@ public :
   virtual double GetTotalExposure() const;  // GFluxExposureI interface
 #else
   // these are elminated with the introduction of GFluxFileConfigI
-  void      SetXMLFile(string xmlbasename="GNuMIFlux.xml") 
-            { fXMLbasename = xmlbasename; }
-  std::string GetXMLFile() const { return fXMLbasename; }
+  void                   SetXMLFile(string xmlbasename="GNuMIFlux.xml") 
+                              { fXMLbasename = xmlbasename; }
+  std::string            GetXMLFile() const { return fXMLbasename; }
 #endif
   double    POT_curr(void);             ///< current average POT (RWH?)
   double    UsedPOTs(void) const;       ///< # of protons-on-target used
@@ -228,15 +228,17 @@ private:
   // Private data members
   //
   double         fMaxEv;          ///< maximum energy
-  PDGCodeList *  fPdgCListRej;    ///< list of neutrino pdg-codes seen but rejected
+
   bool           fEnd;            ///< end condition reached
 
 #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0) 
   // incorporated into GFluxFileConfigI
   PDGCodeList *  fPdgCList;       ///< list of neutrino pdg-codes to generate
+  PDGCodeList *  fPdgCListRej;    ///< list of neutrino pdg-codes seen but rejected
   string    fXMLbasename;         ///< XML filename for config data
   double    fZ0;                  ///< configurable starting z position for each flux neutrino (in detector coord system)
   long int  fNCycles;             ///< # times to cycle through the flux ntuple
+  long int  fICycle;              ///< current file cycle
 #endif
 
   std::vector<string> fNuFluxFilePatterns;   ///< (potentially wildcarded) path(s)
@@ -263,7 +265,6 @@ private:
   long int  fMaxWgtEntries;       ///< # of entries in estimating max wgt
   double    fMaxEFudge;           ///< fudge factor for estmating max enu (0=> use fixed 120GeV)
 
-  long int  fICycle;              ///< current file cycle
   long int  fNUse;                ///< how often to use same entry in a row
   long int  fIUse;                ///< current # of times an entry has been used
   double    fSumWeight;           ///< sum of weights for nus thrown so far
