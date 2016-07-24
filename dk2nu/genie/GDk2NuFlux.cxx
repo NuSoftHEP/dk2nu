@@ -607,6 +607,11 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
     } // loop over tree type
   } // loop over sorted file names
 
+  TBranch* bdk2nu = fNuFluxTree->GetBranch("dk2nu");
+  if (bdk2nu) bdk2nu->SetAutoDelete(false);
+  TBranch* bdkmeta = fNuMetaTree->GetBranch("dkmeta");
+  if (bdkmeta) bdkmeta->SetAutoDelete(false);
+
   // this will open all files and read header!!
   fNEntries = fNuFluxTree->GetEntries();
 
@@ -664,7 +669,31 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
   this->CalcEffPOTsPerNu();
   
 }
-#if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
+
+#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+//___________________________________________________________________________
+void GDk2NuFlux::GetBranchInfo(std::vector<std::string>& branchNames,
+                               std::vector<std::string>& branchClassNames,
+                               std::vector<void**>&      branchObjPointers)
+{
+  // allow flux driver to report back current status and/or ntuple entry
+  // info for possible recording in the output file by supplying
+  // the class name, and a pointer to the object that will be filled
+  // as well as a suggested name for the branch.
+
+  branchNames.push_back("dk2nu");
+  branchClassNames.push_back("bsim::Dk2Nu");
+  branchObjPointers.push_back((void**)&fCurDk2Nu);
+
+  branchNames.push_back("nuchoice");
+  branchClassNames.push_back("bsim::NuChoice");
+  branchObjPointers.push_back((void**)&fCurNuChoice);
+
+}
+TTree* GDk2NuFlux::GetMetaDataTree() { return fNuMetaTree; }
+
+#else
+//___________________________________________________________________________
 // migrated to GFluxFileConfigI
 void GDk2NuFlux::SetUpstreamZ(double z0) { fZ0 = z0; }
 void GDk2NuFlux::SetNumOfCycles(long int ncycle) { fNCycles = TMath::Max(0L, ncycle); }

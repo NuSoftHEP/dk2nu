@@ -124,6 +124,10 @@ public :
                                 const std::string&         det_loc);
 #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0) 
   using GFluxFileConfigI::LoadBeamSimData; // inherit the rest
+  virtual void GetBranchInfo(std::vector<std::string>& branchNames,
+                             std::vector<std::string>& branchClassNames,
+                             std::vector<void**>&      branchObjPointers);
+  virtual TTree* GetMetaDataTree();
 #else
   void      LoadBeamSimData(std::set<string>    filenames, string det_loc);     ///< load root flux ntuple files and config
   void      LoadBeamSimData(string filename, string det_loc);     ///< older (obsolete) single file version
