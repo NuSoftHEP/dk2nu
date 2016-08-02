@@ -72,6 +72,20 @@ link_directories( ${LINK_DIRECTORIES} )
 
 #----------------------------------------------------------------------------
 
+##set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+execute_process(COMMAND root-config --auxcflags OUTPUT_VARIABLE ROOT_CXX_FLAGS)
+### has a troublesome trailing \n
+string(STRIP ${ROOT_CXX_FLAGS} ROOT_CXX_FLAGS)
+MESSAGE("--DK2NU-- ROOT_CXX_FLAGS ${ROOT_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${ROOT_CXX_FLAGS})
+
+# ROOT dictionary options;  
+# GENIE driver dictionary needed "-p" w/ ROOT 5
+execute_process(COMMAND root-config --version OUTPUT_VARIABLE ROOT_VERSION)
+string(STRIP ${ROOT_VERSION} ROOT_VERSION)
+string(SUBSTRING ${ROOT_VERSION} 0 1 ROOT_MAJOR_VERSION)
+MESSAGE("--DK2NU-- ROOT_VERSION=${ROOT_VERSION} major=${ROOT_MAJOR_VERSION}")
+
 include(Darwin)
 
 #include(AltGenDict2)
@@ -85,6 +99,7 @@ include(CMakeParseArguments)
 
 #MESSAGE("--DK2NU- PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}")
 #MESSAGE("--DK2NU- ROOT_LIBRARIES=${ROOT_LIBRARIES}")
+#MESSAGE("--DK2NU- CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}")
 #MESSAGE("--DK2NU-")
 
 #----------------------------------------------------------------------------
@@ -108,7 +123,13 @@ set(dk2nuTree_DICTIONARY ${CMAKE_CURRENT_BINARY_DIR}/dk2nuTreeDict)
 
 #MESSAGE("--DK2NU- about to ROOT_GENERATE_DICTIONARY ${dk2nuTree_DICTIONARY}")
 #MESSAGE("--rwh- ROOT_GENERATE_DICTIONARY ${dk2nuTree_DICTIONARY} ${dk2nuTree_HDRS} ${dk2nuTree_LINKDEF} ")
-ROOT_GENERATE_DICTIONARY("${dk2nuTree_DICTIONARY}" "${dk2nuTree_HDRS}" LINKDEF "${dk2nuTree_LINKDEF}" )
+if( ${ROOT_MAJOR_VERSION} LESS 6 )
+  set(ROOT_DICT_OPT_TREE -p)
+else()
+  set(TREEDICTFILES ${CMAKE_BINARY_DIR}/libdk2nuTree_rdict.pcm ${CMAKE_BINARY_DIR}/libdk2nuTree.rootmap)
+  set(ROOT_DICT_OPT_TREE -p -s libdk2nuTree.so -rml libdk2nuTree.so -rmf libdk2nuTree.rootmap)
+endif()
+ROOT_GENERATE_DICTIONARY("${dk2nuTree_DICTIONARY}" "${dk2nuTree_HDRS}" LINKDEF "${dk2nuTree_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_TREE} )
 
 # add dictionary to list of source files
 SET(dk2nuTree_SRCS ${dk2nuTree_SRCS} ${dk2nuTree_DICTIONARY})
@@ -143,7 +164,13 @@ set(dk2nuGenie_DICTIONARY ${CMAKE_CURRENT_BINARY_DIR}/dk2nuGenieDict)
 #MESSAGE("--DK2NU- about to ROOT_GENERATE_DICTIONARY ${dk2nuGenie_DICTIONARY}")
 # option -p = use compiler's preprocessor instead of CINT's
 # needed to handle GVersion.h  GRELCODE(2,9,0) construct
-ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}" LINKDEF "${dk2nuGenie_LINKDEF}" OPTIONS -p )
+if( ${ROOT_MAJOR_VERSION} LESS 6 )
+  set(ROOT_DICT_OPT_GENIE -p)
+else()
+  set(GENIEDICTFILES ${CMAKE_BINARY_DIR}/libdk2nuGenie_rdict.pcm ${CMAKE_BINARY_DIR}/libdk2nuGenie.rootmap)
+  set(ROOT_DICT_OPT_GENIE -p -s libdk2nuGenie.so -rml libdk2nuGenie.so -rmf libdk2nuGenie.rootmap)
+endif()
+ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}" LINKDEF "${dk2nuGenie_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_GENIE} )
 
 # add dictionary to list of source files
 SET(dk2nuGenie_SRCS ${dk2nuGenie_SRCS} ${dk2nuGenie_DICTIONARY})
@@ -187,8 +214,10 @@ endif()
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
 #
 install(TARGETS dk2nuTree DESTINATION lib)
+install(FILES ${TREEDICTFILES} DESTINATION lib)
 if(WITH_GENIE)
   install(TARGETS dk2nuGenie DESTINATION lib)
+  install(FILES ${GENIEDICTFILES} DESTINATION lib)
 endif()
 #--------------------
 # Install the headers
