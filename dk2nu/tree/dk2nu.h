@@ -30,7 +30,7 @@
 #include <vector>
 #include <string>
 
-#define DK2NUVER 10   // KEEP THIS UP-TO-DATE!  increment for each change
+#define DK2NUVER 11   // KEEP THIS UP-TO-DATE!  increment for each change
 #define KEEP_ANCESTOR_PPRODPXYZ 1
 
 namespace bsim {
@@ -320,6 +320,8 @@ namespace bsim {
   public:
    Int_t job;                        ///< identifying job #
    Int_t potnum;                     ///< proton # processed by simulation
+   Int_t jobindx;                    ///< unique # within the job
+                                     ///<    potnum isn't sufficient
    bsim::Decay decay;                ///< basic decay information
    std::vector<bsim::NuRay> nuray;   ///< rays through detector fixed points
    std::vector<bsim::Ancestor> ancestor;  ///< chain from proton to neutrino
