@@ -589,11 +589,14 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
     string filename = *sitr;
     //std::cout << "  [" << std::setw(3) << indx << "]  \"" 
     //          << filename << "\"" << std::endl;
-    bool isok = ! (gSystem->AccessPathName(filename.c_str()));
+    bool isok = true; 
+    // this next test only works for local files, so we can't do that
+    // if we want to stream via xrootd
+    // ! (gSystem->AccessPathName(filename.c_str()));
     if ( isok ) {
-      TFile tf(filename.c_str());
-      TTree* ftree = (TTree*)tf.Get(fTreeNames[0].c_str());
-      TTree* mtree = (TTree*)tf.Get(fTreeNames[1].c_str());
+      TFile* tf = TFile::Open(filename.c_str(),"READ");
+      TTree* ftree = (TTree*)tf->Get(fTreeNames[0].c_str());
+      TTree* mtree = (TTree*)tf->Get(fTreeNames[1].c_str());
       if ( ftree && mtree ) {
         // found both trees
         this->AddFile(ftree,mtree,filename);
@@ -603,7 +606,8 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
                              << " \"" << fTreeNames[1] << "\" " << mtree
                              << " and was not added to the file list";
       }
-      tf.Close();
+      tf->Close();
+      delete tf;
     } // loop over tree type
   } // loop over sorted file names
 
