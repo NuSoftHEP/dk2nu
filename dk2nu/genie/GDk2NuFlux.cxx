@@ -54,10 +54,10 @@
 
 // need GDk2NuFlux header to register w/ factory
 #include "Conventions/GVersion.h"
-#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
   #include "FluxDrivers/GFluxDriverFactory.h"
   FLUXDRIVERREG4(genie,flux,GDk2NuFlux,genie::flux::GDk2NuFlux)
-#endif
+// #endif
 
 #include <vector>
 #include <algorithm>
@@ -90,6 +90,7 @@ namespace genie {
       void     ParseRotSeries(xmlDocPtr&, xmlNodePtr&);
       void     ParseWindowSeries(xmlDocPtr&, xmlNodePtr&);
       void     ParseEnuMax(std::string);
+      void     ParseMaxWgtFail(std::string);
       TVector3 AnglesToAxis(double theta, double phi, std::string units = "deg");
       TVector3 ParseTV3(const std::string& );
 
@@ -107,9 +108,9 @@ namespace genie {
 
 //____________________________________________________________________________
 GDk2NuFlux::GDk2NuFlux()
-#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
   : GFluxExposureI(genie::flux::kPOTs)
-#endif
+// #endif
 {
   this->Initialize();
 }
@@ -119,13 +120,13 @@ GDk2NuFlux::~GDk2NuFlux()
   this->CleanUp();
 }
 //___________________________________________________________________________
-#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
 double GDk2NuFlux::GetTotalExposure() const
 {
   // complete the GFluxExposureI interface
   return UsedPOTs();
 }
-#endif
+// #endif
 //___________________________________________________________________________
 int GDk2NuFlux::PdgCode(void)
 {
@@ -177,12 +178,29 @@ bool GDk2NuFlux::GenerateNext(void)
      //LOG("Flux", pNOTICE)
      //   << "Curr flux neutrino fractional weight = " << f;
      if (f > 1.) {
-       fMaxWeight = this->Weight() * fMaxWgtFudge; // bump the weight
-       LOG("Flux", pERROR)
-         << "** Fractional weight = " << f 
-         << " > 1 !! Bump fMaxWeight estimate to " << fMaxWeight << " "
-         << fCurDk2Nu->AsString() << "\n" << fCurNuChoice->AsString();
-       std::cout << std::flush;
+       // Oh,dear me ...
+       if ( fMaxWgtFailModel <= 0 ) {
+         fMaxWeight = this->Weight() * fMaxWgtFudge; // bump the weight
+         LOG("Flux", pERROR)
+           << "** Fractional weight = " << f 
+           << " > 1 !! Bump fMaxWeight estimate to " << fMaxWeight << " "
+           << fCurDk2Nu->AsString() << "\n" << fCurNuChoice->AsString();
+         std::cout << std::flush;
+       } else {
+         ++fMaxWgtExceeded;
+         LOG("Flux", pERROR)
+           << "** Fractional weight = " << f 
+           << " > 1 !! Leave fMaxWeight frozen " << fMaxWeight << " "
+           << fCurDk2Nu->AsString() << "\n" << fCurNuChoice->AsString();
+         std::cout << std::flush;
+         if ( fMaxWgtFailModel >= 2 ) {
+           PrintConfig();
+           std::cout << std::flush;
+           LOG("Flux", pFATAL)
+             << "User requested not to continue";
+           abort();
+         }
+       }
      }
      double r = (f < 1.) ? rnd->RndFlux().Rndm() : 0;
      bool accept = ( r < f );
@@ -674,7 +692,7 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
   
 }
 
-#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
 //___________________________________________________________________________
 void GDk2NuFlux::GetBranchInfo(std::vector<std::string>& branchNames,
                                std::vector<std::string>& branchClassNames,
@@ -696,36 +714,36 @@ void GDk2NuFlux::GetBranchInfo(std::vector<std::string>& branchNames,
 }
 TTree* GDk2NuFlux::GetMetaDataTree() { return fNuMetaTree; }
 
-#else
-//___________________________________________________________________________
-// migrated to GFluxFileConfigI
-void GDk2NuFlux::SetUpstreamZ(double z0) { fZ0 = z0; }
-void GDk2NuFlux::SetNumOfCycles(long int ncycle) { fNCycles = TMath::Max(0L, ncycle); }
-void GDk2NuFlux::LoadBeamSimData(std::set<string> fileset, string config)
-{
-  // have a set<> want a vector<>
-  std::vector<std::string> filevec;
-  std::copy(fileset.begin(),fileset.end(),std::back_inserter(filevec));
-  LoadBeamSimData(filevec,config); // call the one that takes a vector
-}
-void GDk2NuFlux::LoadBeamSimData(string filename, string config)
-{
-  // Loads a beam simulation root file into the GDk2NuFlux driver.
-  std::vector<std::string> filevec;
-  filevec.push_back(filename);
-  LoadBeamSimData(filevec,config); // call the one that takes a vector
-}
-void GDk2NuFlux::SetFluxParticles(const PDGCodeList & particles)
-{
-  if (!fPdgCList) {
-     fPdgCList = new PDGCodeList;
-  }
-  fPdgCList->Copy(particles);
-
-  LOG("Flux", pINFO)
-    << "Declared list of neutrino species: " << *fPdgCList;
-}
-#endif
+// #else
+// //___________________________________________________________________________
+// // migrated to GFluxFileConfigI
+// void GDk2NuFlux::SetUpstreamZ(double z0) { fZ0 = z0; }
+// void GDk2NuFlux::SetNumOfCycles(long int ncycle) { fNCycles = TMath::Max(0L, ncycle); }
+// void GDk2NuFlux::LoadBeamSimData(std::set<string> fileset, string config)
+// {
+//   // have a set<> want a vector<>
+//   std::vector<std::string> filevec;
+//   std::copy(fileset.begin(),fileset.end(),std::back_inserter(filevec));
+//   LoadBeamSimData(filevec,config); // call the one that takes a vector
+// }
+// void GDk2NuFlux::LoadBeamSimData(string filename, string config)
+// {
+//   // Loads a beam simulation root file into the GDk2NuFlux driver.
+//   std::vector<std::string> filevec;
+//   filevec.push_back(filename);
+//   LoadBeamSimData(filevec,config); // call the one that takes a vector
+// }
+// void GDk2NuFlux::SetFluxParticles(const PDGCodeList & particles)
+// {
+//   if (!fPdgCList) {
+//      fPdgCList = new PDGCodeList;
+//   }
+//   fPdgCList->Copy(particles);
+// 
+//   LOG("Flux", pINFO)
+//     << "Declared list of neutrino species: " << *fPdgCList;
+// }
+// #endif
 
 //___________________________________________________________________________
 void GDk2NuFlux::ScanForMaxWeight(void)
@@ -757,6 +775,16 @@ void GDk2NuFlux::ScanForMaxWeight(void)
   if (wgtgenmx > fMaxWeight ) fMaxWeight = wgtgenmx;
   // apply a fudge factor to estimated weight
   fMaxWeight *= fMaxWgtFudge;
+  fMaxWeightScan = fMaxWeight;
+  // apply possible user supplied minimum (floor)
+  if (fMinMaxWeight > fMaxWeight) {
+    LOG("Flux", pNOTICE) << "Maximum flux weight set by user = " 
+                         << fMinMaxWeight << " exceeds estimate, use that";
+    fMaxWeight = fMinMaxWeight;
+  }
+  fMaxWeightInit  = fMaxWeight; // what we started with before generation
+  fMaxWgtExceeded = 0;          // not yet exceeded
+
   // adjust max energy?
   if ( enumx*fMaxEFudge > fMaxEv ) {
     LOG("Flux", pNOTICE) << "Adjust max: was=" << fMaxEv
@@ -999,10 +1027,10 @@ void GDk2NuFlux::Initialize(void)
   fMaxEv           =  0;
   fEnd             =  false;
 
-#if __GENIE_RELEASE_CODE__ <= GRELCODE(2,9,0)
-  fPdgCList        = new PDGCodeList;
-  fPdgCListRej     = new PDGCodeList;
-#endif
+// #if __GENIE_RELEASE_CODE__ <= GRELCODE(2,9,0)
+//   fPdgCList        = new PDGCodeList;
+//   fPdgCListRej     = new PDGCodeList;
+// #endif
 
   fTreeNames[0]    = "dk2nuTree";
   fTreeNames[1]    = "dkmetaTree";
@@ -1023,9 +1051,13 @@ void GDk2NuFlux::Initialize(void)
   fFilePOTs        = 0;
 
   fMaxWeight       = -1;
+  fMinMaxWeight    =  0;
   fMaxWgtFudge     =  1.05;
   fMaxWgtEntries   = 2500000;
   fMaxEFudge       =  0;
+
+  fMaxWgtExceeded  =  0;
+  fMaxWgtFailModel =  0;  // default: 0=bump, 1=leave frozen, 2=abort
 
   fSumWeight       =  0;
   fNNeutrinos      =  0;
@@ -1039,12 +1071,12 @@ void GDk2NuFlux::Initialize(void)
   // by default assume user length is m
   SetLengthUnits(genie::utils::units::UnitFromString("m"));
 
-#if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
-  // migrated to GFluxFileConfigI
-  fXMLbasename     = "GNuMIFlux.xml"; 
-  fNCycles         =  0;
-  fZ0              =  -3.4e38;
-#endif
+// #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
+//   // migrated to GFluxFileConfigI
+//   fXMLbasename     = "GNuMIFlux.xml"; 
+//   fNCycles         =  0;
+//   fZ0              =  -3.4e38;
+// #endif
 
   this->SetDefaults();
   this->ResetCurrent();
@@ -1079,11 +1111,11 @@ void GDk2NuFlux::SetDefaults(void)
   std::string xmlfile = "GNuMIFlux.xml";
   const char* altxml = gSystem->Getenv("GDK2NUFLUXXML");
   if ( altxml ) xmlfile = altxml;
-#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0) 
+// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
   this->SetXMLFileBase(xmlfile);
-#else
-  this->SetXMLFile(xmlfile);
-#endif
+// #else
+//   this->SetXMLFile(xmlfile);
+// #endif
 
 }
 //___________________________________________________________________________
@@ -1283,8 +1315,12 @@ void GDk2NuFlux::PrintConfig()
     << flistout.str()
     << "\n from file patterns:"
     << fpattout.str()
-    << "\n wgt max=" << fMaxWeight << " fudge=" << fMaxWgtFudge << " using scan of "
-    << fMaxWgtEntries << " entries"
+    << "\n wgt max=" << fMaxWeight 
+    << " min=" << fMinMaxWeight << " scan=" << fMaxWeightScan
+    << " ( fudge=" << fMaxWgtFudge << " using scan of "
+    << fMaxWgtEntries << " entries )"
+    << "\n exceeded init=" << fMaxWeightInit << ", N=" << fMaxWgtExceeded
+    << " times (fail model " << fMaxWgtFailModel << ")"
     << "\n Z0 pushback " << fZ0
     << "\n used entry " << fIEntry << " " << fIUse << "/" << fNUse
     << " times, in " << fICycle << "/" << fNCycles << " cycles"
@@ -1385,11 +1421,11 @@ std::vector<long int> GDk2NuFluxXMLHelper::GetIntVector(std::string str)
 
 bool GDk2NuFluxXMLHelper::LoadConfig(string cfg)
 {
-#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0) 
+// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
   string fname = utils::xml::GetXMLFilePath(fGDk2NuFlux->GetXMLFileBase());
-#else
-  string fname = utils::xml::GetXMLFilePath(fGDk2NuFlux->GetXMLFile());
-#endif
+// #else
+//   string fname = utils::xml::GetXMLFilePath(fGDk2NuFlux->GetXMLFile());
+// #endif
 
   bool is_accessible = ! (gSystem->AccessPathName(fname.c_str()));
   if (!is_accessible) {
@@ -1517,6 +1553,16 @@ void GDk2NuFluxXMLHelper::ParseParamSet(xmlDocPtr& xml_doc, xmlNodePtr& xml_pset
 
     } else if ( pname == "enumax" ) {
       ParseEnuMax(pval);
+
+    } else if ( pname == "minmaxwgt" ) {
+      double minmaxwgt = 0;
+      std::vector<double> v = GetDoubleVector(pval);
+      if ( v.size() > 0 ) minmaxwgt = v[0];
+      fGDk2NuFlux->SetMinMaxWeight(minmaxwgt);
+      SLOG("GDk2NuFlux", pINFO) << "set minmaxwgt = " << minmaxwgt;
+
+    } else if ( pname == "maxwgtfail" ) {
+      ParseMaxWgtFail(pval);
 
     } else if ( pname == "upstreamz" ) {
       double z0usr = -3.4e38;
@@ -1669,6 +1715,27 @@ void GDk2NuFluxXMLHelper::ParseEnuMax(std::string str)
         std::cout << "ParseEnuMax SetMaxWgtScan(" << v[2] << "," << nentries << ")" << std::endl;
     }
   }
+}
+
+void GDk2NuFluxXMLHelper::ParseMaxWgtFail(std::string str)
+{
+  // what to do if we exceed estimate maximum weight
+  // 0 = "bump"
+  // 1 = "frozen"  treat as frozen:  accept and move on
+  // 2 = "abort"   
+  int model = 0;  // default
+  if      ( str == "0" || str == "bump"   ) model = 0;
+  else if ( str == "1" || str == "frozen" ) model = 1;
+  else if ( str == "2" || str == "abort"  ) model = 2;
+  else {
+    std::cout << "ParseMaxWeightFail \"" << str << "\" unrecognized "
+              << std::endl;
+  }
+  if ( fVerbose > 1 ) {
+    std::cout << "ParseMaxWeightFail \"" << str << "\" treat as "
+              << model << std::endl;
+  }
+  fGDk2NuFlux->SetMaxWeightFailModel(model);
 }
 
 void GDk2NuFluxXMLHelper::ParseRotSeries(xmlDocPtr& xml_doc, xmlNodePtr& xml_pset)
