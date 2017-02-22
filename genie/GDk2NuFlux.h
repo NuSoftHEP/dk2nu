@@ -33,10 +33,10 @@
 #include "EVGDrivers/GFluxI.h"
 #include "PDG/PDGUtils.h"
 #include "Conventions/GVersion.h"
-#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
   #include "FluxDrivers/GFluxExposureI.h"
   #include "FluxDrivers/GFluxFileConfigI.h"
-#endif
+// #endif
 
 class TFile;
 class TChain;
@@ -52,12 +52,12 @@ namespace bsim {
 namespace genie {
 namespace flux  {
 
-#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0) 
+// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
 class GDk2NuFlux : public GFluxI, 
     public GFluxExposureI, public GFluxFileConfigI {
-#else
-class GDk2NuFlux: public GFluxI {
-#endif
+// #else
+// class GDk2NuFlux: public GFluxI {
+// #endif
 
 public :
   GDk2NuFlux();
@@ -99,14 +99,15 @@ public :
   //
   // information about the current state
   //
-#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
   virtual double GetTotalExposure() const;  // GFluxExposureI interface
-#else
-  // these are elminated with the introduction of GFluxFileConfigI
-  void                   SetXMLFile(string xmlbasename="GNuMIFlux.xml") 
-                              { fXMLbasename = xmlbasename; }
-  std::string            GetXMLFile() const { return fXMLbasename; }
-#endif
+// #else
+//   // these are elminated with the introduction of GFluxFileConfigI
+//   void                   SetXMLFile(string xmlbasename="GNuMIFlux.xml") 
+//                               { fXMLbasename = xmlbasename; }
+//   std::string            GetXMLFile() const { return fXMLbasename; }
+// #endif
+
   double    POT_curr(void);             ///< current average POT (RWH?)
   double    UsedPOTs(void) const;       ///< # of protons-on-target used
   long int  NFluxNeutrinos(void) const { return fNNeutrinos; } ///< number of flux neutrinos looped so far
@@ -122,17 +123,18 @@ public :
   //
   virtual void  LoadBeamSimData(const std::vector<string>& filenames,
                                 const std::string&         det_loc);
-#if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0) 
+// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
   using GFluxFileConfigI::LoadBeamSimData; // inherit the rest
   virtual void GetBranchInfo(std::vector<std::string>& branchNames,
                              std::vector<std::string>& branchClassNames,
                              std::vector<void**>&      branchObjPointers);
   virtual TTree* GetMetaDataTree();
-#else
-  void      LoadBeamSimData(std::set<string>    filenames, string det_loc);     ///< load root flux ntuple files and config
-  void      LoadBeamSimData(string filename, string det_loc);     ///< older (obsolete) single file version
+// #else
+//   void      LoadBeamSimData(std::set<string>    filenames, string det_loc);     ///< load root flux ntuple files and config
+//   void      LoadBeamSimData(string filename, string det_loc);     ///< older (obsolete) single file version
+//
+// #endif
 
-#endif
   //
   // configuration of GDk2NuFlux
   //
@@ -141,19 +143,25 @@ public :
   { fTreeNames[0] = fname; fTreeNames[1] = mname; }
 
 
-  bool      LoadConfig(string cfg);                               ///< load a named configuration
+  bool      LoadConfig(string cfg);           ///< load a named configuration
 
-  void      SetMaxEnergy(double Ev);                              ///< specify maximum flx neutrino energy
+  void      SetMaxEnergy(double Ev);          ///< specify max flx nu energy
 
   void      SetGenWeighted(bool genwgt=false) { fGenWeighted = genwgt; } ///< toggle whether GenerateNext() returns weight=1 flux (initial default false)
 
-  void      SetEntryReuse(long int nuse=1);                       ///<  # of times to use entry before moving to next
+  void      SetEntryReuse(long int nuse=1);   ///<  # of times to use entry before moving to next
 
-  void      ScanForMaxWeight(void);                               ///< scan for max flux weight (before generating unweighted flux neutrinos)
+  void      ScanForMaxWeight(void);           ///< scan for max flux weight (before generating unweighted flux neutrinos)
   void      SetMaxWgtScan(double fudge = 1.05, long int nentries = 2500000)      ///< configuration when estimating max weight
             { fMaxWgtFudge = fudge; fMaxWgtEntries = nentries; }
-  void      SetMaxEFudge(double fudge = 1.05)                  ///< extra fudge factor in estimating maximum energy
+  void      SetMaxEFudge(double fudge = 1.05) ///< extra fudge factor in estimating maximum energy
             { fMaxEFudge = fudge; }
+
+  void      SetMinMaxWeight(double minwgt)    ///< user floor on estimating maxweight (to avoid bumping)
+            { fMinMaxWeight = minwgt; }
+  void      SetMaxWeightFailModel(int i=0)    ///< 0=bump, 1=leave frozen, 2=abort
+            { fMaxWgtFailModel = i; }
+
 
   void      SetApplyWindowTiltWeight(bool apply = true)           ///< apply wgt due to tilt of flux window relative to beam                                   
             { fApplyTiltWeight = apply; }
@@ -190,12 +198,12 @@ public :
   void      SetFluxSphere(TVector3  center, double  radius, bool inDetCoord=true);       ///< specification of a sphere
   void      GetFluxSphere(TVector3& center, double& radius, bool inDetCoord=true) const; ///< specification of a sphere
 
-#if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
-  // migrated to GFluxFileConfigI
-  void      SetUpstreamZ(double z0);
-  void      SetNumOfCycles(long int ncycle);
-  void      SetFluxParticles(const PDGCodeList & particles);
-#endif
+// #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0) 
+//   // migrated to GFluxFileConfigI
+//   void      SetUpstreamZ(double z0);
+//   void      SetNumOfCycles(long int ncycle);
+//   void      SetFluxParticles(const PDGCodeList & particles);
+// #endif
 
   //
   // Actual coordinate transformations  b=beam, u=user (e.g. detector)
@@ -235,15 +243,15 @@ private:
 
   bool           fEnd;            ///< end condition reached
 
-#if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0) 
-  // incorporated into GFluxFileConfigI
-  PDGCodeList *  fPdgCList;       ///< list of neutrino pdg-codes to generate
-  PDGCodeList *  fPdgCListRej;    ///< list of neutrino pdg-codes seen but rejected
-  string    fXMLbasename;         ///< XML filename for config data
-  double    fZ0;                  ///< configurable starting z position for each flux neutrino (in detector coord system)
-  long int  fNCycles;             ///< # times to cycle through the flux ntuple
-  long int  fICycle;              ///< current file cycle
-#endif
+// #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0) 
+//   // incorporated into GFluxFileConfigI
+//   PDGCodeList *  fPdgCList;       ///< list of neutrino pdg-codes to generate
+//   PDGCodeList *  fPdgCListRej;    ///< list of neutrino pdg-codes seen but rejected
+//   string    fXMLbasename;         ///< XML filename for config data
+//   double    fZ0;                  ///< configurable starting z position for each flux neutrino (in detector coord system)
+//   long int  fNCycles;             ///< # times to cycle through the flux ntuple
+//   long int  fICycle;              ///< current file cycle
+// #endif
 
   std::vector<string> fNuFluxFilePatterns;   ///< (potentially wildcarded) path(s)
 
@@ -265,9 +273,14 @@ private:
 
   double    fWeight;              ///< current neutrino weight, =1 if generating unweighted entries
   double    fMaxWeight;           ///< max flux neutrino weight in input file
+  double    fMinMaxWeight;        ///< user set lower limit on estimate
+  double    fMaxWeightScan;       ///< initial estimate from scan
+  double    fMaxWeightInit;       ///< max of scan & minmaxweight
   double    fMaxWgtFudge;         ///< fudge factor for estimating max wgt
   long int  fMaxWgtEntries;       ///< # of entries in estimating max wgt
   double    fMaxEFudge;           ///< fudge factor for estmating max enu (0=> use fixed 120GeV)
+  long int  fMaxWgtExceeded;      ///< track failures of estimate
+  int       fMaxWgtFailModel;     ///< what to do ... 0=bump, 1=frozen, 2=abort
 
   long int  fNUse;                ///< how often to use same entry in a row
   long int  fIUse;                ///< current # of times an entry has been used
