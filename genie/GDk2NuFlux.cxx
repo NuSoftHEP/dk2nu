@@ -178,19 +178,25 @@ bool GDk2NuFlux::GenerateNext(void)
      //LOG("Flux", pNOTICE)
      //   << "Curr flux neutrino fractional weight = " << f;
      if (f > 1.) {
-       // Oh,dear me ...
+       // Oh,dear me ... what the weight max _should_ have been
+       double bumped = this->Weight() * fMaxWgtFudge;
+       if ( bumped > fMaxWeightMax ) fMaxWeightMax = bumped;
+       ++fMaxWgtExceeded;
+
+       // what to do ...
        if ( fMaxWgtFailModel <= 0 ) {
-         fMaxWeight = this->Weight() * fMaxWgtFudge; // bump the weight
+         fMaxWeight = bumped;
          LOG("Flux", pERROR)
            << "** Fractional weight = " << f 
-           << " > 1 !! Bump fMaxWeight estimate to " << fMaxWeight << " "
+           << " > 1 !! Bump fMaxWeight estimate to " << fMaxWeight << "\n"
            << fCurDk2Nu->AsString() << "\n" << fCurNuChoice->AsString();
          std::cout << std::flush;
        } else {
-         ++fMaxWgtExceeded;
          LOG("Flux", pERROR)
            << "** Fractional weight = " << f 
-           << " > 1 !! Leave fMaxWeight frozen " << fMaxWeight << " "
+           << " > 1 !! Leave fMaxWeight frozen at " << fMaxWeight << " "
+           << " not bumped to " << bumped << ", max so far: " 
+           << fMaxWeightMax << "\n"
            << fCurDk2Nu->AsString() << "\n" << fCurNuChoice->AsString();
          std::cout << std::flush;
          if ( fMaxWgtFailModel >= 2 ) {
@@ -202,7 +208,7 @@ bool GDk2NuFlux::GenerateNext(void)
          }
        }
      }
-     double r = (f < 1.) ? rnd->RndFlux().Rndm() : 0;
+     double r = rnd->RndFlux().Rndm(); // (f < 1.) ? rnd->RndFlux().Rndm() : 0;
      bool accept = ( r < f );
      if ( accept ) {
 
@@ -601,12 +607,14 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
     } // legal directory
   } // loop over patterns
 
+  // std::cout << "RWH start adding files" << std::endl << std::flush; 
+
   size_t indx = 0;
   std::set<string>::const_iterator sitr = fnames.begin();
   for ( ; sitr != fnames.end(); ++sitr, ++indx ) {
     string filename = *sitr;
-    //std::cout << "  [" << std::setw(3) << indx << "]  \"" 
-    //          << filename << "\"" << std::endl;
+    // std::cout << "RWH  [" << std::setw(3) << indx << "]  \"" 
+    //           << filename << "\"" << std::endl << std::flush; 
     bool isok = true; 
     // this next test only works for local files, so we can't do that
     // if we want to stream via xrootd
@@ -618,7 +626,10 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
       if ( ftree && mtree ) {
         // found both trees
         this->AddFile(ftree,mtree,filename);
+        // std::cout << "RWH  AddFile(" << ftree << "," 
+        //    << mtree << "," << filename << ")" << std::endl << std::flush; 
       } else {
+        // std::cout << "RWH  no AddFile" << std::endl << std::flush; 
         LOG("Flux", pNOTICE) << "File " << filename << " lacked a tree: "
                              << " \"" << fTreeNames[0] << "\" " << ftree 
                              << " \"" << fTreeNames[1] << "\" " << mtree
@@ -629,10 +640,17 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
     } // loop over tree type
   } // loop over sorted file names
 
-  TBranch* bdk2nu = fNuFluxTree->GetBranch("dk2nu");
-  if (bdk2nu) bdk2nu->SetAutoDelete(false);
-  TBranch* bdkmeta = fNuMetaTree->GetBranch("dkmeta");
-  if (bdkmeta) bdkmeta->SetAutoDelete(false);
+  if ( ! fNuFluxTree || ! fNuMetaTree ) {
+    LOG("Flux", pERROR)
+      << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
+    LOG("Flux", pERROR)
+      << "Missing dk2nu (" << fNuFluxTree << ") or dkmeta ("
+      << fNuMetaTree << ") tree";
+    LOG("Flux", pERROR)
+      << "please check that input files are valid";
+    LOG("Flux", pERROR)
+      << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
+  } 
 
   // this will open all files and read header!!
   fNEntries = fNuFluxTree->GetEntries();
@@ -662,6 +680,11 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
         << nfiles_from_pattern[ipatt] << " files";
     }
   }
+
+  TBranch* bdk2nu = fNuFluxTree->GetBranch("dk2nu");
+  if (bdk2nu) bdk2nu->SetAutoDelete(false);
+  TBranch* bdkmeta = fNuMetaTree->GetBranch("dkmeta");
+  if (bdkmeta) bdkmeta->SetAutoDelete(false);
 
   // we have a file we can work with
   if (!fDetLocIsSet) {
@@ -775,6 +798,8 @@ void GDk2NuFlux::ScanForMaxWeight(void)
   if (wgtgenmx > fMaxWeight ) fMaxWeight = wgtgenmx;
   // apply a fudge factor to estimated weight
   fMaxWeight *= fMaxWgtFudge;
+  if ( fMaxWgtFudge < 1 ) fMaxWgtFudge=1; // avoid run-away downward spiral
+
   fMaxWeightScan = fMaxWeight;
   // apply possible user supplied minimum (floor)
   if (fMinMaxWeight > fMaxWeight) {
@@ -782,7 +807,9 @@ void GDk2NuFlux::ScanForMaxWeight(void)
                          << fMinMaxWeight << " exceeds estimate, use that";
     fMaxWeight = fMinMaxWeight;
   }
+  
   fMaxWeightInit  = fMaxWeight; // what we started with before generation
+  fMaxWeightMax   = fMaxWeight;
   fMaxWgtExceeded = 0;          // not yet exceeded
 
   // adjust max energy?
@@ -1320,7 +1347,7 @@ void GDk2NuFlux::PrintConfig()
     << " ( fudge=" << fMaxWgtFudge << " using scan of "
     << fMaxWgtEntries << " entries )"
     << "\n exceeded init=" << fMaxWeightInit << ", N=" << fMaxWgtExceeded
-    << " times (fail model " << fMaxWgtFailModel << ")"
+    << " times (fail model " << fMaxWgtFailModel << ") max = " << fMaxWeightMax
     << "\n Z0 pushback " << fZ0
     << "\n used entry " << fIEntry << " " << fIUse << "/" << fNUse
     << " times, in " << fICycle << "/" << fNCycles << " cycles"

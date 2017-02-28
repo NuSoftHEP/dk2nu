@@ -276,6 +276,7 @@ private:
   double    fMinMaxWeight;        ///< user set lower limit on estimate
   double    fMaxWeightScan;       ///< initial estimate from scan
   double    fMaxWeightInit;       ///< max of scan & minmaxweight
+  double    fMaxWeightMax;        ///< if "frozen" this is what bump would given
   double    fMaxWgtFudge;         ///< fudge factor for estimating max wgt
   long int  fMaxWgtEntries;       ///< # of entries in estimating max wgt
   double    fMaxEFudge;           ///< fudge factor for estmating max enu (0=> use fixed 120GeV)
