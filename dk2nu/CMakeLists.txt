@@ -37,13 +37,21 @@ option(COPY_AUX "install etc, convert, snippets subdirectories" ON)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake
                       $ENV{ROOTSYS}/cmake/modules
                       $ENV{ROOTSYS}/../source/root/cmake/modules
-                      $ENV{ROOTSYS}/etc/cmake 
+                      $ENV{ROOTSYS}/etc/cmake
                       ${CMAKE_MODULE_PATH})
 
 #MESSAGE("CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
 #MESSAGE(" ")
 
 find_package(ROOT REQUIRED)
+
+execute_process(COMMAND root-config --version OUTPUT_VARIABLE ROOT_VERSION)
+string(STRIP ${ROOT_VERSION} ROOT_VERSION)
+string(SUBSTRING ${ROOT_VERSION} 0 1 ROOT_MAJOR_VERSION)
+MESSAGE("--DK2NU-- ROOT_VERSION=${ROOT_VERSION} major=${ROOT_MAJOR_VERSION}")
+# for ROOT 6 one might have 'include(${ROOT_DIR}/ROOTUseFile.cmake)' here
+# and no longer need ${ENV{ROOTSYS}/etc/cmake in CMAKE_MODULE_PATH
+# but for now this has to work with both 5 & 6
 
 set(INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/..
                         ${PROJECT_SOURCE_DIR}
@@ -58,7 +66,7 @@ set(LINK_DIRECTORIES ${ROOT_LIBRARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/lib )
 if(WITH_GENIE)
   set(GENIE $ENV{GENIE})
   MESSAGE("-- WITH_GENIE was true")
-  set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES} 
+  set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES}
                           ${PROJECT_SOURCE_DIR}/genie
                           $ENV{LIBXML2_INC}
                           $ENV{LOG4CPP_INC}
@@ -67,33 +75,25 @@ if(WITH_GENIE)
   #MESSAGE("--DK2NU- INCLUDE_DIRECTORIES=${INCLUDE_DIRECTORIES}")
 endif()
 
-include_directories( ${INCLUDE_DIRECTORIES} )
+include_directories( ${INCLUDE_DIRECTORIESs} )
 link_directories( ${LINK_DIRECTORIES} )
 
 #----------------------------------------------------------------------------
 
-##set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 execute_process(COMMAND root-config --auxcflags OUTPUT_VARIABLE ROOT_CXX_FLAGS)
 ### has a troublesome trailing \n
 string(STRIP ${ROOT_CXX_FLAGS} ROOT_CXX_FLAGS)
 MESSAGE("--DK2NU-- ROOT_CXX_FLAGS ${ROOT_CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${ROOT_CXX_FLAGS})
 
-# ROOT dictionary options;  
+# ROOT dictionary options;
 # GENIE driver dictionary needed "-p" w/ ROOT 5
-execute_process(COMMAND root-config --version OUTPUT_VARIABLE ROOT_VERSION)
-string(STRIP ${ROOT_VERSION} ROOT_VERSION)
-string(SUBSTRING ${ROOT_VERSION} 0 1 ROOT_MAJOR_VERSION)
-MESSAGE("--DK2NU-- ROOT_VERSION=${ROOT_VERSION} major=${ROOT_MAJOR_VERSION}")
 
 include(Darwin)
 
-#include(AltGenDict2)
-#include(RootNewMacros)
-
 # $ROOTSYS/etc/cmake/FindROOT.cmake
 #    needs CMAKE_PARSE_ARGUMENTS defined to do ROOT_GENERATE_DICTIONARY
-# where should one find _that_ 
+# where should one find _that_
 
 include(CMakeParseArguments)
 
@@ -107,7 +107,7 @@ include(CMakeParseArguments)
 # libdk2nuTree.so
 #
 #MESSAGE("--DK2NU- dk2nuTree section begin")
-file(GLOB dk2nuTree_SRCS ${PROJECT_SOURCE_DIR}/tree/*.cc 
+file(GLOB dk2nuTree_SRCS ${PROJECT_SOURCE_DIR}/tree/*.cc
                          ${PROJECT_SOURCE_DIR}/tree/*.cxx)
 file(GLOB dk2nuTree_HDRS ${PROJECT_SOURCE_DIR}/tree/*.h)
 list(REMOVE_ITEM dk2nuTree_HDRS ${PROJECT_SOURCE_DIR}/tree/LinkDef.h)
@@ -119,18 +119,28 @@ list(REMOVE_ITEM dk2nuTree_HDRS ${PROJECT_SOURCE_DIR}/tree/LinkDef.h)
 
 set(dk2nuTree_LINKDEF ${PROJECT_SOURCE_DIR}/tree/LinkDef.h)
 # do not include ".cxx" here!!!!
-set(dk2nuTree_DICTIONARY ${CMAKE_CURRENT_BINARY_DIR}/dk2nuTreeDict)
+set(dk2nuTree_DICTIONARY dk2nuTreeDict)
 
 #MESSAGE("--DK2NU- about to ROOT_GENERATE_DICTIONARY ${dk2nuTree_DICTIONARY}")
 #MESSAGE("--rwh- ROOT_GENERATE_DICTIONARY ${dk2nuTree_DICTIONARY} ${dk2nuTree_HDRS} ${dk2nuTree_LINKDEF} ")
 if( ${ROOT_MAJOR_VERSION} LESS 6 )
   set(ROOT_DICT_OPT_TREE -p)
+  ROOT_GENERATE_DICTIONARY("${dk2nuTree_DICTIONARY}" "${dk2nuTree_HDRS}"
+    LINKDEF "${dk2nuTree_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_TREE} )
 else()
   set(ROOT_INCLUDE_PATH $ENV{ROOT_INCLUDE_PATH}:${PROJECT_SOURCE_DIR}:${PROJECT_SOURCE_DIR}/tree)
-  set(TREEDICTFILES ${CMAKE_BINARY_DIR}/libdk2nuTree_rdict.pcm ${CMAKE_BINARY_DIR}/libdk2nuTree.rootmap)
-  set(ROOT_DICT_OPT_TREE -I.. -I../tree  -I../include -I../include/dk2nu -Idk2nu -I../include/tree -I../include/dk2nu/tree -Idk2nu/tree -p -s libdk2nuTree.so -rml libdk2nuTree.so -rmf libdk2nuTree.rootmap)
+  # these are defined for the install stage
+  set(TREEDICTFILES ${CMAKE_BINARY_DIR}/libdk2nuTree_rdict.pcm
+    ${CMAKE_BINARY_DIR}/libdk2nuTree.rootmap )
+  set(ROOT_DICT_OPT_TREE -I.. -I../tree
+    -I../include -I../include/dk2nu
+    -Idk2nu -I../include/tree -I../include/dk2nu/tree -Idk2nu/tree
+    -p -inlineInputHeader )
+  # new MODULE option for this funciton to use w/ CMake
+  ROOT_GENERATE_DICTIONARY("${dk2nuTree_DICTIONARY}" "${dk2nuTree_HDRS}"
+    LINKDEF "${dk2nuTree_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_TREE}
+    MODULE dk2nuTree )
 endif()
-ROOT_GENERATE_DICTIONARY("${dk2nuTree_DICTIONARY}" "${dk2nuTree_HDRS}" LINKDEF "${dk2nuTree_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_TREE} )
 
 # add dictionary to list of source files
 SET(dk2nuTree_SRCS ${dk2nuTree_SRCS} ${dk2nuTree_DICTIONARY})
@@ -148,7 +158,7 @@ target_link_libraries(dk2nuTree ${ROOT_LIBRARIES} -lPhysics -lMatrix )
 if(WITH_GENIE)
 
 #MESSAGE("--DK2NU- dk2nuTree section begin")
-file(GLOB dk2nuGenie_SRCS ${PROJECT_SOURCE_DIR}/genie/*.cc 
+file(GLOB dk2nuGenie_SRCS ${PROJECT_SOURCE_DIR}/genie/*.cc
                           ${PROJECT_SOURCE_DIR}/genie/*.cxx)
 file(GLOB dk2nuGenie_HDRS ${PROJECT_SOURCE_DIR}/genie/*.h)
 list(REMOVE_ITEM dk2nuGenie_HDRS ${PROJECT_SOURCE_DIR}/genie/LinkDef.h)
@@ -160,19 +170,28 @@ list(REMOVE_ITEM dk2nuGenie_HDRS ${PROJECT_SOURCE_DIR}/genie/LinkDef.h)
 
 set(dk2nuGenie_LINKDEF ${PROJECT_SOURCE_DIR}/genie/LinkDef.h)
 # do not include ".cxx" here!!!!
-set(dk2nuGenie_DICTIONARY ${CMAKE_CURRENT_BINARY_DIR}/dk2nuGenieDict)
+set(dk2nuGenie_DICTIONARY dk2nuGenieDict)
 
 #MESSAGE("--DK2NU- about to ROOT_GENERATE_DICTIONARY ${dk2nuGenie_DICTIONARY}")
 # option -p = use compiler's preprocessor instead of CINT's
 # needed to handle GVersion.h  GRELCODE(2,9,0) construct
 if( ${ROOT_MAJOR_VERSION} LESS 6 )
   set(ROOT_DICT_OPT_GENIE -p)
+  ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}"
+    LINKDEF "${dk2nuGenie_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_GENIE} )
 else()
   set(ROOT_INCLUDE_PATH $ENV{ROOT_INCLUDE_PATH}:${PROJECT_SOURCE_DIR}:${PROJECT_SOURCE_DIR}/genie)
-  set(GENIEDICTFILES ${CMAKE_BINARY_DIR}/libdk2nuGenie_rdict.pcm ${CMAKE_BINARY_DIR}/libdk2nuGenie.rootmap)
-  set(ROOT_DICT_OPT_GENIE -I.. -I../genie -I../include -I../include/dk2nu -Idk2nu -I../include/genie -I../include/dk2nu/genie -Idk2nu/genie -p -s libdk2nuGenie.so -rml libdk2nuGenie.so -rmf libdk2nuGenie.rootmap)
+  # again define these for "install" phase
+  set(GENIEDICTFILES ${CMAKE_BINARY_DIR}/libdk2nuGenie_rdict.pcm
+    ${CMAKE_BINARY_DIR}/libdk2nuGenie.rootmap)
+  set(ROOT_DICT_OPT_GENIE -I.. -I../genie -I../include -I../include/dk2nu
+    -Idk2nu -I../include/genie -I../include/dk2nu/genie -Idk2nu/genie
+    -p -inlineInputHeader )
+  # again make use of new MODULE arg
+  ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}"
+    LINKDEF "${dk2nuGenie_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_GENIE}
+    MODULE dk2nuGenie )
 endif()
-ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}" LINKDEF "${dk2nuGenie_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_GENIE} )
 
 # add dictionary to list of source files
 SET(dk2nuGenie_SRCS ${dk2nuGenie_SRCS} ${dk2nuGenie_DICTIONARY})
@@ -232,30 +251,30 @@ if(COPY_AUX)
 #  install(FILES README DESTINATION doc RENAME dk2nu.README)
   install(FILES       etc/locations.txt
                       etc/NuMIlocations.txt
-                      etc/LBNElocations.txt 
+                      etc/LBNElocations.txt
           DESTINATION etc)
   install(FILES       scripts/load_dk2nu.C
           DESTINATION scripts)
   install(FILES       scripts/convert/common_convert.C
           DESTINATION scripts/convert)
-  install(FILES       scripts/convert/aux/mkgclasses3.sh 
+  install(FILES       scripts/convert/aux/mkgclasses3.sh
           DESTINATION scripts/convert/aux)
-  install(FILES       scripts/convert/g3numi/g3numi.C 
-                      scripts/convert/g3numi/g3numi.h 
+  install(FILES       scripts/convert/g3numi/g3numi.C
+                      scripts/convert/g3numi/g3numi.h
           DESTINATION scripts/convert/g3numi)
-  install(FILES       scripts/convert/g4numi/g4numi.C 
-                      scripts/convert/g4numi/g4numi.h 
+  install(FILES       scripts/convert/g4numi/g4numi.C
+                      scripts/convert/g4numi/g4numi.h
           DESTINATION scripts/convert/g4numi)
-  install(FILES       scripts/convert/g4minerva/g4minerva.C 
-                      scripts/convert/g4minerva/g4minerva.h 
+  install(FILES       scripts/convert/g4minerva/g4minerva.C
+                      scripts/convert/g4minerva/g4minerva.h
                       scripts/convert/g4minerva/convert_g4minerva.C
           DESTINATION scripts/convert/g4minerva)
-  install(FILES       scripts/convert/flugg/flugg.C 
-                      scripts/convert/flugg/flugg.h 
+  install(FILES       scripts/convert/flugg/flugg.C
+                      scripts/convert/flugg/flugg.h
                       scripts/convert/flugg/convert_flugg.C
           DESTINATION scripts/convert/flugg)
-  install(FILES       scripts/convert/g4lbne/g4lbne.C 
-                      scripts/convert/g4lbne/g4lbne.h 
+  install(FILES       scripts/convert/g4lbne/g4lbne.C
+                      scripts/convert/g4lbne/g4lbne.h
                       scripts/convert/g4lbne/convert_g4lbne.C
           DESTINATION scripts/convert/g4lbne)
   install(FILES       scripts/examples/test_read_locations.C
