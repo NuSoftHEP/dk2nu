@@ -6,10 +6,11 @@
 #
 # cd /nova/app/users/$USER
 #
-# mkdir dk2nu-build
+# mkdir dk2nu-build dk2n-install
 # cd    dk2nu-build
 #
-# cmake [ -DWITH_GENIE=OFF ] ../dk2nu # or whatever path
+# cmake [ -DWITH_GENIE=ON ] [ -DWITH_TBB=OFF ]
+#     -DCMAKE_INSTALL_PREFIX=../dk2nu-install ../dk2nu # or whatever path
 #
 # Required environment variables:
 #    ROOTSYS    e.g. /nusoft/app/externals/root/v5_34_05/Linux64bit+2.6-2.5-e2-debug
@@ -32,42 +33,89 @@ set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
 # to build only the base class library
 #
 option(WITH_GENIE "Build GENIE flux driver" ON)
+option(WITH_TBB "Build in linkage to TBB library" ON)
 option(COPY_AUX "install etc, convert, snippets subdirectories" ON)
+
+execute_process(COMMAND root-config --version OUTPUT_VARIABLE ROOT_VERSION)
+string(STRIP ${ROOT_VERSION} ROOT_VERSION)
+string(SUBSTRING ${ROOT_VERSION} 0 1 ROOT_MAJOR_VERSION)
+MESSAGE("--DK2NU-- ROOT_VERSION=${ROOT_VERSION} major=${ROOT_MAJOR_VERSION}")
+# for now this still has to work with both 5 & 6
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake
                       $ENV{ROOTSYS}/cmake/modules
-                      $ENV{ROOTSYS}/../source/root/cmake/modules
                       $ENV{ROOTSYS}/etc/cmake
-                      ${CMAKE_MODULE_PATH})
+                      ${CMAKE_MODULE_PATH} )
 
 #MESSAGE("CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
 #MESSAGE(" ")
 
 find_package(ROOT REQUIRED)
 
-execute_process(COMMAND root-config --version OUTPUT_VARIABLE ROOT_VERSION)
-string(STRIP ${ROOT_VERSION} ROOT_VERSION)
-string(SUBSTRING ${ROOT_VERSION} 0 1 ROOT_MAJOR_VERSION)
-MESSAGE("--DK2NU-- ROOT_VERSION=${ROOT_VERSION} major=${ROOT_MAJOR_VERSION}")
-# for ROOT 6 one might have 'include(${ROOT_DIR}/ROOTUseFile.cmake)' here
-# and no longer need ${ENV{ROOTSYS}/etc/cmake in CMAKE_MODULE_PATH
-# but for now this has to work with both 5 & 6
+include(Darwin)
+
+if( ${ROOT_MAJOR_VERSION} LESS 6 )
+  # older ROOT wasn't so helpful, mimic what ROOT 6 does
+
+  MESSAGE("--DK2NU-- start ROOT 5 config")
+  include(CMakeParseArguments)
+  ##  $ENV{ROOTSYS}/etc/cmake/ROOTUseFile.cmake)
+
+  execute_process(COMMAND root-config --auxcflags
+                  OUTPUT_VARIABLE ROOT_CXX_FLAGS)
+  ### has a troublesome trailing \n
+  string(STRIP ${ROOT_CXX_FLAGS} ROOT_CXX_FLAGS)
+  MESSAGE("--DK2NU-- ROOT_CXX_FLAGS ${ROOT_CXX_FLAGS}")
+  set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${ROOT_CXX_FLAGS})
+
+  include(CMakeParseArguments)
+
+  find_library(ROOT_Physics_LIBRARY NAMES Physics PATHS
+    $ENV{ROOTSYS}/lib NO_DEFAULT_PATH )
+  find_library(ROOT_Matrix_LIBRARY NAMES Matrix PATHS
+    $ENV{ROOTSYS}/lib NO_DEFAULT_PATH )
+
+else()
+  MESSAGE("--DK2NU-- start ROOT 6 config")
+  # don't know who defines the ${ROOT_DIR} used here
+  # seems to be $ENV{ROOTSYS}/cmake
+  include(${ROOT_DIR}/ROOTUseFile.cmake)
+endif()
+MESSAGE("--DK2NU-- finish ROOT X config")
+
+if( WITH_TBB )
+  MESSAGE("--DK2NU-- enabled WITH_TBB")
+  find_library(TBB_LIBRARY NAMES tbb PATHS ENV TBB_LIB NO_DEFAULT_PATH )
+  # ROOT_Imt_LIBRARY = implicit multi-threading
+  set(ADD_ROOT_Imt_LIBRARY ${ROOT_Imt_LIBRARY})
+else()
+  MESSAGE("--DK2NU-- WITH_TBB disabled")
+  set(TBB_LIBRARY "")
+  set(ADD_ROOT_Imt_LIBRARY "")
+endif()
+
+#----------------------------------------------------------------------------
 
 set(INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/..
                         ${PROJECT_SOURCE_DIR}
                         ${PROJECT_SOURCE_DIR}/tree
-                        ${PROJECT_SOURCE_DIR}/genie
-                        ${ROOT_INCLUDE_DIR}
-                        / ) # add abs path for find_file() in FindROOT.cmake
+                        ${PROJECT_SOURCE_DIR}/dk2nu/tree
+                        ${ROOT_INCLUDE_DIR} )
+####                        / ) # add abs path for find_file() in FindROOT.cmake
+
+MESSAGE("--DK2NU-- PROJECT_SOURCE_DIR ${PROJECT_SOURCE_DIR}")
+MESSAGE("--DK2NU-- INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES}")
+
 
 set(LINK_DIRECTORIES ${ROOT_LIBRARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/lib )
 #MESSAGE("CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}")
 
 if(WITH_GENIE)
   set(GENIE $ENV{GENIE})
-  MESSAGE("-- WITH_GENIE was true")
+  MESSAGE("--DK2NU-- WITH_GENIE was true")
   set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES}
                           ${PROJECT_SOURCE_DIR}/genie
+                          ${PROJECT_SOURCE_DIR}/dk2nu/genie
                           $ENV{LIBXML2_INC}
                           $ENV{LOG4CPP_INC}
                           ${GENIE}/src)
@@ -75,27 +123,14 @@ if(WITH_GENIE)
   #MESSAGE("--DK2NU- INCLUDE_DIRECTORIES=${INCLUDE_DIRECTORIES}")
 endif()
 
-include_directories( ${INCLUDE_DIRECTORIESs} )
+include_directories( ${INCLUDE_DIRECTORIES} )
 link_directories( ${LINK_DIRECTORIES} )
 
 #----------------------------------------------------------------------------
 
-execute_process(COMMAND root-config --auxcflags OUTPUT_VARIABLE ROOT_CXX_FLAGS)
-### has a troublesome trailing \n
-string(STRIP ${ROOT_CXX_FLAGS} ROOT_CXX_FLAGS)
-MESSAGE("--DK2NU-- ROOT_CXX_FLAGS ${ROOT_CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${ROOT_CXX_FLAGS})
-
 # ROOT dictionary options;
 # GENIE driver dictionary needed "-p" w/ ROOT 5
 
-include(Darwin)
-
-# $ROOTSYS/etc/cmake/FindROOT.cmake
-#    needs CMAKE_PARSE_ARGUMENTS defined to do ROOT_GENERATE_DICTIONARY
-# where should one find _that_
-
-include(CMakeParseArguments)
 
 #MESSAGE("--DK2NU- PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}")
 #MESSAGE("--DK2NU- ROOT_LIBRARIES=${ROOT_LIBRARIES}")
@@ -146,7 +181,9 @@ endif()
 SET(dk2nuTree_SRCS ${dk2nuTree_SRCS} ${dk2nuTree_DICTIONARY})
 
 add_library(dk2nuTree SHARED ${dk2nuTree_SRCS})
-target_link_libraries(dk2nuTree ${ROOT_LIBRARIES} -lPhysics -lMatrix )
+target_link_libraries(dk2nuTree ${ROOT_LIBRARIES}
+  ${ROOT_Physics_LIBRARY} ${ROOT_Matrix_LIBRARY}
+  ${ADD_ROOT_Imt_LIBRARY} ${TBB_LIBRARY} )
 
 #MESSAGE("--DK2NU- dk2nuTree section done")
 #MESSAGE(" ")
@@ -199,7 +236,9 @@ SET(dk2nuGenie_SRCS ${dk2nuGenie_SRCS} ${dk2nuGenie_DICTIONARY})
 # don't use -l for dk2nuTree if we want dk2nuGenie to depend on dk2nuTree
 # before dk2nuTree is built
 add_library(dk2nuGenie SHARED ${dk2nuGenie_SRCS})
-target_link_libraries(dk2nuGenie ${ROOT_LIBRARIES} -lPhysics -lMatrix dk2nuTree )
+target_link_libraries(dk2nuGenie ${ROOT_LIBRARIES}
+  ${ROOT_Physics_LIBRARY} ${ROOT_Matrix_LIBRARY}
+  dk2nuTree)
 
 #set_property(TARGET dk2nuGenie PROPERTY DEPENDS dk2nuTree)
 #add_custom_command(OUTPUT dk2nuGenie COMMAND echo hey there DEPENDS dk2nuTree)
