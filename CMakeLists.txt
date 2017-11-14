@@ -96,12 +96,17 @@ endif()
 
 #----------------------------------------------------------------------------
 
+if( ${ROOT_MAJOR_VERSION} LESS 6 )
+  #### / ) # add abs path for find_file() in FindROOT.cmake
+  set(ROOT5_NEEDS_FULL_PATH / )
+endif()
+
 set(INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/..
                         ${PROJECT_SOURCE_DIR}
                         ${PROJECT_SOURCE_DIR}/tree
                         ${PROJECT_SOURCE_DIR}/dk2nu/tree
-                        ${ROOT_INCLUDE_DIR} )
-####                        / ) # add abs path for find_file() in FindROOT.cmake
+                        ${ROOT_INCLUDE_DIR}
+                        ${ROOT5_NEEDS_FULL_PATH} )
 
 MESSAGE("--DK2NU-- PROJECT_SOURCE_DIR ${PROJECT_SOURCE_DIR}")
 MESSAGE("--DK2NU-- INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES}")
