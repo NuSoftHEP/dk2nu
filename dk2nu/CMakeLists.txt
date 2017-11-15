@@ -149,8 +149,15 @@ link_directories( ${LINK_DIRECTORIES} )
 #MESSAGE("--DK2NU- dk2nuTree section begin")
 file(GLOB dk2nuTree_SRCS ${PROJECT_SOURCE_DIR}/tree/*.cc
                          ${PROJECT_SOURCE_DIR}/tree/*.cxx)
-file(GLOB dk2nuTree_HDRS ${PROJECT_SOURCE_DIR}/tree/*.h)
-list(REMOVE_ITEM dk2nuTree_HDRS ${PROJECT_SOURCE_DIR}/tree/LinkDef.h)
+
+#file(GLOB dk2nuTree_HDRS ${PROJECT_SOURCE_DIR}/tree/*.h)
+#list(REMOVE_ITEM dk2nuTree_HDRS ${PROJECT_SOURCE_DIR}/tree/LinkDef.h)
+set(dk2nuTree_HDRS dk2nu/tree/dk2nu.h
+                   dk2nu/tree/dkmeta.h
+                   dk2nu/tree/NuChoice.h
+                   dk2nu/tree/dflt.h
+                   dk2nu/tree/calcLocationWeights.h
+                   dk2nu/tree/readWeightLocations.h )
 
 #MESSAGE("dk2nuTree_SRCS=${dk2nuTree_SRCS}")
 #MESSAGE(" ")
@@ -175,7 +182,7 @@ else()
   set(ROOT_DICT_OPT_TREE -I.. -I../tree
     -I../include -I../include/dk2nu
     -Idk2nu -I../include/tree -I../include/dk2nu/tree -Idk2nu/tree
-    -p -inlineInputHeader )
+    -p ) ### -inlineInputHeader )
   # new MODULE option for this funciton to use w/ CMake
   ROOT_GENERATE_DICTIONARY("${dk2nuTree_DICTIONARY}" "${dk2nuTree_HDRS}"
     LINKDEF "${dk2nuTree_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_TREE}
@@ -202,8 +209,10 @@ if(WITH_GENIE)
 #MESSAGE("--DK2NU- dk2nuTree section begin")
 file(GLOB dk2nuGenie_SRCS ${PROJECT_SOURCE_DIR}/genie/*.cc
                           ${PROJECT_SOURCE_DIR}/genie/*.cxx)
-file(GLOB dk2nuGenie_HDRS ${PROJECT_SOURCE_DIR}/genie/*.h)
-list(REMOVE_ITEM dk2nuGenie_HDRS ${PROJECT_SOURCE_DIR}/genie/LinkDef.h)
+
+#file(GLOB dk2nuGenie_HDRS ${PROJECT_SOURCE_DIR}/genie/*.h)
+#list(REMOVE_ITEM dk2nuGenie_HDRS ${PROJECT_SOURCE_DIR}/genie/LinkDef.h)
+set(dk2nuGenie_HDRS dk2nu/genie/GDk2NuFlux.h)
 
 #MESSAGE("dk2nuGenie_SRCS=${dk2nuGenie_SRCS}")
 #MESSAGE(" ")
@@ -228,7 +237,7 @@ else()
     ${CMAKE_BINARY_DIR}/libdk2nuGenie.rootmap)
   set(ROOT_DICT_OPT_GENIE -I.. -I../genie -I../include -I../include/dk2nu
     -Idk2nu -I../include/genie -I../include/dk2nu/genie -Idk2nu/genie
-    -p -inlineInputHeader )
+    -p ) ### -inlineInputHeader )
   # again make use of new MODULE arg
   ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}"
     LINKDEF "${dk2nuGenie_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_GENIE}
@@ -286,9 +295,14 @@ if(WITH_GENIE)
 endif()
 #--------------------
 # Install the headers
-install(FILES ${dk2nuTree_HDRS} DESTINATION include/dk2nu/tree)
+#   given full dk2nu/tree/*.h names, look up one directory and then down
+string(REGEX REPLACE "([^;]+)" "${PROJECT_SOURCE_DIR}/../\\1" dk2nuTree_HDRS2 "${dk2nuTree_HDRS}")
+# MESSAGE("dk2nuTree_HDRS2=${dk2nuTree_HDRS2}")
+install(FILES   ${dk2nuTree_HDRS2}  DESTINATION include/dk2nu/tree)
 if(WITH_GENIE)
-  install(FILES ${dk2nuGenie_HDRS} DESTINATION include/dk2nu/genie)
+  string(REGEX REPLACE "([^;]+)" "${PROJECT_SOURCE_DIR}/../\\1" dk2nuGenie_HDRS2 "${dk2nuGenie_HDRS}")
+  # MESSAGE("dk2nuGenie_HDRS2=${dk2nuGenie_HDRS2}")
+  install(FILES ${dk2nuGenie_HDRS2} DESTINATION include/dk2nu/genie)
 endif()
 # Install support files and scripts
 if(COPY_AUX)
