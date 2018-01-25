@@ -182,7 +182,7 @@ else()
   set(ROOT_DICT_OPT_TREE -I.. -I../tree
     -I../include -I../include/dk2nu
     -Idk2nu -I../include/tree -I../include/dk2nu/tree -Idk2nu/tree
-    -p ) ### -inlineInputHeader )
+    -p -inlineInputHeader )
   # new MODULE option for this funciton to use w/ CMake
   ROOT_GENERATE_DICTIONARY("${dk2nuTree_DICTIONARY}" "${dk2nuTree_HDRS}"
     LINKDEF "${dk2nuTree_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_TREE}
