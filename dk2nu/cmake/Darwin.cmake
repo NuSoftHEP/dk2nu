@@ -1,4 +1,6 @@
 if (CMAKE_SYSTEM_NAME MATCHES Darwin)
+  set(CMAKE_MACOSX_RPATH 1)
+
   EXEC_PROGRAM("sw_vers -productVersion | cut -d . -f 1-2" OUTPUT_VARIABLE MAC_OS_VERSION)
   MESSAGE("--- Found a Mac OS X System ${MAC_OS_VERSION}")
   if (CMAKE_COMPILER_IS_GNUCXX)
