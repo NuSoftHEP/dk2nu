@@ -73,7 +73,7 @@ namespace genie {
   namespace flux  {
     class GDk2NuFluxXMLHelper {
     public:
-      GDk2NuFluxXMLHelper(GDk2NuFlux* dk2nuFlux) 
+      GDk2NuFluxXMLHelper(GDk2NuFlux* dk2nuFlux)
         : fVerbose(0), fGDk2NuFlux(dk2nuFlux) { ; }
       ~GDk2NuFluxXMLHelper() { ; }
       bool LoadConfig(std::string cfg);
@@ -81,7 +81,7 @@ namespace genie {
       // these should go in a more general package
       std::vector<double>   GetDoubleVector(std::string str);
       std::vector<long int> GetIntVector(std::string str);
-      
+
     private:
       bool     LoadParamSet(xmlDocPtr&, std::string cfg);
       void     ParseParamSet(xmlDocPtr&, xmlNodePtr&);
@@ -187,15 +187,15 @@ bool GDk2NuFlux::GenerateNext(void)
        if ( fMaxWgtFailModel <= 0 ) {
          fMaxWeight = bumped;
          LOG("Flux", pERROR)
-           << "** Fractional weight = " << f 
+           << "** Fractional weight = " << f
            << " > 1 !! Bump fMaxWeight estimate to " << fMaxWeight << "\n"
            << fCurDk2Nu->AsString() << "\n" << fCurNuChoice->AsString();
          std::cout << std::flush;
        } else {
          LOG("Flux", pERROR)
-           << "** Fractional weight = " << f 
+           << "** Fractional weight = " << f
            << " > 1 !! Leave fMaxWeight frozen at " << fMaxWeight << " "
-           << " not bumped to " << bumped << ", max so far: " 
+           << " not bumped to " << bumped << ", max so far: "
            << fMaxWeightMax << "\n"
            << fCurDk2Nu->AsString() << "\n" << fCurNuChoice->AsString();
          std::cout << std::flush;
@@ -271,23 +271,23 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
         return false;	
       }
     }
-    
+
     fNuFluxTree->GetEntry(fIEntry);
 
 #ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
-  LOG("Flux",pDEBUG) 
-    << "got " << fNNeutrinos << " new fIEntry " << fIEntry 
+  LOG("Flux",pDEBUG)
+    << "got " << fNNeutrinos << " new fIEntry " << fIEntry
     << " pot# " << fCurDk2Nu->potnum;
 #endif
 
-    fIUse = 1; 
+    fIUse = 1;
 
     // here we might want to do flavor oscillations or simple mappings
     fCurNuChoice->pdgNu  = fCurDk2Nu->decay.ntype;
     fCurNuChoice->impWgt = fCurDk2Nu->decay.nimpwt;
   }
 
-  // update the # POTs & number of neutrinos 
+  // update the # POTs & number of neutrinos
   // Do this HERE (before rejecting flavors that users might be weeding out)
   // in order to keep the POT accounting correct.  This allows one to get
   // the right normalization for generating only events from the intrinsic
@@ -310,7 +310,7 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
      if ( ! fPdgCListRej->ExistsInPDGCodeList(badpdg) ) {
        fPdgCListRej->push_back(badpdg);
        LOG("Flux", pWARN)
-         << "Encountered neutrino specie (" << badpdg 
+         << "Encountered neutrino specie (" << badpdg
          << " that wasn't in SetFluxParticles() list, "
          << "\nDeclared list of neutrino species: " << *fPdgCList;
      }
@@ -319,9 +319,9 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
 
   // Update the curr neutrino weight and energy
 
-  // Check current neutrino energy against the maximum flux neutrino energy 
+  // Check current neutrino energy against the maximum flux neutrino energy
   // declared by the current instance of the neutrino flux driver.
-  // No flux neutrino exceeding that maximum energy will be accepted at this 
+  // No flux neutrino exceeding that maximum energy will be accepted at this
   // point as that maximum energy has already been used for normalizing the
   // interaction probabilities.
   // Make sure that the appropriate maximum flux neutrino energy was set at
@@ -350,7 +350,7 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
                               fCurDk2Nu->decay.vz, 0.);
   // don't use TLorentzVector here for Mag() due to - on metric
   TVector3 dirNu = (fCurNuChoice->x4NuBeam.Vect() - fgX4dkvtx.Vect()).Unit();
-  fCurNuChoice->p4NuBeam.SetPxPyPzE( Ev*dirNu.X(), 
+  fCurNuChoice->p4NuBeam.SetPxPyPzE( Ev*dirNu.X(),
                                      Ev*dirNu.Y(),
                                      Ev*dirNu.Z(), Ev);
 
@@ -403,7 +403,7 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
 #endif
   if ( Ev > fMaxEv ) {
     LOG("Flux", pFATAL)
-      << "Generated neutrino had E_nu = " << Ev << " > " << fMaxEv 
+      << "Generated neutrino had E_nu = " << Ev << " > " << fMaxEv
       << " maximum ";
     assert(0);
   }
@@ -442,7 +442,7 @@ void GDk2NuFlux::MoveToZ0(double z0usr)
     return;
   }
 
-  double scale = (z0usr - fCurNuChoice->x4NuUser.Z()) / pzusr; 
+  double scale = (z0usr - fCurNuChoice->x4NuUser.Z()) / pzusr;
   fCurNuChoice->x4NuUser += (scale*fCurNuChoice->p4NuUser);
   fCurNuChoice->x4NuBeam += ((fLengthScaleU2B*scale)*fCurNuChoice->p4NuBeam);
   // this scaling works for distances, but not the time component
@@ -505,7 +505,7 @@ void GDk2NuFlux::LoadDkMeta(void)
       }
     }
   }
-  
+
   int job = fCurDk2Nu->job;
   if ( fCurDkMeta->job == job ) return;  // already loaded
 
@@ -525,7 +525,7 @@ void GDk2NuFlux::LoadDkMeta(void)
                         << " indx " << lookat->second;
     assert(0);
   }
-    
+
 }
 
 //___________________________________________________________________________
@@ -542,10 +542,10 @@ double GDk2NuFlux::UsedPOTs(void) const
 }
 
 //___________________________________________________________________________
-double GDk2NuFlux::POT_curr(void) { 
+double GDk2NuFlux::POT_curr(void) {
   // RWH: Not sure what POT_curr is supposed to represent I'll guess for
   // now that that it means what I mean by UsedPOTs().
-  return UsedPOTs(); 
+  return UsedPOTs();
 }
 
 //___________________________________________________________________________
@@ -556,7 +556,7 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
 
   bool found_cfg = this->LoadConfig(config);
   if ( ! found_cfg ) {
-    LOG("Flux", pFATAL) 
+    LOG("Flux", pFATAL)
       << "LoadBeamSimData could not find XML config \"" << config << "\"\n";
     exit(1);
   }
@@ -591,7 +591,7 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
 
     void* dirp = gSystem->OpenDirectory(gSystem->ExpandPathName(dirname.c_str()));
     if ( dirp ) {
-      std::string basename = 
+      std::string basename =
       pattern.substr(fbegin,pattern.size()-fbegin);
       TRegexp re(basename.c_str(),kTRUE);
       const char* onefile;
@@ -607,15 +607,15 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
     } // legal directory
   } // loop over patterns
 
-  // std::cout << "RWH start adding files" << std::endl << std::flush; 
+  // std::cout << "RWH start adding files" << std::endl << std::flush;
 
   size_t indx = 0;
   std::set<string>::const_iterator sitr = fnames.begin();
   for ( ; sitr != fnames.end(); ++sitr, ++indx ) {
     string filename = *sitr;
-    // std::cout << "RWH  [" << std::setw(3) << indx << "]  \"" 
-    //           << filename << "\"" << std::endl << std::flush; 
-    bool isok = true; 
+    // std::cout << "RWH  [" << std::setw(3) << indx << "]  \""
+    //           << filename << "\"" << std::endl << std::flush;
+    bool isok = true;
     // this next test only works for local files, so we can't do that
     // if we want to stream via xrootd
     // ! (gSystem->AccessPathName(filename.c_str()));
@@ -626,12 +626,12 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
       if ( ftree && mtree ) {
         // found both trees
         this->AddFile(ftree,mtree,filename);
-        // std::cout << "RWH  AddFile(" << ftree << "," 
-        //    << mtree << "," << filename << ")" << std::endl << std::flush; 
+        // std::cout << "RWH  AddFile(" << ftree << ","
+        //    << mtree << "," << filename << ")" << std::endl << std::flush;
       } else {
-        // std::cout << "RWH  no AddFile" << std::endl << std::flush; 
+        // std::cout << "RWH  no AddFile" << std::endl << std::flush;
         LOG("Flux", pNOTICE) << "File " << filename << " lacked a tree: "
-                             << " \"" << fTreeNames[0] << "\" " << ftree 
+                             << " \"" << fTreeNames[0] << "\" " << ftree
                              << " \"" << fTreeNames[1] << "\" " << mtree
                              << " and was not added to the file list";
       }
@@ -650,7 +650,7 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
       << "please check that input files are valid";
     LOG("Flux", pERROR)
       << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!";
-  } 
+  }
 
   // this will open all files and read header!!
   fNEntries = fNuFluxTree->GetEntries();
@@ -704,7 +704,7 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
   RandomGen* rnd = RandomGen::Instance();
   fIUse   =  9999999;
   fIEntry = rnd->RndFlux().Integer(fNEntries) - 1;
-  
+
   // don't count things we used to estimate max weight
   fSumWeight  = 0;
   fNNeutrinos = 0;
@@ -712,7 +712,7 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
 
   LOG("Flux",pNOTICE) << "about to CalcEffPOTsPerNu";
   this->CalcEffPOTsPerNu();
-  
+
 }
 
 // #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
@@ -762,7 +762,7 @@ TTree* GDk2NuFlux::GetMetaDataTree() { return fNuMetaTree; }
 //      fPdgCList = new PDGCodeList;
 //   }
 //   fPdgCList->Copy(particles);
-// 
+//
 //   LOG("Flux", pINFO)
 //     << "Declared list of neutrino species: " << *fPdgCList;
 // }
@@ -791,7 +791,7 @@ void GDk2NuFlux::ScanForMaxWeight(void)
   }
   t.Stop();
   t.Print("u");
-  LOG("Flux", pNOTICE) << "Maximum flux weight for spin = " 
+  LOG("Flux", pNOTICE) << "Maximum flux weight for spin = "
                        << wgtgenmx << ", energy = " << enumx
                        << " (" << fMaxWgtEntries << ")";
 
@@ -803,11 +803,11 @@ void GDk2NuFlux::ScanForMaxWeight(void)
   fMaxWeightScan = fMaxWeight;
   // apply possible user supplied minimum (floor)
   if (fMinMaxWeight > fMaxWeight) {
-    LOG("Flux", pNOTICE) << "Maximum flux weight set by user = " 
+    LOG("Flux", pNOTICE) << "Maximum flux weight set by user = "
                          << fMinMaxWeight << " exceeds estimate, use that";
     fMaxWeight = fMinMaxWeight;
   }
-  
+
   fMaxWeightInit  = fMaxWeight; // what we started with before generation
   fMaxWeightMax   = fMaxWeight;
   fMaxWgtExceeded = 0;          // not yet exceeded
@@ -820,7 +820,7 @@ void GDk2NuFlux::ScanForMaxWeight(void)
     fMaxEv = enumx * fMaxEFudge;
   }
 
-  LOG("Flux", pNOTICE) << "Maximum flux weight = " << fMaxWeight 
+  LOG("Flux", pNOTICE) << "Maximum flux weight = " << fMaxWeight
                        << ", energy = " << fMaxEv;
 
 }
@@ -873,7 +873,7 @@ void GDk2NuFlux::SetFluxWindow(TVector3 p0, TVector3 p1, TVector3 p2)
   if ( TMath::Abs(dot) > 1.0e-8 )
     LOG("Flux",pWARN) << "Dot product between window direction vectors was "
                       << dot << "; please check for orthoganality";
-  
+
   LOG("Flux",pNOTICE) << "about to CalcEffPOTsPerNu";
   this->CalcEffPOTsPerNu();
 }
@@ -917,7 +917,7 @@ void GDk2NuFlux::GetFluxWindow(TVector3& p0, TVector3& p1, TVector3& p2) const
   p0 = fFluxWindowPtUser[0];
   p1 = fFluxWindowPtUser[1];
   p2 = fFluxWindowPtUser[2];
-  
+
 }
 //___________________________________________________________________________
 void GDk2NuFlux::SetBeamRotation(TRotation beamrot)
@@ -986,17 +986,17 @@ TVector3  GDk2NuFlux::SphereNormal() const
 //}
 //___________________________________________________________________________
 
-void GDk2NuFlux::Beam2UserPos(const TLorentzVector& beamxyz, 
+void GDk2NuFlux::Beam2UserPos(const TLorentzVector& beamxyz,
                                    TLorentzVector& usrxyz) const
 {
   usrxyz = fLengthScaleB2U*(fBeamRot*beamxyz) + fBeamZero;
 }
-void GDk2NuFlux::Beam2UserDir(const TLorentzVector& beamdir, 
+void GDk2NuFlux::Beam2UserDir(const TLorentzVector& beamdir,
                                    TLorentzVector& usrdir) const
 {
   usrdir = fLengthScaleB2U*(fBeamRot*beamdir);
 }
-void GDk2NuFlux::Beam2UserP4 (const TLorentzVector& beamp4, 
+void GDk2NuFlux::Beam2UserP4 (const TLorentzVector& beamp4,
                                    TLorentzVector& usrp4 ) const
 {
   usrp4 = fBeamRot*beamp4;
@@ -1021,8 +1021,8 @@ void GDk2NuFlux::User2BeamP4 (const TLorentzVector& usrp4,
 //___________________________________________________________________________
 void GDk2NuFlux::PrintCurrent(void)
 {
-  LOG("Flux", pNOTICE) << "CurrentEntry:\n" 
-                       << fCurDk2Nu->AsString() << "\n" 
+  LOG("Flux", pNOTICE) << "CurrentEntry:\n"
+                       << fCurDk2Nu->AsString() << "\n"
                        << fCurNuChoice->AsString();
 }
 //___________________________________________________________________________
@@ -1100,7 +1100,7 @@ void GDk2NuFlux::Initialize(void)
 
 // #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
 //   // migrated to GFluxFileConfigI
-//   fXMLbasename     = "GNuMIFlux.xml"; 
+//   fXMLbasename     = "GNuMIFlux.xml";
 //   fNCycles         =  0;
 //   fZ0              =  -3.4e38;
 // #endif
@@ -1164,7 +1164,7 @@ void GDk2NuFlux::CleanUp(void)
   if ( fCurNuChoice ) delete fCurNuChoice;
 
   LOG("Flux", pNOTICE)
-    << " flux file cycles: " << fICycle << " of " << fNCycles 
+    << " flux file cycles: " << fICycle << " of " << fNCycles
     << ", entry " << fIEntry << " use: " << fIUse << " of " << fNUse;
 }
 
@@ -1229,9 +1229,9 @@ void GDk2NuFlux::SetLengthUnits(double user_units)
 {
   // Set the scale factor for lengths going from beam (cm) to user coordinates
 
-  // GDk2NuFlux uses "cm" as the length unit consistently internally (this is 
-  // the length units used by both the g3 and g4 ntuples).  User interactions 
-  // setting the beam-to-detector coordinate transform, flux window, and the 
+  // GDk2NuFlux uses "cm" as the length unit consistently internally (this is
+  // the length units used by both the g3 and g4 ntuples).  User interactions
+  // setting the beam-to-detector coordinate transform, flux window, and the
   // returned position might need to be in other units.  Use:
   //     double scale = genie::utils::units::UnitFromString("cm");
   // ( #include "Utils/UnitUtils.h for declaration )
@@ -1278,7 +1278,7 @@ bool GDk2NuFlux::LoadConfig(string cfg)
 
 void GDk2NuFlux::PrintConfig()
 {
-  
+
   std::ostringstream s;
   PDGCodeList::const_iterator itr = fPdgCList->begin();
   for ( ; itr != fPdgCList->end(); ++itr) s << (*itr) << " ";
@@ -1302,31 +1302,31 @@ void GDk2NuFlux::PrintConfig()
 
   const int w=10, p=6;
   std::ostringstream beamrot_str, beamrotinv_str;
-  beamrot_str 
+  beamrot_str
     << "fBeamRot: " << std::setprecision(p) << "\n"
-    << "  [ " 
+    << "  [ "
     << std::setw(w) << fBeamRot.XX() << " "
     << std::setw(w) << fBeamRot.XY() << " "
     << std::setw(w) << fBeamRot.XZ() << " ]\n"
-    << "  [ " 
+    << "  [ "
     << std::setw(w) << fBeamRot.YX() << " "
     << std::setw(w) << fBeamRot.YY() << " "
     << std::setw(w) << fBeamRot.YZ() << " ]\n"
-    << "  [ " 
+    << "  [ "
     << std::setw(w) << fBeamRot.ZX() << " "
     << std::setw(w) << fBeamRot.ZY() << " "
     << std::setw(w) << fBeamRot.ZZ() << " ]";
-  beamrotinv_str 
+  beamrotinv_str
     << "fBeamRotInv: " << std::setprecision(p) << "\n"
-    << "  [ " 
+    << "  [ "
     << std::setw(w) << fBeamRotInv.XX() << " "
     << std::setw(w) << fBeamRotInv.XY() << " "
     << std::setw(w) << fBeamRotInv.XZ() << " ]\n"
-    << "  [ " 
+    << "  [ "
     << std::setw(w) << fBeamRotInv.YX() << " "
     << std::setw(w) << fBeamRotInv.YY() << " "
     << std::setw(w) << fBeamRotInv.YZ() << " ]\n"
-    << "  [ " 
+    << "  [ "
     << std::setw(w) << fBeamRotInv.ZX() << " "
     << std::setw(w) << fBeamRotInv.ZY() << " "
     << std::setw(w) << fBeamRotInv.ZZ() << " ]";
@@ -1334,15 +1334,15 @@ void GDk2NuFlux::PrintConfig()
   std::ostringstream config_str;
   config_str
     << "GDk2NuFlux Config:"
-    << "\n Enu_max " << fMaxEv 
+    << "\n Enu_max " << fMaxEv
     << "\n pdg-codes: " << s.str() << "\n "
-    << fNEntries << " entries" 
+    << fNEntries << " entries"
     << " (FilePOTs " << fFilePOTs << ") "
     <<  "in " << fNFiles << " files: "
     << flistout.str()
     << "\n from file patterns:"
     << fpattout.str()
-    << "\n wgt max=" << fMaxWeight 
+    << "\n wgt max=" << fMaxWeight
     << " min=" << fMinMaxWeight << " scan=" << fMaxWeightScan
     << " ( fudge=" << fMaxWgtFudge << " using scan of "
     << fMaxWgtEntries << " entries )"
@@ -1387,10 +1387,12 @@ void GDk2NuFlux::PrintConfig()
 }
 
 //___________________________________________________________________________
-std::vector<std::string> GDk2NuFlux::GetFileList() 
+std::vector<std::string> GDk2NuFlux::GetFileList()
 {
   std::vector<std::string> flist;
+  if ( ! fNuFluxTree ) return flist;
   TObjArray *fileElements=fNuFluxTree->GetListOfFiles();
+  if ( ! fileElements ) return flist;
   TIter next(fileElements);
   TChainElement *chEl=0;
   while (( chEl=(TChainElement*)next() )) {
@@ -1409,14 +1411,14 @@ std::vector<double> GDk2NuFluxXMLHelper::GetDoubleVector(std::string str)
   std::vector<double> vect;
   size_t ntok = strtokens.size();
 
-  if ( fVerbose > 2 ) 
+  if ( fVerbose > 2 )
     std::cout << "GetDoubleVector \"" << str << "\"" << std::endl;
 
   for (size_t i=0; i < ntok; ++i) {
     std::string trimmed = utils::str::TrimSpaces(strtokens[i]);
     if ( " " == trimmed || "" == trimmed ) continue;  // skip empty strings
     double val = strtod(trimmed.c_str(), (char**)NULL);
-    if ( fVerbose > 2 ) 
+    if ( fVerbose > 2 )
       std::cout << "(" << vect.size() << ") = " << val << std::endl;
     vect.push_back(val);
   }
@@ -1432,14 +1434,14 @@ std::vector<long int> GDk2NuFluxXMLHelper::GetIntVector(std::string str)
   std::vector<long int> vect;
   size_t ntok = strtokens.size();
 
-  if ( fVerbose > 2 ) 
+  if ( fVerbose > 2 )
     std::cout << "GetIntVector \"" << str << "\"" << std::endl;
 
   for (size_t i=0; i < ntok; ++i) {
     std::string trimmed = utils::str::TrimSpaces(strtokens[i]);
     if ( " " == trimmed || "" == trimmed ) continue;  // skip empty strings
     long int val = strtol(trimmed.c_str(),(char**)NULL,10);
-    if ( fVerbose > 2 ) 
+    if ( fVerbose > 2 )
       std::cout << "(" << vect.size() << ") = " << val << std::endl;
     vect.push_back(val);
   }
@@ -1485,7 +1487,7 @@ bool GDk2NuFluxXMLHelper::LoadConfig(string cfg)
     return false;
   }
 
-  SLOG("GDk2NuFlux", pINFO) << "Attempt to load config \"" << cfg 
+  SLOG("GDk2NuFlux", pINFO) << "Attempt to load config \"" << cfg
                            << "\" from file: " << fname;
 
   bool found = this->LoadParamSet(xml_doc,cfg);
@@ -1509,11 +1511,11 @@ bool GDk2NuFluxXMLHelper::LoadParamSet(xmlDocPtr& xml_doc, string cfg)
   for ( ; xml_pset != NULL ; xml_pset = xml_pset->next ) {
     if ( ! xmlStrEqual(xml_pset->name, (const xmlChar*)"param_set") ) continue;
     // every time there is a 'param_set' tag
-    string param_set_name = 
+    string param_set_name =
       utils::str::TrimSpaces(utils::xml::GetAttribute(xml_pset,"name"));
-    
+
     if ( param_set_name != cfg ) continue;
-      
+
     SLOG("GDk2NuFlux", pINFO) << "Found config \"" << cfg;
 
     this->ParseParamSet(xml_doc,xml_pset);
@@ -1531,14 +1533,14 @@ void GDk2NuFluxXMLHelper::ParseParamSet(xmlDocPtr& xml_doc, xmlNodePtr& xml_pset
   for ( ; xml_child != NULL ; xml_child = xml_child->next ) {
     // handle basic gnumi_config/param_set
     // bad cast away const on next line, but function sig requires it
-    string pname = 
+    string pname =
       utils::xml::TrimSpaces(const_cast<xmlChar*>(xml_child->name));
     if ( pname == "text" || pname == "comment" ) continue;
-    string pval  = 
+    string pval  =
       utils::xml::TrimSpaces(
               xmlNodeListGetString(xml_doc, xml_child->xmlChildrenNode, 1));
 
-    if ( fVerbose > 1 ) 
+    if ( fVerbose > 1 )
       SLOG("GDk2NuFlux", pINFO)
         << "   pname \"" << pname << "\", string value \"" << pval << "\"";
 
@@ -1607,24 +1609,24 @@ void GDk2NuFluxXMLHelper::ParseParamSet(xmlDocPtr& xml_doc, xmlNodePtr& xml_pset
 
     } else {
       SLOG("GDk2NuFlux", pWARN)
-        << "  NOT HANDLED: pname \"" << pname 
+        << "  NOT HANDLED: pname \"" << pname
         << "\", string value \"" << pval << "\"";
-      
+
     }
 
   } // loop over param_set contents
-  xmlFree(xml_child);  
+  xmlFree(xml_child);
 }
 
 void GDk2NuFluxXMLHelper::ParseBeamDir(xmlDocPtr& xml_doc, xmlNodePtr& xml_beamdir)
 {
   fBeamRotXML.SetToIdentity(); // start fresh
 
-  string dirtype = 
+  string dirtype =
     utils::str::TrimSpaces(
       utils::xml::GetAttribute(xml_beamdir,"type"));
 
-  string pval  = 
+  string pval  =
     utils::xml::TrimSpaces(
       xmlNodeListGetString(xml_doc, xml_beamdir->xmlChildrenNode, 1));
 
@@ -1635,7 +1637,7 @@ void GDk2NuFluxXMLHelper::ParseBeamDir(xmlDocPtr& xml_doc, xmlNodePtr& xml_beamd
   } else if ( dirtype == "thetaphi3") {
     // G3 style triplet of (theta,phi) pairs
     std::vector<double> thetaphi3 = GetDoubleVector(pval);
-    string units = 
+    string units =
       utils::str::TrimSpaces(utils::xml::GetAttribute(xml_beamdir,"units"));
     if ( thetaphi3.size() == 6 ) {
       TRotation fTempRot;
@@ -1673,15 +1675,15 @@ void GDk2NuFluxXMLHelper::ParseBeamDir(xmlDocPtr& xml_doc, xmlNodePtr& xml_beamd
   if ( fVerbose > 1 ) {
     int w=10, p=6;
     std::cout << " fBeamRotXML: " << std::setprecision(p) << std::endl;
-    std::cout << " [ " 
+    std::cout << " [ "
               << std::setw(w) << fBeamRotXML.XX() << " "
               << std::setw(w) << fBeamRotXML.XY() << " "
               << std::setw(w) << fBeamRotXML.XZ() << std::endl
-              << "   " 
+              << "   "
               << std::setw(w) << fBeamRotXML.YX() << " "
               << std::setw(w) << fBeamRotXML.YY() << " "
               << std::setw(w) << fBeamRotXML.YZ() << std::endl
-              << "   " 
+              << "   "
               << std::setw(w) << fBeamRotXML.ZX() << " "
               << std::setw(w) << fBeamRotXML.ZY() << " "
               << std::setw(w) << fBeamRotXML.ZZ() << " ] " << std::endl;
@@ -1708,7 +1710,7 @@ void GDk2NuFluxXMLHelper::ParseBeamPos(std::string str)
    }
   if ( fVerbose > 1 ) {
     int w=16, p=10;
-    std::cout << " fBeamPosXML: [ " << std::setprecision(p) 
+    std::cout << " fBeamPosXML: [ " << std::setprecision(p)
               << std::setw(w) << fBeamPosXML.X() << " , "
               << std::setw(w) << fBeamPosXML.Y() << " , "
               << std::setw(w) << fBeamPosXML.Z() << " ] "
@@ -1722,23 +1724,23 @@ void GDk2NuFluxXMLHelper::ParseEnuMax(std::string str)
   size_t n = v.size();
   if ( n > 0 ) {
     fGDk2NuFlux->SetMaxEnergy(v[0]);
-    if ( fVerbose > 1 ) 
+    if ( fVerbose > 1 )
       std::cout << "ParseEnuMax SetMaxEnergy(" << v[0] << ") " << std::endl;
   }
   if ( n > 1 ) {
     fGDk2NuFlux->SetMaxEFudge(v[1]);
-    if ( fVerbose > 1 ) 
+    if ( fVerbose > 1 )
       std::cout << "ParseEnuMax SetMaxEFudge(" << v[1] << ")" << std::endl;
   }
   if ( n > 2 ) {
     if ( n == 3 ) {
       fGDk2NuFlux->SetMaxWgtScan(v[2]);
-      if ( fVerbose > 1 ) 
+      if ( fVerbose > 1 )
         std::cout << "ParseEnuMax SetMaxWgtScan(" << v[2] << ")" << std::endl;
     } else {
       long int nentries = (long int)v[3];
       fGDk2NuFlux->SetMaxWgtScan(v[2],nentries);
-      if ( fVerbose > 1 ) 
+      if ( fVerbose > 1 )
         std::cout << "ParseEnuMax SetMaxWgtScan(" << v[2] << "," << nentries << ")" << std::endl;
     }
   }
@@ -1749,7 +1751,7 @@ void GDk2NuFluxXMLHelper::ParseMaxWgtFail(std::string str)
   // what to do if we exceed estimate maximum weight
   // 0 = "bump"
   // 1 = "frozen"  treat as frozen:  accept and move on
-  // 2 = "abort"   
+  // 2 = "abort"
   int model = 0;  // default
   if      ( str == "0" || str == "bump"   ) model = 0;
   else if ( str == "1" || str == "frozen" ) model = 1;
@@ -1773,17 +1775,17 @@ void GDk2NuFluxXMLHelper::ParseRotSeries(xmlDocPtr& xml_doc, xmlNodePtr& xml_pse
   for ( ; xml_child != NULL ; xml_child = xml_child->next ) {
     // in a <beamdir> of type "series"
     // should be a sequence of <rotation> entries
-    string name = 
+    string name =
       utils::xml::TrimSpaces(const_cast<xmlChar*>(xml_child->name));
     if ( name == "text" || name == "comment" ) continue;
 
     if ( name == "rotation" ) {
       string val = utils::xml::TrimSpaces(
           xmlNodeListGetString(xml_doc, xml_child->xmlChildrenNode, 1));
-      string axis = 
+      string axis =
         utils::str::TrimSpaces(utils::xml::GetAttribute(xml_child,"axis"));
 
-      string units = 
+      string units =
         utils::str::TrimSpaces(utils::xml::GetAttribute(xml_child,"units"));
 
       double rot = atof(val.c_str());
@@ -1809,7 +1811,7 @@ void GDk2NuFluxXMLHelper::ParseRotSeries(xmlDocPtr& xml_doc, xmlNodePtr& xml_pse
   }
   // TRotation rotates objects not frames, so we want the inverse
   fBeamRotXML = fTempRot.Inverse();
-  xmlFree(xml_child);  
+  xmlFree(xml_child);
 }
 
 void GDk2NuFluxXMLHelper::ParseWindowSeries(xmlDocPtr& xml_doc, xmlNodePtr& xml_pset)
@@ -1820,15 +1822,15 @@ void GDk2NuFluxXMLHelper::ParseWindowSeries(xmlDocPtr& xml_doc, xmlNodePtr& xml_
   for ( ; xml_child != NULL ; xml_child = xml_child->next ) {
     // in a <windowr> element
     // should be a sequence of <point> entries
-    string name = 
+    string name =
       utils::xml::TrimSpaces(const_cast<xmlChar*>(xml_child->name));
     if ( name == "text" || name == "comment" ) continue;
 
     if ( name == "point" ) {
-      string val  = 
+      string val  =
         utils::xml::TrimSpaces(
           xmlNodeListGetString(xml_doc, xml_child->xmlChildrenNode, 1));
-      string coord = 
+      string coord =
         utils::str::TrimSpaces(utils::xml::GetAttribute(xml_child,"coord"));
 
       std::vector<double> xyz = GetDoubleVector(val);
@@ -1843,7 +1845,7 @@ void GDk2NuFluxXMLHelper::ParseWindowSeries(xmlDocPtr& xml_doc, xmlNodePtr& xml_
         TVector3 pt(xyz[0],xyz[1],xyz[2]);
         if ( fVerbose > 0 ) {
           int w=16, p=10;
-          std::cout << " point[" << ientry <<"] = [ " << std::setprecision(p) 
+          std::cout << " point[" << ientry <<"] = [ " << std::setprecision(p)
                     << std::setw(w) << pt.X() << " , "
                     << std::setw(w) << pt.Y() << " , "
                     << std::setw(w) << pt.Z() << " ] "
@@ -1860,7 +1862,7 @@ void GDk2NuFluxXMLHelper::ParseWindowSeries(xmlDocPtr& xml_doc, xmlNodePtr& xml_
         << " found <" << name << "> within <window>";
     }
   }
-  xmlFree(xml_child);  
+  xmlFree(xml_child);
 }
 
 TVector3 GDk2NuFluxXMLHelper::AnglesToAxis(double theta, double phi, std::string units)
@@ -1879,7 +1881,7 @@ TVector3 GDk2NuFluxXMLHelper::AnglesToAxis(double theta, double phi, std::string
     if (TMath::Abs(xyz[i]-1) < eps ) xyz[i] =  1;
     if (TMath::Abs(xyz[i]+1) < eps ) xyz[i] = -1;
   }
-  return TVector3(xyz[0],xyz[1],xyz[2]);                    
+  return TVector3(xyz[0],xyz[1],xyz[2]);
 }
 
 TVector3 GDk2NuFluxXMLHelper::ParseTV3(const string& str)
