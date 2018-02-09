@@ -9,14 +9,17 @@
 # mkdir dk2nu-build dk2n-install
 # cd    dk2nu-build
 #
-# cmake [ -DWITH_GENIE=ON ] [ -DWITH_TBB=OFF ]
-#     -DCMAKE_INSTALL_PREFIX=../dk2nu-install ../dk2nu # or whatever path
+# cmake [ -DWITH_GENIE=ON ] \
+#       [ -DGENIE_ONLY=OFF -DDK2NUDATA_DIR=<path-to-dk2nudata-install> ] \
+#       [ -DWITH_TBB=OFF ] \
+#     -DCMAKE_INSTALL_PREFIX:PATH==<path-to-install>/dk2nu-install \
+#     <path-to-source>/dk2nu
 #
 # Required environment variables:
 #    ROOTSYS    e.g. /nusoft/app/externals/root/v5_34_05/Linux64bit+2.6-2.5-e2-debug
 # Optional
 #    GENIE
-#      if GENIE requires  $LIBXML2_INC and $LOG4CPP_INC
+#      if GENIE, also requires  $LIBXML2_INC and $LOG4CPP_INC
 #
 #----------------------------------------------------------------------------
 # Setup the project
@@ -33,6 +36,8 @@ set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
 # to build only the base class library
 #
 option(WITH_GENIE "Build GENIE flux driver" ON)
+option(GENIE_ONLY "Build only GENIE flux driver" OFF)
+option(DK2NUDATA_DIR "path the dk2nu data half of package if GENIE_ONLY" "")
 option(WITH_TBB "Build in linkage to TBB library" ON)
 option(COPY_AUX "install etc, convert, snippets subdirectories" ON)
 
@@ -101,209 +106,31 @@ if( ${ROOT_MAJOR_VERSION} LESS 6 )
   set(ROOT5_NEEDS_FULL_PATH / )
 endif()
 
+
+MESSAGE("====> PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}")
 set(INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/..
                         ${PROJECT_SOURCE_DIR}
-                        ${PROJECT_SOURCE_DIR}/tree
-                        ${PROJECT_SOURCE_DIR}/dk2nu/tree
-                        ${ROOT_INCLUDE_DIR}
+                        ${PROJECT_SOURCE_DIR}/dk2nu
+                        $${ROOT_INCLUDE_DIR}
                         ${ROOT5_NEEDS_FULL_PATH} )
 
-MESSAGE("--DK2NU-- PROJECT_SOURCE_DIR ${PROJECT_SOURCE_DIR}")
-MESSAGE("--DK2NU-- INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES}")
-
-
-set(LINK_DIRECTORIES ${ROOT_LIBRARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/lib )
-#MESSAGE("CMAKE_CURRENT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}")
-
-if(WITH_GENIE)
   set(GENIE $ENV{GENIE})
-  MESSAGE("--DK2NU-- WITH_GENIE was true")
-  set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES}
-                          ${PROJECT_SOURCE_DIR}/genie
-                          ${PROJECT_SOURCE_DIR}/dk2nu/genie
-                          $ENV{LIBXML2_INC}
-                          $ENV{LOG4CPP_INC}
-                          ${GENIE}/src)
-  set(LINK_DIRECTORIES ${LINK_DIRECTORIES} ${GENIE}/lib)
-  #MESSAGE("--DK2NU- INCLUDE_DIRECTORIES=${INCLUDE_DIRECTORIES}")
-endif()
-
-include_directories( ${INCLUDE_DIRECTORIES} )
-link_directories( ${LINK_DIRECTORIES} )
-
-#----------------------------------------------------------------------------
-
-# ROOT dictionary options;
-# GENIE driver dictionary needed "-p" w/ ROOT 5
-
-
-#MESSAGE("--DK2NU- PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}")
-#MESSAGE("--DK2NU- ROOT_LIBRARIES=${ROOT_LIBRARIES}")
-#MESSAGE("--DK2NU- CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}")
-#MESSAGE("--DK2NU-")
-
-#----------------------------------------------------------------------------
-#
-# libdk2nuTree.so
-#
-#MESSAGE("--DK2NU- dk2nuTree section begin")
-file(GLOB dk2nuTree_SRCS ${PROJECT_SOURCE_DIR}/tree/*.cc
-                         ${PROJECT_SOURCE_DIR}/tree/*.cxx)
-
-#file(GLOB dk2nuTree_HDRS ${PROJECT_SOURCE_DIR}/tree/*.h)
-#list(REMOVE_ITEM dk2nuTree_HDRS ${PROJECT_SOURCE_DIR}/tree/LinkDef.h)
-set(dk2nuTree_HDRS dk2nu/tree/dk2nu.h
-                   dk2nu/tree/dkmeta.h
-                   dk2nu/tree/NuChoice.h
-                   dk2nu/tree/dflt.h
-                   dk2nu/tree/calcLocationWeights.h
-                   dk2nu/tree/readWeightLocations.h )
-
-#MESSAGE("dk2nuTree_SRCS=${dk2nuTree_SRCS}")
-#MESSAGE(" ")
-#MESSAGE("dk2nuTree_HDRS=${dk2nuTree_HDRS}")
-#MESSAGE(" ")
-
-set(dk2nuTree_LINKDEF ${PROJECT_SOURCE_DIR}/tree/LinkDef.h)
-# do not include ".cxx" here!!!!
-set(dk2nuTree_DICTIONARY dk2nuTreeDict)
-
-#MESSAGE("--DK2NU- about to ROOT_GENERATE_DICTIONARY ${dk2nuTree_DICTIONARY}")
-#MESSAGE("--rwh- ROOT_GENERATE_DICTIONARY ${dk2nuTree_DICTIONARY} ${dk2nuTree_HDRS} ${dk2nuTree_LINKDEF} ")
-if( ${ROOT_MAJOR_VERSION} LESS 6 )
-  set(ROOT_DICT_OPT_TREE -p)
-  ROOT_GENERATE_DICTIONARY("${dk2nuTree_DICTIONARY}" "${dk2nuTree_HDRS}"
-    LINKDEF "${dk2nuTree_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_TREE} )
+if( GENIE_ONLY )
+  set(COPY_AUX OFF)
+  add_subdirectory(genie)
+  MESSAGE("--DK2NU-- Disabled dk2nu tree (dk2nudata) building")
 else()
-  set(ROOT_INCLUDE_PATH $ENV{ROOT_INCLUDE_PATH}:${PROJECT_SOURCE_DIR}:${PROJECT_SOURCE_DIR}/tree)
-  # these are defined for the install stage
-  set(TREEDICTFILES ${CMAKE_BINARY_DIR}/libdk2nuTree_rdict.pcm
-    ${CMAKE_BINARY_DIR}/libdk2nuTree.rootmap )
-  set(ROOT_DICT_OPT_TREE -I.. -I../tree
-    -I../include -I../include/dk2nu
-    -Idk2nu -I../include/tree -I../include/dk2nu/tree -Idk2nu/tree
-    -p -inlineInputHeader )
-  # new MODULE option for this funciton to use w/ CMake
-  ROOT_GENERATE_DICTIONARY("${dk2nuTree_DICTIONARY}" "${dk2nuTree_HDRS}"
-    LINKDEF "${dk2nuTree_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_TREE}
-    MODULE dk2nuTree )
-endif()
-
-# add dictionary to list of source files
-SET(dk2nuTree_SRCS ${dk2nuTree_SRCS} ${dk2nuTree_DICTIONARY})
-
-add_library(dk2nuTree SHARED ${dk2nuTree_SRCS})
-target_link_libraries(dk2nuTree ${ROOT_LIBRARIES}
-  ${ROOT_Physics_LIBRARY} ${ROOT_Matrix_LIBRARY}
-  ${ADD_ROOT_Imt_LIBRARY} ${TBB_LIBRARY} )
-
-#MESSAGE("--DK2NU- dk2nuTree section done")
-#MESSAGE(" ")
-
-#----------------------------------------------------------------------------
-#
-# libdk2nuGenie.so
-#
-if(WITH_GENIE)
-
-#MESSAGE("--DK2NU- dk2nuTree section begin")
-file(GLOB dk2nuGenie_SRCS ${PROJECT_SOURCE_DIR}/genie/*.cc
-                          ${PROJECT_SOURCE_DIR}/genie/*.cxx)
-
-#file(GLOB dk2nuGenie_HDRS ${PROJECT_SOURCE_DIR}/genie/*.h)
-#list(REMOVE_ITEM dk2nuGenie_HDRS ${PROJECT_SOURCE_DIR}/genie/LinkDef.h)
-set(dk2nuGenie_HDRS dk2nu/genie/GDk2NuFlux.h)
-
-#MESSAGE("dk2nuGenie_SRCS=${dk2nuGenie_SRCS}")
-#MESSAGE(" ")
-#MESSAGE("dk2nuGenie_HDRS=${dk2nuGenie_HDRS}")
-#MESSAGE(" ")
-
-set(dk2nuGenie_LINKDEF ${PROJECT_SOURCE_DIR}/genie/LinkDef.h)
-# do not include ".cxx" here!!!!
-set(dk2nuGenie_DICTIONARY dk2nuGenieDict)
-
-#MESSAGE("--DK2NU- about to ROOT_GENERATE_DICTIONARY ${dk2nuGenie_DICTIONARY}")
-# option -p = use compiler's preprocessor instead of CINT's
-# needed to handle GVersion.h  GRELCODE(2,9,0) construct
-if( ${ROOT_MAJOR_VERSION} LESS 6 )
-  set(ROOT_DICT_OPT_GENIE -p)
-  ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}"
-    LINKDEF "${dk2nuGenie_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_GENIE} )
-else()
-  set(ROOT_INCLUDE_PATH $ENV{ROOT_INCLUDE_PATH}:${PROJECT_SOURCE_DIR}:${PROJECT_SOURCE_DIR}/genie)
-  # again define these for "install" phase
-  set(GENIEDICTFILES ${CMAKE_BINARY_DIR}/libdk2nuGenie_rdict.pcm
-    ${CMAKE_BINARY_DIR}/libdk2nuGenie.rootmap)
-  set(ROOT_DICT_OPT_GENIE -I.. -I../genie -I../include -I../include/dk2nu
-    -Idk2nu -I../include/genie -I../include/dk2nu/genie -Idk2nu/genie
-    -p ) ### -inlineInputHeader )
-  # again make use of new MODULE arg
-  ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}"
-    LINKDEF "${dk2nuGenie_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_GENIE}
-    MODULE dk2nuGenie )
-endif()
-
-# add dictionary to list of source files
-SET(dk2nuGenie_SRCS ${dk2nuGenie_SRCS} ${dk2nuGenie_DICTIONARY})
-
-# don't use -l for dk2nuTree if we want dk2nuGenie to depend on dk2nuTree
-# before dk2nuTree is built
-add_library(dk2nuGenie SHARED ${dk2nuGenie_SRCS})
-target_link_libraries(dk2nuGenie ${ROOT_LIBRARIES}
-  ${ROOT_Physics_LIBRARY} ${ROOT_Matrix_LIBRARY}
-  dk2nuTree)
-
-#set_property(TARGET dk2nuGenie PROPERTY DEPENDS dk2nuTree)
-#add_custom_command(OUTPUT dk2nuGenie COMMAND echo hey there DEPENDS dk2nuTree)
-
-#MESSAGE("--DK2NU- dk2nuGenie section done")
-
+  add_subdirectory(tree)
+  if ( NOT WITH_GENIE )
+    MESSAGE("--DK2NU-- Disabled GENIE flux driver building")
+  else()
+    add_subdirectory(genie)
+    MESSAGE("--DK2NU-- Both tree & GENIE flux driver building enabled")
+  endif()
 endif()
 
 #----------------------------------------------------------------------------
-# Copy all scripts to the build directory, i.e. the directory in which we
-# build B1. This is so that we can run the executable directly because it
-# relies on these scripts being in the current working directory.
-#
-##set(EXAMPLEG4NUMI_SCRIPTS
-## me000z200i3.mac
-##  )
-##
-##foreach(_script ${EXAMPLEG4NUMI_SCRIPTS})
-##  configure_file(
-##    ${PROJECT_SOURCE_DIR}/${_script}
-##    ${PROJECT_BINARY_DIR}/${_script}
-##    COPYONLY
-##    )
-##endforeach()
 
-#----------------------------------------------------------------------------
-# For internal Geant4 use - but has no effect if you build this
-# example standalone
-#
-##add_custom_target(G4NUMI DEPENDS g4numi)
-
-#----------------------------------------------------------------------------
-# Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
-#
-install(TARGETS dk2nuTree DESTINATION lib)
-install(FILES ${TREEDICTFILES} DESTINATION lib)
-if(WITH_GENIE)
-  install(TARGETS dk2nuGenie DESTINATION lib)
-  install(FILES ${GENIEDICTFILES} DESTINATION lib)
-endif()
-#--------------------
-# Install the headers
-#   given full dk2nu/tree/*.h names, look up one directory and then down
-string(REGEX REPLACE "([^;]+)" "${PROJECT_SOURCE_DIR}/../\\1" dk2nuTree_HDRS2 "${dk2nuTree_HDRS}")
-# MESSAGE("dk2nuTree_HDRS2=${dk2nuTree_HDRS2}")
-install(FILES   ${dk2nuTree_HDRS2}  DESTINATION include/dk2nu/tree)
-if(WITH_GENIE)
-  string(REGEX REPLACE "([^;]+)" "${PROJECT_SOURCE_DIR}/../\\1" dk2nuGenie_HDRS2 "${dk2nuGenie_HDRS}")
-  # MESSAGE("dk2nuGenie_HDRS2=${dk2nuGenie_HDRS2}")
-  install(FILES ${dk2nuGenie_HDRS2} DESTINATION include/dk2nu/genie)
-endif()
 # Install support files and scripts
 if(COPY_AUX)
 #  install(FILES README DESTINATION doc RENAME dk2nu.README)
