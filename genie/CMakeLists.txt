@@ -64,7 +64,7 @@ else()
                      ${CMAKE_BINARY_DIR}/genie/libdk2nuGenie.rootmap )
   set(ROOT_DICT_OPT_GENIE -I.. -I../genie -I../include -I../include/dk2nu
     -Idk2nu -I../include/genie -I../include/dk2nu/genie -Idk2nu/genie
-    -p ) ### -inlineInputHeader )
+    -p -inlineInputHeader )
   # again make use of new MODULE arg
   ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}"
     LINKDEF "${dk2nuGenie_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_GENIE}
