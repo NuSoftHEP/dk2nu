@@ -5,7 +5,7 @@
  *
  * \brief A class that defines the final choice of the neutrino ray
  *        including it position and momentum in both detector and beam
- *        coordinate systems.  This class is generally used in 
+ *        coordinate systems.  This class is generally used in
  *        conjunction with the "dk2nu" class.
  *
  * \author (last to touch it) $Author: rhatcher $
@@ -39,11 +39,11 @@ namespace bsim {
    *  classes should provide a AsString() method for formatting themselves
    *  for use output.
    */
-  
+
   ///---------------------------------------------------------------------------
   /**
    *============================================================================
-   *  
+   *
    */
   class NuChoice
   {
@@ -56,13 +56,13 @@ namespace bsim {
     TLorentzVector  x4NuBeam;    ///< generated nu 4-position in beam coord
     TLorentzVector  p4NuUser;    ///< generated nu 4-momentum in user/det coord
     TLorentzVector  x4NuUser;    ///< generated nu 4-position in user/det coord
-    
+
   public:
     NuChoice();
     virtual     ~NuChoice();
     void        clear(const std::string &opt = "");    ///< reset everything
     std::string AsString(const std::string& opt = "") const;
-    
+
   private:
     ClassDef(bsim::NuChoice,1)
   };  // end-of-class bsim::NuChoice

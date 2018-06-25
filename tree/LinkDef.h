@@ -43,4 +43,3 @@
 
 #pragma link C++ function operator<<(std::ostream&, const bsim::NuChoice&);
 #endif
-

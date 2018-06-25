@@ -4,7 +4,7 @@
  *
  * \brief A class that defines the final choice of the neutrino ray
  *        including it position and momentum in both detector and beam
- *        coordinate systems.  This class is generally used in 
+ *        coordinate systems.  This class is generally used in
  *        conjunction with the "dk2nu" class.
  *
  * \author (last to touch it) $Author: rhatcher $
@@ -32,7 +32,7 @@ ClassImp(bsim::NuChoice)
 bsim::NuChoice::NuChoice() { clear(); }
 bsim::NuChoice::~NuChoice() { ; }
 void bsim::NuChoice::clear(const std::string &)
-{ 
+{
   pdgNu  = 0;
   xyWgt  = 0;
   impWgt = 0;
@@ -45,7 +45,7 @@ void bsim::NuChoice::clear(const std::string &)
 std::string bsim::NuChoice::AsString(const std::string& /* opt */) const
 {
   std::ostringstream s;
-  s << "NuChoice: " << pdgNu << " xyWgt " << xyWgt 
+  s << "NuChoice: " << pdgNu << " xyWgt " << xyWgt
     << " impWgt " << impWgt << "\n";
   s << "beam  p3={ " << std::setw(12) << p4NuBeam.Px()
     << "," << std::setw(12) << p4NuBeam.Py()

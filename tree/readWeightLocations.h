@@ -10,8 +10,8 @@ namespace bsim {
 
 namespace bsim {
   /// Read a text file that contains a header line followed by
-  /// quartets of "<xpos> <ypos> <zpos> <text string>" on separate 
-  /// lines.  Fill the supplied vectors.  Trim off leading/trailing 
+  /// quartets of "<xpos> <ypos> <zpos> <text string>" on separate
+  /// lines.  Fill the supplied vectors.  Trim off leading/trailing
   /// blanks and quotes (single/double) from the string.
   /// Convention has it that positions are given in (cm).
   void readWeightLocations(std::string locfilename,
