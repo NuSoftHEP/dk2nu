@@ -30,13 +30,26 @@
 #include <TLorentzVector.h>
 #include <TLorentzRotation.h>
 
-#include "EVGDrivers/GFluxI.h"
-#include "PDG/PDGUtils.h"
-#include "Conventions/GVersion.h"
-// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
-  #include "FluxDrivers/GFluxExposureI.h"
-  #include "FluxDrivers/GFluxFileConfigI.h"
-// #endif
+// post-R3 this needs -I ${GENIE}/src/Framework as well as -I ${GENIE}/src
+// #include "Conventions/GVersion.h"
+// can't rely on that ... so we'll require -DGENIE_PRE_R3
+
+
+#ifdef GENIE_PRE_R3
+  #include "Conventions/GVersion.h"
+  #include "EVGDrivers/GFluxI.h"
+  #include "PDG/PDGUtils.h"
+  #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+    #include "FluxDrivers/GFluxExposureI.h"
+    #include "FluxDrivers/GFluxFileConfigI.h"
+   #endif
+#else
+  #include "Framework/Conventions/GVersion.h"
+  #include "Framework/EventGen/GFluxI.h"
+  #include "Framework/ParticleData/PDGUtils.h"
+  #include "Tools/Flux/GFluxExposureI.h"
+  #include "Tools/Flux/GFluxFileConfigI.h"
+#endif
 
 class TFile;
 class TChain;
@@ -53,7 +66,7 @@ namespace genie {
 namespace flux  {
 
 // #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
-class GDk2NuFlux : public GFluxI, 
+class GDk2NuFlux : public GFluxI,
     public GFluxExposureI, public GFluxFileConfigI {
 // #else
 // class GDk2NuFlux: public GFluxI {
@@ -79,9 +92,9 @@ public :
   void                   GenerateWeighted (bool gen_weighted);
 
   // Methods specific to this flux driver,
-  // for configuration/initialization of the flux & event generation drivers 
+  // for configuration/initialization of the flux & event generation drivers
   // and and for passing-through flux information (e.g. neutrino parent decay
-  // kinematics) not used by the generator but required by analyses/processing 
+  // kinematics) not used by the generator but required by analyses/processing
   // further downstream
 
   //
@@ -90,7 +103,7 @@ public :
   const bsim::NuChoice &  GetNuChoice(void) { return *fCurNuChoice; };
   const bsim::Dk2Nu &     GetDk2Nu(void)    { return *fCurDk2Nu; };
   const bsim::DkMeta &    GetDkMeta(void)   { LoadDkMeta(); return *fCurDkMeta; };
-  
+
   Long64_t GetEntryNumber() { return fIEntry; }   ///< index in chain
 
   double    GetDecayDist() const; ///< dist (user units) from dk to current pos
@@ -103,7 +116,7 @@ public :
   virtual double GetTotalExposure() const;  // GFluxExposureI interface
 // #else
 //   // these are elminated with the introduction of GFluxFileConfigI
-//   void                   SetXMLFile(string xmlbasename="GNuMIFlux.xml") 
+//   void                   SetXMLFile(string xmlbasename="GNuMIFlux.xml")
 //                               { fXMLbasename = xmlbasename; }
 //   std::string            GetXMLFile() const { return fXMLbasename; }
 // #endif
@@ -118,7 +131,7 @@ public :
 
   std::vector<std::string> GetFileList();  ///< list of files currently part of chain
 
-  // 
+  //
   // GFluxFileConfigI interface
   //
   virtual void  LoadBeamSimData(const std::vector<string>& filenames,
@@ -138,8 +151,8 @@ public :
   //
   // configuration of GDk2NuFlux
   //
-  void      SetTreeNames(std::string fname = "dk2nuTree", 
-                         std::string mname = "dkmetaTree") 
+  void      SetTreeNames(std::string fname = "dk2nuTree",
+                         std::string mname = "dkmetaTree")
   { fTreeNames[0] = fname; fTreeNames[1] = mname; }
 
 
@@ -163,12 +176,12 @@ public :
             { fMaxWgtFailModel = i; }
 
 
-  void      SetApplyWindowTiltWeight(bool apply = true)           ///< apply wgt due to tilt of flux window relative to beam                                   
+  void      SetApplyWindowTiltWeight(bool apply = true)           ///< apply wgt due to tilt of flux window relative to beam
             { fApplyTiltWeight = apply; }
 
-  // GDk2NuFlux uses "cm" as the length unit consistently internally (this is 
-  // the length units used by the dk2nu ntuples).  User interactions 
-  // setting the beam-to-detector coordinate transform, flux window, and the 
+  // GDk2NuFlux uses "cm" as the length unit consistently internally (this is
+  // the length units used by the dk2nu ntuples).  User interactions
+  // setting the beam-to-detector coordinate transform, flux window, and the
   // returned position might need to be in other units.  Use:
   //     double scale = genie::utils::units::UnitFromString("cm");
   // ( #include "Utils/UnitUtils.h for declaration )
@@ -177,10 +190,10 @@ public :
 
   void   SetLengthUnits(double user_units);  ///< Set units assumed by user
   double    LengthUnits(void) const;         ///< Return user units
-  
+
   // set relative orientation of user coords vs. beam system, i.e.
   //  x3_user = ( beamrot * x3_beam ) + x0beam_user
-  //  p3_user =   beamrot * p3_beam 
+  //  p3_user =   beamrot * p3_beam
 
   ///< beam (0,0,0) relative to user frame, beam direction in user frame
   void      SetBeamRotation(TRotation beamrot);
@@ -190,15 +203,15 @@ public :
 
   // configure a flux window (or point) where E_nu and weight are evaluated
 
-  // rwh: potential upgrade: allow flux window set/get in beam coords 
+  // rwh: potential upgrade: allow flux window set/get in beam coords
   // as optional flag to *etFluxWindow
   bool      IsFluxSphere() const { return fIsSphere; }                     ///< flat window or sphere
   void      SetFluxWindow(TVector3  p1, TVector3  p2, TVector3  p3);       ///< 3 points define a plane (by default in user coordinates)
-  void      GetFluxWindow(TVector3& p1, TVector3& p2, TVector3& p3) const; ///< 3 points define a plane in beam coordinate 
+  void      GetFluxWindow(TVector3& p1, TVector3& p2, TVector3& p3) const; ///< 3 points define a plane in beam coordinate
   void      SetFluxSphere(TVector3  center, double  radius, bool inDetCoord=true);       ///< specification of a sphere
   void      GetFluxSphere(TVector3& center, double& radius, bool inDetCoord=true) const; ///< specification of a sphere
 
-// #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0) 
+// #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
 //   // migrated to GFluxFileConfigI
 //   void      SetUpstreamZ(double z0);
 //   void      SetNumOfCycles(long int ncycle);
@@ -243,7 +256,7 @@ private:
 
   bool           fEnd;            ///< end condition reached
 
-// #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0) 
+// #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
 //   // incorporated into GFluxFileConfigI
 //   PDGCodeList *  fPdgCList;       ///< list of neutrino pdg-codes to generate
 //   PDGCodeList *  fPdgCListRej;    ///< list of neutrino pdg-codes seen but rejected
@@ -293,7 +306,7 @@ private:
   bool      fGenWeighted;         ///< does GenerateNext() give weights?
   bool      fApplyTiltWeight;     ///< wgt due to window normal not || beam
   bool      fDetLocIsSet;         ///< is a flux location (near/far) set?
-  
+
   double           fLengthUnits;    ///< units for coord in user exchanges
   double           fLengthScaleB2U; ///< scale factor beam (cm) --> user
   double           fLengthScaleU2B; ///< scale factor beam user --> (cm)
