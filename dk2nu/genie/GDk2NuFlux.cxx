@@ -32,18 +32,33 @@
 #include <TSystem.h>
 #include <TStopwatch.h>
 
-// GENIE headers
-#include "Conventions/GBuild.h"
-#include "Conventions/Units.h"
-#include "Messenger/Messenger.h"
-#include "Numerical/RandomGen.h"
-#include "PDG/PDGCodes.h"
-#include "PDG/PDGCodeList.h"
-#include "Utils/MathUtils.h"
-#include "Utils/PrintUtils.h"
-#include "Utils/UnitUtils.h"
-#include "Utils/XmlParserUtils.h"
-#include "Utils/StringUtils.h"
+#ifdef GENIE_PRE_R3
+  // GENIE headers
+  #include "Conventions/GBuild.h"
+  #include "Conventions/Units.h"
+  #include "Messenger/Messenger.h"
+  #include "Numerical/RandomGen.h"
+  #include "PDG/PDGCodes.h"
+  #include "PDG/PDGCodeList.h"
+  #include "Utils/MathUtils.h"
+  #include "Utils/PrintUtils.h"
+  #include "Utils/UnitUtils.h"
+  #include "Utils/XmlParserUtils.h"
+  #include "Utils/StringUtils.h"
+#else
+  // GENIE R-3 headers
+  #include "Framework/Conventions/GBuild.h"
+  #include "Framework/Conventions/Units.h"
+  #include "Framework/Messenger/Messenger.h"
+  #include "Framework/Numerical/RandomGen.h"
+  #include "Framework/ParticleData/PDGCodes.h"
+  #include "Framework/ParticleData/PDGCodeList.h"
+  #include "Framework/Utils/PrintUtils.h"
+  #include "Framework/Utils/UnitUtils.h"
+  #include "Framework/Utils/XmlParserUtils.h"
+  #include "Framework/Utils/StringUtils.h"
+  #include "Framework/Numerical/MathUtils.h"
+#endif
 
 // Dk2Nu headers
 #include "genie/GDk2NuFlux.h"
@@ -53,11 +68,16 @@
 #include "tree/calcLocationWeights.h"
 
 // need GDk2NuFlux header to register w/ factory
-#include "Conventions/GVersion.h"
-// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
-  #include "FluxDrivers/GFluxDriverFactory.h"
-  FLUXDRIVERREG4(genie,flux,GDk2NuFlux,genie::flux::GDk2NuFlux)
-// #endif
+#ifdef GENIE_PRE_R3
+  #include "Conventions/GVersion.h"
+  #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
+    #include "FluxDrivers/GFluxDriverFactory.h"
+    FLUXDRIVERREG4(genie,flux,GDk2NuFlux,genie::flux::GDk2NuFlux)
+  #endif
+#else
+    #include "Tools/Flux/GFluxDriverFactory.h"
+    FLUXDRIVERREG4(genie,flux,GDk2NuFlux,genie::flux::GDk2NuFlux)
+#endif
 
 #include <vector>
 #include <algorithm>
@@ -241,7 +261,7 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
   if ( ! fNuFluxTree ) {
      LOG("Flux", pERROR)
           << "The flux driver has not been properly configured";
-     return false;	
+     return false;
   }
 
   // Reuse an entry?
@@ -268,7 +288,7 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
           << fICycle << " of " << fNCycles;
         fEnd = true;
         //assert(0);
-        return false;	
+        return false;
       }
     }
 
@@ -314,7 +334,7 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
          << " that wasn't in SetFluxParticles() list, "
          << "\nDeclared list of neutrino species: " << *fPdgCList;
      }
-     return false;	
+     return false;
   }
 
   // Update the curr neutrino weight and energy
@@ -536,7 +556,7 @@ double GDk2NuFlux::UsedPOTs(void) const
   if (!fNuFluxTree) {
      LOG("Flux", pWARN)
           << "The flux driver has not been properly configured";
-     return 0;	
+     return 0;
   }
   return fAccumPOTs;
 }
@@ -694,7 +714,7 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
   if (fMaxWeight<=0) {
      LOG("Flux", pINFO)
        << "Run ScanForMaxWeight() as part of LoadBeamSimData";
-     this->ScanForMaxWeight();	
+     this->ScanForMaxWeight();
   }
 
   // current ntuple cycle # (flux ntuples may be recycled)
@@ -774,7 +794,7 @@ void GDk2NuFlux::ScanForMaxWeight(void)
   if (!fDetLocIsSet) {
      LOG("Flux", pERROR)
        << "Specify a detector location before scanning for max weight";
-     return;	
+     return;
   }
 
   // scan for the maximum weight

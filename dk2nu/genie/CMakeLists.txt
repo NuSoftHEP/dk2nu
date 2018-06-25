@@ -1,5 +1,46 @@
 
 set(GENIE $ENV{GENIE})
+
+# genie
+# genie-config for R-2 series didn't support --version (returns blank)
+# execute_process(COMMAND genie-config --version OUTPUT_VARIABLE GENIE_VERSION)
+# this is the equivalent:
+execute_process(COMMAND cat ${GENIE}/VERSION OUTPUT_VARIABLE GENIE_VERSION)
+string(STRIP ${GENIE_VERSION} GENIE_VERSION)
+string(SUBSTRING ${GENIE_VERSION} 0 1 GENIE_MAJOR_VERSION)
+MESSAGE("--DK2NU-- GENIE_VERSION=${GENIE_VERSION} major=${GENIE_MAJOR_VERSION}")
+if( ${GENIE_MAJOR_VERSION} LESS 3 )
+  add_definitions(-DGENIE_PRE_R3)
+endif()
+
+set(ART_VERSION $ENV{ART_VERSION})
+# if using ART pre-link to libraries using find_library
+if ( "${ART_VERSION}" STREQUAL "" )
+  # for now don't pre-link unless ART's around
+else()
+  # log4cpp
+  find_library( LOG4CPP NAMES log4cpp PATHS ENV LOG4CPP_LIB NO_DEFAULT_PATH )
+  #  XML parser
+  set( LIBXML2_LIB_DIR $ENV{LIBXML2_FQ_DIR}/lib )
+  find_library( XML2 NAMES xml2 PATHS ${LIBXML2_LIB_DIR} NO_DEFAULT_PATH )
+
+  if( ${GENIE_MAJOR_VERSION} LESS 3 )
+    find_library( GPDG NAMES GPDG PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
+    find_library( GUTILS NAMES GUtils PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
+    find_library( GFLUXDRIVERS NAMES GFluxDrivers PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
+    find_library( GEVGDRIVERS NAMES GEVGDrivers PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
+    find_library( GMESSENGER NAMES GMessenger PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
+    find_library( GNUMERICAL NAMES GNumerical PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
+  else()
+    find_library( GMESSENGER NAMES GFwMsg PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
+    find_library( GNUMERICAL NAMES GFwNum PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
+    find_library( GUTILS     NAMES GFwUtl PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
+    find_library( GPDG     NAMES GFwParDat PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
+    find_library( GEVGDRIVERS NAMES GFwEG  PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
+    find_library( GFLUXDRIVERS NAMES GTlFlx PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
+  endif()
+endif()
+
 MESSAGE("--DK2NU-- WITH_GENIE or GENIE_ONLY was true")
 if (GENIE_ONLY)
   if ( "${DK2NUDATA_DIR}" STREQUAL "" )
@@ -80,7 +121,16 @@ add_library(dk2nuGenie SHARED ${dk2nuGenie_SRCS})
 target_link_libraries(dk2nuGenie ${ROOT_LIBRARIES}
   ${ROOT_Physics_LIBRARY} ${ROOT_Matrix_LIBRARY}
   ${ADD_ROOT_Imt_LIBRARY} ${TBB_LIBRARY}
-  dk2nuTree)
+  dk2nuTree
+  ${GFLUXDRIVERS}
+  ${GEVGDRIVERS}
+  ${GPDG}
+  ${GUTILS}
+  ${GNUMERICAL}
+  ${GMESSENGER}
+  ${LOG4CPP}
+  ${XML2}
+  )
 
 #set_property(TARGET dk2nuGenie PROPERTY DEPENDS dk2nuTree)
 #add_custom_command(OUTPUT dk2nuGenie COMMAND echo hey there DEPENDS dk2nuTree)
