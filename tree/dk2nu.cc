@@ -33,15 +33,15 @@ bsim::NuRay::~NuRay() { ; }
 bsim::NuRay::NuRay(double pxi, double pyi, double pzi, double Ei, double wgti)
   : px(pxi), py(pyi), pz(pzi), E(Ei), wgt(wgti) { ; }
 void bsim::NuRay::clear(const std::string &)
-{ 
+{
   px = py = pz = E = wgt = 0;
 }
 std::string bsim::NuRay::AsString(const std::string& /* opt */) const
 {
   std::ostringstream s;
   s << "p3={ " << std::setw(12) << px
-    << "," << std::setw(12) << py 
-    << "," << std::setw(12) << pz 
+    << "," << std::setw(12) << py
+    << "," << std::setw(12) << pz
     << "} E=" << std::setw(10) << E
     << " wgt=" << std::setw(12) << wgt;
   return s.str();
@@ -57,11 +57,11 @@ ClassImp(bsim::Decay)
 bsim::Decay::Decay() { clear(); }
 bsim::Decay::~Decay() { ; }
 void bsim::Decay::clear(const std::string &)
-{ 
+{
   norig = ndecay = ntype = bsim::kDfltInt;
   vx = vy = vz = pdpx = pdpy = pdpz = bsim::kDfltDouble;
   ppdxdz = ppdydz = pppz = ppenergy = bsim::kDfltDouble;
-  ppmedium = bsim::kDfltDouble; 
+  ppmedium = bsim::kDfltDouble;
   ptype = bsim::kDfltInt;
   muparpx = muparpy = muparpz = mupare = bsim::kDfltDouble;
   necm = nimpwt = bsim::kDfltDouble;
@@ -70,16 +70,19 @@ void bsim::Decay::clear(const std::string &)
 std::string bsim::Decay::AsString(const std::string& /* opt */) const
 {
   std::ostringstream s;
-  s << "norig " << norig << " ndecay " << ndecay 
+  s << "norig " << norig << " ndecay " << ndecay
     << " ntype " << ntype << " ptype " << ptype << "\n";
   s << "necm " << necm << " nimpwt " << nimpwt
     << " ppmedium " << ppmedium << "\n";
   s << "v={" << vx << "," << vy << "," << vz << "} ";
-  s << "pdp={" << pdpx << "," << pdpy << "," << pdpz << "}";
-  // ppdxdz, ppdydz,pppz,ppenergy
-  // muparpx,muparpy,muparpz
+  s << "pdp={" << pdpx << "," << pdpy << "," << pdpz << "}\n";
+  s << "pp={" << ppdxdz*pppz << "," << ppdydz*pppz << ","
+    << pppz << "," << ppenergy << "} "
+    << " ppdxdz,ppdydz " << ppdxdz << "," << ppdydz << "\n";
+  s << "muparp={" << muparpx << "," << muparpy << ","
+    << muparpz << "}";
   //last line shouldn't have endl << "\n";
-  
+
   return s.str();
 }
 std::ostream& operator<<(std::ostream& os, const bsim::Decay& decay)
@@ -113,7 +116,7 @@ std::string bsim::Ancestor::AsString(const std::string& /* opt */) const
   std::ostringstream s;
   s << "pdg=" << std::setw(5) << pdg << " \"" << proc << "\""
     << " \"" << ivol << "\" nucleus " << nucleus << "\n";
-  s << "     startx  {" << startx << "," << starty << "," << startz 
+  s << "     startx  {" << startx << "," << starty << "," << startz
     << ";t=" << startt << "}\n";
   s << "     startpx {" << startpx << "," << startpy << "," << startpz << "}\n";
 #ifdef KEEP_ANCESTOR_PPRODPXYZ
@@ -135,7 +138,7 @@ void bsim::Ancestor::SetPProdP(Double_t px, Double_t py, Double_t pz)
 { pprodpx = px; pprodpy = py; pprodpz = pz; }
 #endif
 
-Double_t bsim::Ancestor::r() const 
+Double_t bsim::Ancestor::r() const
 { return TMath::Sqrt(startx*startx+starty*starty); }
 Double_t bsim::Ancestor::startpt() const
 { return TMath::Sqrt(startpx*startpx+startpy*startpy); }
@@ -283,7 +286,7 @@ ClassImp(bsim::Dk2Nu)
 bsim::Dk2Nu::Dk2Nu() { clear(); }
 bsim::Dk2Nu::~Dk2Nu() { ; }
 void bsim::Dk2Nu::clear(const std::string &)
-{ 
+{
   job    = bsim::kDfltInt;
   potnum = 0;
   nuray.clear();     /// clear the vector
@@ -305,7 +308,7 @@ void bsim::Dk2Nu::clear(const std::string &)
 std::string bsim::Dk2Nu::AsString(const std::string& opt) const
 {
   std::ostringstream s;
-  s << "bsim::Dk2Nu: \"" << opt << "\" job " << job 
+  s << "bsim::Dk2Nu: \"" << opt << "\" job " << job
     << " pot# " << potnum << "\n";
 
   size_t nloc = nuray.size();
@@ -350,7 +353,7 @@ std::string bsim::Dk2Nu::AsString(const std::string& opt) const
     for ( size_t i = 0; i < nd; ++i ) { s << " " << vdbl[i]; }
     s << "\n";
   }
-  s << "flagbits: 0x" << std::hex << std::setfill('0') 
+  s << "flagbits: 0x" << std::hex << std::setfill('0')
     << std::setw(8) << flagbits << std::dec << std::setfill(' ');
 
   return s.str();

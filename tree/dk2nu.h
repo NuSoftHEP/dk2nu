@@ -85,7 +85,7 @@ namespace bsim {
      dkp_maximum,               ///< one-beyond end for iterating
      dkp_other           = 999  ///< flag for unusual cases
    } dkproc_t;
-  
+
   ///---------------------------------------------------------------------------
   /**
    *============================================================================
@@ -99,14 +99,14 @@ namespace bsim {
     Double_t pz;     ///< pz for nu at location
     Double_t E;      ///< E for nu at location
     Double_t wgt;    ///< weight for nu at location
-    
+
   public:
     NuRay();
     NuRay(double px, double py, double pz, double E, double wgt);
     virtual     ~NuRay();
     void        clear(const std::string &opt = "");    ///< reset everything
     std::string AsString(const std::string& opt = "") const;
-    
+
   private:
     ClassDef(bsim::NuRay,DK2NUVER)
   };  // end-of-class bsim::NuRay
@@ -145,11 +145,11 @@ namespace bsim {
        muons:    grandparent decay point
        hadrons:  grandparent production point
        Huh?  this needs better documentation
-       Marco DT says: One should look at parent type ptype. 
-                     If ptype is a muon, then muparpx,y,z,e 
-                     are momentum and energy of the neutrino 
-                     grandparent (muon parent) at its decay point. 
-                     Otherwise (for all other values of ptype), 
+       Marco DT says: One should look at parent type ptype.
+                     If ptype is a muon, then muparpx,y,z,e
+                     are momentum and energy of the neutrino
+                     grandparent (muon parent) at its decay point.
+                     Otherwise (for all other values of ptype),
                      muparpx,y,z,e refer to neutrino grandparent
                      (a hadron in this case) production point.
                      If the Ancestor List is on , then
@@ -168,7 +168,7 @@ namespace bsim {
     virtual     ~Decay();
     void        clear(const std::string &opt = "");    ///< reset everything
     std::string AsString(const std::string& opt = "") const;
-    
+
   private:
     ClassDef(bsim::Decay,DK2NUVER)
   };  // end-of-class bsim::Decay
@@ -184,7 +184,7 @@ namespace bsim {
   {
   public:
     Int_t    pdg;      ///< ancestor species
-    
+
     Double_t startx;   ///< particle x initial position
     Double_t starty;   ///< particle y initial position
     Double_t startz;   ///< particle z initial position
@@ -193,18 +193,18 @@ namespace bsim {
     Double_t startpx;  ///< particle x initial momentum
     Double_t startpy;  ///< particle y initial momentum
     Double_t startpz;  ///< particle z initial momentum
-    
+
     Double_t stoppx;   ///< particle x final momentum
     Double_t stoppy;   ///< particle y final momentum
     Double_t stoppz;   ///< particle z final momentum
-    
+
     Double_t polx;     ///< x component of polarization
     Double_t poly;     ///< y component of polarization
     Double_t polz;     ///< z component of polarization
-    
+
     // what are these ... somehow different from stoppx[-1]?
     // Marco DT says: Yes, they can be different. Nu parent first entry can
-    //                be different than [-1]. Exapmle: it could be [-2], then [-1] 
+    //                be different than [-1]. Exapmle: it could be [-2], then [-1]
     //                contains a parent elastic interaction.
     //                I'm gettint rid of these variables and I'll add a
     //                parIndex instead, see following.
@@ -213,12 +213,12 @@ namespace bsim {
     Double_t pprodpy;  ///< parent y momentum when producing this particle
     Double_t pprodpz;  ///< parent z momentum when producing this particle
 #endif
-    
+
     Int_t    nucleus;  ///< nucleus (PDG) type causing the scatter
 
-    // Marco DT is adding parIndex    
+    // Marco DT is adding parIndex
     Int_t    parIndex; ///< particle index, from nu (0), parent (1) ... to proton (n)
- 
+
     std::string proc;  ///< name of the process that creates this particle
     std::string ivol;  ///< name of the volume where the particle starts
     std::string imat;  ///< name of the material where the particle starts
@@ -228,7 +228,7 @@ namespace bsim {
     virtual     ~Ancestor();
     void        clear(const std::string &opt = "");    ///< reset everything
     std::string AsString(const std::string& opt = "") const;
-    
+
     /// set triplets
     void        SetStartXYZT(Double_t x, Double_t y, Double_t z, Double_t t);
     void        SetStartP(Double_t px, Double_t py, Double_t pz);
@@ -280,11 +280,11 @@ namespace bsim {
     virtual     ~TgtExit();
     void        clear(const std::string &opt = "");    ///< reset everything
     std::string AsString(const std::string& opt = "") const;
-    
+
   private:
     ClassDef(bsim::TgtExit,DK2NUVER)
   };  // end-of-class TgtExit
-  
+
   ///---------------------------------------------------------------------------
   /**
    *============================================================================
@@ -305,11 +305,11 @@ namespace bsim {
     virtual     ~Traj();
     void        clear(const std::string &opt = "");    ///< reset everything
     std::string AsString(const std::string& opt = "") const;
-    
+
   private:
     ClassDef(bsim::Traj,DK2NUVER)
   };  // end-of-class bsim::Traj
-  
+
   ///---------------------------------------------------------------------------
   /**
    *============================================================================
@@ -354,7 +354,7 @@ namespace bsim {
     virtual     ~Dk2Nu();
     void        clear(const std::string &opt = "");    ///< reset everything
     std::string AsString(const std::string& opt = "") const;
-    void	    Print(Option_t* option = "") const;
+    void            Print(Option_t* option = "") const;
 
     size_t      indxnu() const;    ///< ancestor index of nu ancestor.size()-1
     size_t      indxp() const;     ///< ancestor index of parent ancestor.size()-2
@@ -363,7 +363,7 @@ namespace bsim {
 
   private:
     ClassDef(bsim::Dk2Nu,DK2NUVER)
-   
+
  };
 
 } // end-of-namespace "bsim"
