@@ -38,7 +38,7 @@ void bsim::Location::clear(const std::string &)
 std::string bsim::Location::AsString(const std::string& /* opt */) const
 {
   std::ostringstream s;
-  s << " {" 
+  s << " {"
     << std::setw(12) << x << ", "
     << std::setw(12) << y << ", "
     << std::setw(12) << z << "} \"" << name << "\"";
@@ -75,7 +75,7 @@ void bsim::DkMeta::clear(const std::string &)
   beamvwidth  = bsim::kDfltDouble;
   beamdxdz    = bsim::kDfltDouble;
   beamdydz    = bsim::kDfltDouble;
-  
+
   location.clear();
 
   vintnames.clear();

@@ -2,8 +2,8 @@
  * \class bsim::DkMeta
  * \file  dkmeta.h
  *
- * \brief A class that defines the "DkMeta" object used as the 
- *        branch for a TTree for the output of meta-data from 
+ * \brief A class that defines the "DkMeta" object used as the
+ *        branch for a TTree for the output of meta-data from
  *        neutrino flux simulations such as g4numi, g4numi_flugg, etc.
  *        This tree has one entry of this type for the file.  Kept
  *        as a tree so files can be chained.
@@ -44,7 +44,7 @@ namespace bsim {
    *  classes should provide a AsString() method for formatting themselves
    *  for use output.
    */
-  
+
   ///---------------------------------------------------------------------------
   /**
    *============================================================================
@@ -58,14 +58,14 @@ namespace bsim {
     Double_t y;        ///< y position of location
     Double_t z;        ///< z position of location
     std::string name;  ///< identifying name
-    
+
   public:
     Location();
     Location(double x, double y, double z, std::string name);
     virtual     ~Location();
     void        clear(const std::string &opt = "");    ///< reset everything
     std::string AsString(const std::string& opt = "") const;
-    
+
   private:
     ClassDef(bsim::Location,DKMETAVER)
   };  // end-of-class bsim::Location
@@ -85,12 +85,12 @@ namespace bsim {
      */
     Int_t    job;           ///< identifying job # (keep files distinct)
     Double_t pots;          ///< protons-on-target
-    
+
     /**
-     * DKMETA:  
+     * DKMETA:
      * formatted strings are most flexible ...
      * but not necessarily convenient to use
-     * ??? Should parts of these be standardized ??? 
+     * ??? Should parts of these be standardized ???
      */
     std::string beamsim;    ///< e.g. "flugg" or "g4numi/<tag>"
     std::string physics;    ///< e.g. "fluka08", "g4.9.3p01"
@@ -98,7 +98,7 @@ namespace bsim {
     std::string tgtcfg;     ///< target config    e.g. "minos/epoch3/-10cm"
     std::string horncfg;    ///< horn config      e.g. "FHC/185A/LE/h1xoff=1mm"
     std::string dkvolcfg;   ///< decay vol config e.g. "helium" or "vacuum"
-    
+
     /**
      *============================================================================
      *  Beam Info:
@@ -110,22 +110,22 @@ namespace bsim {
     Double_t beamvwidth;   ///< vertical width of beam
     Double_t beamdxdz;     ///< beam slope dx/dz
     Double_t beamdydz;     ///< beam slope dy/dz
-    
+
     /**
      *============================================================================
      *  Detector Position Info:
      *  Values are in beam coordinate system w/ units of "cm"
      */
     std::vector<bsim::Location> location;   ///< locations
-    
+
     /**
      *============================================================================
      *  Special Info:
-     *  Document extensibility enhancements 
+     *  Document extensibility enhancements
      */
     std::vector<std::string> vintnames;    ///< names of elements for user defined vector of integers
     std::vector<std::string> vdblnames;    ///< names of elements for user defined vector of doubles
-    
+
   public:
     /**
      *   Public methods for constructing/destruction and resetting the data
@@ -134,10 +134,10 @@ namespace bsim {
     virtual     ~DkMeta();
     void        clear(const std::string &opt = "");    ///< reset everything
     std::string AsString(const std::string& opt = "") const; ///< output as a string
-    
+
   private:
     ClassDef(bsim::DkMeta,DKMETAVER)
-    
+
   }; // end-of-class bsim::DkMeta
 
 } // end-of-namespace "bsim"
