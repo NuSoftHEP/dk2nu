@@ -116,7 +116,7 @@ public :
   virtual double GetTotalExposure() const;  // GFluxExposureI interface
 // #else
 //   // these are elminated with the introduction of GFluxFileConfigI
-//   void                   SetXMLFile(string xmlbasename="GNuMIFlux.xml")
+//   void                   SetXMLFile(std::string xmlbasename="GNuMIFlux.xml")
 //                               { fXMLbasename = xmlbasename; }
 //   std::string            GetXMLFile() const { return fXMLbasename; }
 // #endif
@@ -134,7 +134,7 @@ public :
   //
   // GFluxFileConfigI interface
   //
-  virtual void  LoadBeamSimData(const std::vector<string>& filenames,
+  virtual void  LoadBeamSimData(const std::vector<std::string>& filenames,
                                 const std::string&         det_loc);
 // #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
   using GFluxFileConfigI::LoadBeamSimData; // inherit the rest
@@ -143,8 +143,8 @@ public :
                              std::vector<void**>&      branchObjPointers);
   virtual TTree* GetMetaDataTree();
 // #else
-//   void      LoadBeamSimData(std::set<string>    filenames, string det_loc);     ///< load root flux ntuple files and config
-//   void      LoadBeamSimData(string filename, string det_loc);     ///< older (obsolete) single file version
+//   void      LoadBeamSimData(std::set<std::string>  filenames, std::string det_loc);     ///< load root flux ntuple files and config
+//   void      LoadBeamSimData(std::string filename, std::string det_loc);     ///< older (obsolete) single file version
 //
 // #endif
 
@@ -156,7 +156,7 @@ public :
   { fTreeNames[0] = fname; fTreeNames[1] = mname; }
 
 
-  bool      LoadConfig(string cfg);           ///< load a named configuration
+  bool      LoadConfig(std::string cfg);      ///< load a named configuration
 
   void      SetMaxEnergy(double Ev);          ///< specify max flx nu energy
 
@@ -246,7 +246,7 @@ private:
   void SetDefaults           (void);
   void CleanUp               (void);
   void ResetCurrent          (void);
-  void AddFile               (TTree* fluxtree, TTree* metatree, string fname);
+  void AddFile               (TTree* fluxtree, TTree* metatree, std::string fname);
   void CalcEffPOTsPerNu      (void);
   void LoadDkMeta            (void);
 
@@ -260,13 +260,13 @@ private:
 //   // incorporated into GFluxFileConfigI
 //   PDGCodeList *  fPdgCList;       ///< list of neutrino pdg-codes to generate
 //   PDGCodeList *  fPdgCListRej;    ///< list of neutrino pdg-codes seen but rejected
-//   string    fXMLbasename;         ///< XML filename for config data
+//   std::string    fXMLbasename;         ///< XML filename for config data
 //   double    fZ0;                  ///< configurable starting z position for each flux neutrino (in detector coord system)
 //   long int  fNCycles;             ///< # times to cycle through the flux ntuple
 //   long int  fICycle;              ///< current file cycle
 // #endif
 
-  std::vector<string> fNuFluxFilePatterns;   ///< (potentially wildcarded) path(s)
+  std::vector<std::string> fNuFluxFilePatterns;   ///< (potentially wildcarded) path(s)
 
   std::string fTreeNames[2];      ///< pair of names "dk2nuTree", "dkmetaTree"
   TChain*   fNuFluxTree;          ///< TTree // REF ONLY!

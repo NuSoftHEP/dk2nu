@@ -569,7 +569,7 @@ double GDk2NuFlux::POT_curr(void) {
 }
 
 //___________________________________________________________________________
-void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
+void GDk2NuFlux::LoadBeamSimData(const std::vector<std::string>& patterns,
                                  const std::string&         config )
 {
 // Loads in a beam simulation root file into the GDk2NuFlux driver.
@@ -592,7 +592,7 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
                      << " patterns";
 
   for (size_t ipatt = 0; ipatt < patterns.size(); ++ipatt ) {
-    string pattern = patterns[ipatt];
+    std::string pattern = patterns[ipatt];
     nfiles_from_pattern.push_back(0);
 
     LOG("Flux", pNOTICE)
@@ -600,7 +600,7 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
       << std::setw(3) << ipatt << "] \"" << pattern << "\"";
 
     // !WILDCARD only works for file name ... NOT directory
-    string dirname = gSystem->UnixPathName(gSystem->WorkingDirectory());
+    std::string dirname = gSystem->UnixPathName(gSystem->WorkingDirectory());
     size_t slashpos = pattern.find_last_of("/");
     size_t fbegin;
     if ( slashpos != std::string::npos ) {
@@ -630,9 +630,9 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
   // std::cout << "RWH start adding files" << std::endl << std::flush;
 
   size_t indx = 0;
-  std::set<string>::const_iterator sitr = fnames.begin();
+  std::set<std::string>::const_iterator sitr = fnames.begin();
   for ( ; sitr != fnames.end(); ++sitr, ++indx ) {
-    string filename = *sitr;
+    std::string filename = *sitr;
     // std::cout << "RWH  [" << std::setw(3) << indx << "]  \""
     //           << filename << "\"" << std::endl << std::flush;
     bool isok = true;
@@ -683,7 +683,7 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
     LOG("Flux", pERROR)
       << "Was passed the file patterns: ";
     for (size_t ipatt = 0; ipatt < patterns.size(); ++ipatt ) {
-      string pattern = patterns[ipatt];
+      std::string pattern = patterns[ipatt];
       LOG("Flux", pERROR)
         << "  [" << std::setw(3) << ipatt <<"] " << pattern;
     }
@@ -694,7 +694,7 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<string>& patterns,
       << "Loaded flux tree contains " <<  fNEntries << " entries"
       << " from " << fnames.size() << " unique files";
     for (size_t ipatt = 0; ipatt < patterns.size(); ++ipatt ) {
-      string pattern = patterns[ipatt];
+      std::string pattern = patterns[ipatt];
       LOG("Flux", pINFO)
         << " pattern: " << pattern << " yielded "
         << nfiles_from_pattern[ipatt] << " files";
@@ -762,14 +762,14 @@ TTree* GDk2NuFlux::GetMetaDataTree() { return fNuMetaTree; }
 // // migrated to GFluxFileConfigI
 // void GDk2NuFlux::SetUpstreamZ(double z0) { fZ0 = z0; }
 // void GDk2NuFlux::SetNumOfCycles(long int ncycle) { fNCycles = TMath::Max(0L, ncycle); }
-// void GDk2NuFlux::LoadBeamSimData(std::set<string> fileset, string config)
+// void GDk2NuFlux::LoadBeamSimData(std::set<std::string> fileset, std::string config)
 // {
 //   // have a set<> want a vector<>
 //   std::vector<std::string> filevec;
 //   std::copy(fileset.begin(),fileset.end(),std::back_inserter(filevec));
 //   LoadBeamSimData(filevec,config); // call the one that takes a vector
 // }
-// void GDk2NuFlux::LoadBeamSimData(string filename, string config)
+// void GDk2NuFlux::LoadBeamSimData(std::string filename, std::string config)
 // {
 //   // Loads a beam simulation root file into the GDk2NuFlux driver.
 //   std::vector<std::string> filevec;
@@ -1189,7 +1189,7 @@ void GDk2NuFlux::CleanUp(void)
 }
 
 //___________________________________________________________________________
-void GDk2NuFlux::AddFile(TTree* ftree, TTree* mtree, string fname)
+void GDk2NuFlux::AddFile(TTree* ftree, TTree* mtree, std::string fname)
 {
   // Add a file to the chain
 
@@ -1288,7 +1288,7 @@ double GDk2NuFlux::LengthUnits(void) const
 
 //___________________________________________________________________________
 
-bool GDk2NuFlux::LoadConfig(string cfg)
+bool GDk2NuFlux::LoadConfig(std::string cfg)
 {
   genie::flux::GDk2NuFluxXMLHelper helper(this);
   return helper.LoadConfig(cfg);
@@ -1468,10 +1468,10 @@ std::vector<long int> GDk2NuFluxXMLHelper::GetIntVector(std::string str)
   return vect;
 }
 
-bool GDk2NuFluxXMLHelper::LoadConfig(string cfg)
+bool GDk2NuFluxXMLHelper::LoadConfig(std::string cfg)
 {
 // #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
-  string fname = utils::xml::GetXMLFilePath(fGDk2NuFlux->GetXMLFileBase());
+  std::string fname = utils::xml::GetXMLFilePath(fGDk2NuFlux->GetXMLFileBase());
 // #else
 //   string fname = utils::xml::GetXMLFilePath(fGDk2NuFlux->GetXMLFile());
 // #endif
@@ -1497,8 +1497,8 @@ bool GDk2NuFluxXMLHelper::LoadConfig(string cfg)
     return false;
   }
 
-  string rootele    = "gdk2nu_config";
-  string rooteleAlt = "gnumi_config";  // read older GNuMIFlux files
+  std::string rootele    = "gdk2nu_config";
+  std::string rooteleAlt = "gnumi_config";  // read older GNuMIFlux files
   if ( xmlStrcmp(xml_root->name, (const xmlChar*)rootele.c_str() ) &&
        xmlStrcmp(xml_root->name, (const xmlChar*)rooteleAlt.c_str() ) ) {
     SLOG("GDk2NuFlux", pERROR)
@@ -1517,7 +1517,7 @@ bool GDk2NuFluxXMLHelper::LoadConfig(string cfg)
 
 }
 
-bool GDk2NuFluxXMLHelper::LoadParamSet(xmlDocPtr& xml_doc, string cfg)
+bool GDk2NuFluxXMLHelper::LoadParamSet(xmlDocPtr& xml_doc, std::string cfg)
 {
 
   xmlNodePtr xml_root = xmlDocGetRootElement( xml_doc );
@@ -1531,7 +1531,7 @@ bool GDk2NuFluxXMLHelper::LoadParamSet(xmlDocPtr& xml_doc, string cfg)
   for ( ; xml_pset != NULL ; xml_pset = xml_pset->next ) {
     if ( ! xmlStrEqual(xml_pset->name, (const xmlChar*)"param_set") ) continue;
     // every time there is a 'param_set' tag
-    string param_set_name =
+    std::string param_set_name =
       utils::str::TrimSpaces(utils::xml::GetAttribute(xml_pset,"name"));
 
     if ( param_set_name != cfg ) continue;
@@ -1553,10 +1553,10 @@ void GDk2NuFluxXMLHelper::ParseParamSet(xmlDocPtr& xml_doc, xmlNodePtr& xml_pset
   for ( ; xml_child != NULL ; xml_child = xml_child->next ) {
     // handle basic gnumi_config/param_set
     // bad cast away const on next line, but function sig requires it
-    string pname =
+    std::string pname =
       utils::xml::TrimSpaces(const_cast<xmlChar*>(xml_child->name));
     if ( pname == "text" || pname == "comment" ) continue;
-    string pval  =
+    std::string pval  =
       utils::xml::TrimSpaces(
               xmlNodeListGetString(xml_doc, xml_child->xmlChildrenNode, 1));
 
@@ -1642,11 +1642,11 @@ void GDk2NuFluxXMLHelper::ParseBeamDir(xmlDocPtr& xml_doc, xmlNodePtr& xml_beamd
 {
   fBeamRotXML.SetToIdentity(); // start fresh
 
-  string dirtype =
+  std::string dirtype =
     utils::str::TrimSpaces(
       utils::xml::GetAttribute(xml_beamdir,"type"));
 
-  string pval  =
+  std::string pval  =
     utils::xml::TrimSpaces(
       xmlNodeListGetString(xml_doc, xml_beamdir->xmlChildrenNode, 1));
 
@@ -1657,7 +1657,7 @@ void GDk2NuFluxXMLHelper::ParseBeamDir(xmlDocPtr& xml_doc, xmlNodePtr& xml_beamd
   } else if ( dirtype == "thetaphi3") {
     // G3 style triplet of (theta,phi) pairs
     std::vector<double> thetaphi3 = GetDoubleVector(pval);
-    string units =
+    std::string units =
       utils::str::TrimSpaces(utils::xml::GetAttribute(xml_beamdir,"units"));
     if ( thetaphi3.size() == 6 ) {
       TRotation fTempRot;
@@ -1795,17 +1795,17 @@ void GDk2NuFluxXMLHelper::ParseRotSeries(xmlDocPtr& xml_doc, xmlNodePtr& xml_pse
   for ( ; xml_child != NULL ; xml_child = xml_child->next ) {
     // in a <beamdir> of type "series"
     // should be a sequence of <rotation> entries
-    string name =
+    std::string name =
       utils::xml::TrimSpaces(const_cast<xmlChar*>(xml_child->name));
     if ( name == "text" || name == "comment" ) continue;
 
     if ( name == "rotation" ) {
-      string val = utils::xml::TrimSpaces(
+      std::string val = utils::xml::TrimSpaces(
           xmlNodeListGetString(xml_doc, xml_child->xmlChildrenNode, 1));
-      string axis =
+      std::string axis =
         utils::str::TrimSpaces(utils::xml::GetAttribute(xml_child,"axis"));
 
-      string units =
+      std::string units =
         utils::str::TrimSpaces(utils::xml::GetAttribute(xml_child,"units"));
 
       double rot = atof(val.c_str());
@@ -1842,15 +1842,15 @@ void GDk2NuFluxXMLHelper::ParseWindowSeries(xmlDocPtr& xml_doc, xmlNodePtr& xml_
   for ( ; xml_child != NULL ; xml_child = xml_child->next ) {
     // in a <windowr> element
     // should be a sequence of <point> entries
-    string name =
+    std::string name =
       utils::xml::TrimSpaces(const_cast<xmlChar*>(xml_child->name));
     if ( name == "text" || name == "comment" ) continue;
 
     if ( name == "point" ) {
-      string val  =
+      std::string val  =
         utils::xml::TrimSpaces(
           xmlNodeListGetString(xml_doc, xml_child->xmlChildrenNode, 1));
-      string coord =
+      std::string coord =
         utils::str::TrimSpaces(utils::xml::GetAttribute(xml_child,"coord"));
 
       std::vector<double> xyz = GetDoubleVector(val);
@@ -1904,7 +1904,7 @@ TVector3 GDk2NuFluxXMLHelper::AnglesToAxis(double theta, double phi, std::string
   return TVector3(xyz[0],xyz[1],xyz[2]);
 }
 
-TVector3 GDk2NuFluxXMLHelper::ParseTV3(const string& str)
+TVector3 GDk2NuFluxXMLHelper::ParseTV3(const std::string& str)
 {
   std::vector<double> xyz = GetDoubleVector(str);
   if ( xyz.size() != 3 ) {
