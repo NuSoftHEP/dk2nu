@@ -277,7 +277,7 @@ std::string bsim::Traj::AsString(const std::string& /* opt */) const
 }
 std::ostream& operator<<(std::ostream& os, const bsim::Traj& traj)
 {
-  os << traj.AsString() << std::endl;
+  os << traj.AsString(); // << std::endl;
   return os;
 }
 
