@@ -82,6 +82,8 @@ namespace bsim {
      dkp_mum_nusep       = 12,  ///< mu- => nu_mu + nu_e_bar + e-
      dk_pip_numumup      = 13,  ///< pi+ => nu_mu + mu+
      dk_pim_numubmum     = 14,  ///< pi- => nu_mu_bar + mu-
+     dk_mum_capture      = 15,  ///< mu- + (A,Z) => nu
+                                ///   (different kinematics from dkp_mum_nusep)
      dkp_maximum,               ///< one-beyond end for iterating
      dkp_other           = 999  ///< flag for unusual cases
    } dkproc_t;
