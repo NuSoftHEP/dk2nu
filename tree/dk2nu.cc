@@ -287,8 +287,9 @@ bsim::Dk2Nu::Dk2Nu() { clear(); }
 bsim::Dk2Nu::~Dk2Nu() { ; }
 void bsim::Dk2Nu::clear(const std::string &)
 {
-  job    = bsim::kDfltInt;
-  potnum = 0;
+  job     = bsim::kDfltInt;
+  potnum  = -1;
+  jobindx = -1;
   nuray.clear();     /// clear the vector
   decay.clear();     /// clear the object
   ancestor.clear();  /// clear the vector
