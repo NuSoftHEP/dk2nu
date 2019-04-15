@@ -305,15 +305,15 @@ int bsim::calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
       wgt_ratio = ( (3.0-2.0*xnu )  - (1.0-2.0*xnu)*costh ) / (3.0-2.0*xnu);
 
       if ( wgt_ratio < 0.0 ) {
-        cerr << "bsim::calcEnuWgt encountered serious problem: "
-             << " wgt_ratio " << wgt_ratio
-             << " enu " << enu << " costh " << costh << " xnu " << xnu
-             << " enuzr=decay.necm " << enuzr << " kMUMASS " << kMUMASS
-             << " norig " << decay.norig
-             << " ndecay " << decay.ndecay
-             << " ntype " << decay.ntype
-             << " ptype " << decay.ptype
-             << endl;
+        std::cerr << "bsim::calcEnuWgt encountered serious problem: "
+                  << " wgt_ratio " << wgt_ratio
+                  << " enu " << enu << " costh " << costh << " xnu " << xnu
+                  << " enuzr=decay.necm " << enuzr << " kMUMASS " << kMUMASS
+                  << " norig " << decay.norig
+                  << " ndecay " << decay.ndecay
+                  << " ntype " << decay.ntype
+                  << " ptype " << decay.ptype
+                  << std::endl;
           enu    = 0;
           wgt_xy = 0;
           return 4; // bad, bad, bad calculation
