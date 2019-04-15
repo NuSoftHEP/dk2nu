@@ -17,12 +17,12 @@ void bsim::calcLocationWeights(const bsim::DkMeta* dkmeta, bsim::Dk2Nu* dk2nu)
       if ( iloc != 0 ) {
         std::cerr << "calcLocationWeights \"" << rkey << "\""
                   << " isn't the 0-th entry" << std::endl;
-        assert(0);
+        return; // assert(0);
       }
       if ( dk2nu->nuray.size() != 1 ) {
         std::cerr << "calcLocationWeights \"" << rkey << "\""
                   << " nuenergy[" << iloc << "] not filled" << std::endl;
-        assert(0);
+        return; //assert(0);
       }
       continue;
     }
@@ -33,7 +33,7 @@ void bsim::calcLocationWeights(const bsim::DkMeta* dkmeta, bsim::Dk2Nu* dk2nu)
     double wgt_xy = 0;  // give a default value
     int status = bsim::calcEnuWgt(dk2nu,xyzDet,enu_xy,wgt_xy);
     if ( status != 0 ) {
-      std::cerr << "bsim::calcEnuWgt returned " << status << " for " 
+      std::cerr << "bsim::calcEnuWgt returned " << status << " for "
                 << dkmeta->location[iloc].name << std::endl;
     }
     // with the recalculated energy compute the momentum components
@@ -57,11 +57,11 @@ int bsim::calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
 
   // History:
   // jzh  3/21/96 grab R.H.Milburn's weighing routine
-  // jzh  5/ 9/96 substantially modify the weighting function use dot product 
-  //              instead of rotation vecs to get theta get all info except 
+  // jzh  5/ 9/96 substantially modify the weighting function use dot product
+  //              instead of rotation vecs to get theta get all info except
   //              det from ADAMO banks neutrino parent is in Particle.inc
   //              Add weighting factor for polarized muon decay
-  // jzh  4/17/97 convert more code to double precision because of problems 
+  // jzh  4/17/97 convert more code to double precision because of problems
   //              with Enu>30 GeV
   // rwh 10/ 9/08 transliterate function from f77 to C++
 
@@ -70,10 +70,10 @@ int bsim::calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
   //   detector geometry to the unit sphere moving with decaying hadron with
   //   velocity v, BETA=v/c, etc..  For (pseudo)scalar hadrons the decays will
   //   be isotropic in this  sphere so the fractional area (out of 4-pi) is the
-  //   fraction of decays that hit the target.  For a given target point and 
+  //   fraction of decays that hit the target.  For a given target point and
   //   area, and given x-y components of decay transverse location and slope,
-  //   and given decay distance from target ans given decay GAMMA and 
-  //   rest-frame neutrino energy, the lab energy at the target and the 
+  //   and given decay distance from target ans given decay GAMMA and
+  //   rest-frame neutrino energy, the lab energy at the target and the
   //   fractional solid angle in the rest-frame are determined.
   //   For muon decays, correction for non-isotropic nature of decay is done.
 
@@ -89,31 +89,47 @@ int bsim::calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
   //    Energies given in GeV
   //    Particle codes have been translated from GEANT into PDG codes
 
-  // for now ... these masses _should_ come from TDatabasePDG 
+  // for now ... these masses _should_ come from TDatabasePDG
   // but use these hard-coded values to "exactly" reproduce old code
   //
-  const double kPIMASS = 0.13957;
-  const double kKMASS  = 0.49368;
-  const double kK0MASS = 0.49767;
-  const double kMUMASS = 0.105658389;
-  const double kOMEGAMASS = 1.67245;
+  // old mass values are v01_07_* and before
+  // new mass values (v01_08_* and after) are Geant4 v4.10.3 values
+  //
+#ifdef HISTORIC_MASS
+  const double kPIMASS      = 0.13957;
+  const double kKMASS       = 0.49368;
+  const double kK0MASS      = 0.49767;
+  const double kMUMASS      = 0.105658389;
+  const double kOMEGAMASS   = 1.67245;
+#else
+  const double kPIMASS      = 0.1395701;     // 0.13957;
+  const double kKMASS       = 0.493677;      // 0.49368;
+  const double kK0MASS      = 0.497614;      // 0.49767;
+  const double kMUMASS      = 0.1056583715;  // 0.105658389;
+  const double kOMEGAMASS   = 1.67245;       // 1.67245;
+#endif
+  // from CLHEP/Units/PhysicalConstants.h
+  // used by Geant as CLHEP::neutron_mass_c2
+  const double kNEUTRONMASS = 0.93956536;
 
   const int kpdg_nue       =   12;  // extended Geant 53
   const int kpdg_nuebar    =  -12;  // extended Geant 52
   const int kpdg_numu      =   14;  // extended Geant 56
   const int kpdg_numubar   =  -14;  // extended Geant 55
 
-  const int kpdg_muplus     =   -13;  // Geant  5
-  const int kpdg_muminus    =    13;  // Geant  6
-  const int kpdg_pionplus   =   211;  // Geant  8
-  const int kpdg_pionminus  =  -211;  // Geant  9
-  const int kpdg_k0long     =   130;  // Geant 10  ( K0=311, K0S=310 )
-  const int kpdg_k0short    =   310;  // Geant 16
-  const int kpdg_k0mix      =   311;  
-  const int kpdg_kaonplus   =   321;  // Geant 11
-  const int kpdg_kaonminus  =  -321;  // Geant 12
-  const int kpdg_omegaminus =  3334;  // Geant 24
-  const int kpdg_omegaplus  = -3334;  // Geant 32
+  const int kpdg_muplus      =   -13;  // Geant  5
+  const int kpdg_muminus     =    13;  // Geant  6
+  const int kpdg_pionplus    =   211;  // Geant  8
+  const int kpdg_pionminus   =  -211;  // Geant  9
+  const int kpdg_k0long      =   130;  // Geant 10  ( K0=311, K0S=310 )
+  const int kpdg_k0short     =   310;  // Geant 16
+  const int kpdg_k0mix       =   311;
+  const int kpdg_kaonplus    =   321;  // Geant 11
+  const int kpdg_kaonminus   =  -321;  // Geant 12
+  const int kpdg_omegaminus  =  3334;  // Geant 24
+  const int kpdg_omegaplus   = -3334;  // Geant 32
+  const int kpdg_neutron     =  2112;
+  const int kpdg_antineutron = -2112;
 
   const double kRDET = 100.0;   // set to flux per 100 cm radius
 
@@ -150,10 +166,15 @@ int bsim::calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
   case kpdg_omegaplus:
     parent_mass = kOMEGAMASS;
     break;
+  case kpdg_neutron:
+  case kpdg_antineutron:
+    parent_mass = kNEUTRONMASS;
+    break;
   default:
     std::cerr << "bsim::calcEnuWgt unknown particle type " << decay.ptype
               << std::endl << std::flush;
-    assert(0);
+    enu    = 0.0;
+    wgt_xy = 0.0;
     return 1;
   }
 
@@ -182,7 +203,7 @@ int bsim::calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
   if ( parentp > 0. ) {
     costh_pardet = ( decay.pdpx*(xpos-decay.vx) +
                      decay.pdpy*(ypos-decay.vy) +
-                     decay.pdpz*(zpos-decay.vz) ) 
+                     decay.pdpz*(zpos-decay.vz) )
                      / ( parentp * rad);
     if ( costh_pardet >  1.0 ) costh_pardet =  1.0;
     if ( costh_pardet < -1.0 ) costh_pardet = -1.0;
@@ -196,7 +217,7 @@ int bsim::calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
 
   // Get solid angle/4pi for detector element
   // small angle approximation, fixed by Alex Radovic
-  //SAA//  double sangdet = ( kRDET*kRDET / 
+  //SAA//  double sangdet = ( kRDET*kRDET /
   //SAA//                   ( (zpos-decay.vz)*(zpos-decay.vz) ) ) / 4.0;
   double sanddetcomp = TMath::Sqrt( ( (xpos-decay.vx)*(xpos-decay.vx) ) +
                                     ( (ypos-decay.vy)*(ypos-decay.vy) ) +
@@ -207,9 +228,17 @@ int bsim::calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
   wgt_xy = sangdet * ( emrat * emrat );  // ! the weight ... normally
 
   // Done for all except polarized muon decay
-  // in which case need to modify weight 
+  // in which case need to modify weight
   // (must be done in double precision)
-  if ( decay.ptype == kpdg_muplus || decay.ptype == kpdg_muminus) {
+  // BUT do this only for case of muon decay, not muon capture
+  //   until beamline simulation code gets updated these generally show up as
+  //   decay.ndecay == 0, but certainly not dkp_mup_nusep or dkp_mum_nusep
+  // so was:
+  // if ( decay.ptype  == kpdg_muplus      ||
+  //      decay.ptype  == kpdg_muminus        ) {
+  // now:
+  if ( decay.ndecay == bsim::dkp_mup_nusep ||
+       decay.ndecay == bsim::dkp_mum_nusep    ) {
     double beta[3], p_dcm_nu[4], p_nu[3], p_pcm_mp[3], partial;
 
     // Boost neu neutrino to mu decay CM
@@ -219,11 +248,11 @@ int bsim::calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
     p_nu[0] = (xpos-decay.vx)*enu/rad;
     p_nu[1] = (ypos-decay.vy)*enu/rad;
     p_nu[2] = (zpos-decay.vz)*enu/rad;
-    partial = gamma * 
+    partial = gamma *
       (beta[0]*p_nu[0] + beta[1]*p_nu[1] + beta[2]*p_nu[2] );
     partial = enu - partial/(gamma+1.0);
     // the following calculation is numerically imprecise
-    // especially p_dcm_nu[2] leads to taking the difference of numbers 
+    // especially p_dcm_nu[2] leads to taking the difference of numbers
     //  of order ~10's and getting results of order ~0.02's
     // for g3numi we're starting with floats (ie. good to ~1 part in 10^7)
     p_dcm_nu[0] = p_nu[0] - beta[0]*gamma*partial;
@@ -239,8 +268,8 @@ int bsim::calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
     beta[0] = decay.ppdxdz * decay.pppz / particle_energy;
     beta[1] = decay.ppdydz * decay.pppz / particle_energy;
     beta[2] =                    decay.pppz / particle_energy;
-    partial = gamma * ( beta[0]*decay.muparpx + 
-                        beta[1]*decay.muparpy + 
+    partial = gamma * ( beta[0]*decay.muparpx +
+                        beta[1]*decay.muparpy +
                         beta[2]*decay.muparpz );
     partial = decay.mupare - partial/(gamma+1.0);
     p_pcm_mp[0] = decay.muparpx - beta[0]*gamma*partial;
@@ -259,6 +288,7 @@ int bsim::calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
                      p_dcm_nu[1]*p_pcm_mp[1] +
                      p_dcm_nu[2]*p_pcm_mp[2] ) /
                    ( p_dcm_nu[3]*p_pcm );
+    // protect against small excursions
     if ( costh >  1.0 ) costh =  1.0;
     if ( costh < -1.0 ) costh = -1.0;
     // Calc relative weight due to angle difference
@@ -273,11 +303,29 @@ int bsim::calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
     {
       double xnu = 2.0 * enuzr / kMUMASS;
       wgt_ratio = ( (3.0-2.0*xnu )  - (1.0-2.0*xnu)*costh ) / (3.0-2.0*xnu);
+
+      if ( wgt_ratio < 0.0 ) {
+        cerr << "bsim::calcEnuWgt encountered serious problem: "
+             << " wgt_ratio " << wgt_ratio
+             << " enu " << enu << " costh " << costh << " xnu " << xnu
+             << " enuzr=decay.necm " << enuzr << " kMUMASS " << kMUMASS
+             << " norig " << decay.norig
+             << " ndecay " << decay.ndecay
+             << " ntype " << decay.ntype
+             << " ptype " << decay.ptype
+             << endl;
+          enu    = 0;
+          wgt_xy = 0;
+          return 4; // bad, bad, bad calculation
+      }
       break;
     }
     default:
-      return 2; // bad neutrino type
+      enu    = 0.0;
+      wgt_xy = 0.0;
+      return 2; // bad neutrino type for muon decay
     }
+
     wgt_xy = wgt_xy * wgt_ratio;
 
   } // ptype is muon
