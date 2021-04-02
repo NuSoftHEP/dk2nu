@@ -52,6 +52,8 @@ namespace bsim {
     double          xyWgt;       ///< generated nu x-y weight
     double          impWgt;      ///< original importance weight
                                  ///  GDk2NuFlux::Weight() might be the product of these
+    double          impWgtSum2;  ///< used in error calculation
+
     TLorentzVector  p4NuBeam;    ///< generated nu 4-momentum in beam coord
     TLorentzVector  x4NuBeam;    ///< generated nu 4-position in beam coord
     TLorentzVector  p4NuUser;    ///< generated nu 4-momentum in user/det coord

@@ -30,7 +30,7 @@
 #include <vector>
 #include <string>
 
-#define DK2NUVER 11   // KEEP THIS UP-TO-DATE!  increment for each change
+#define DK2NUVER 12   // KEEP THIS UP-TO-DATE!  increment for each change
 #define KEEP_ANCESTOR_PPRODPXYZ 1
 
 namespace bsim {
@@ -164,6 +164,9 @@ namespace bsim {
 
    Double_t necm;         ///< % nu energy in center-of-mass frame
    Double_t nimpwt;       ///< % cumulative importance weight prod to decay
+   Double_t sumnimpwt2;   ///< cummulative sum of squares of weights
+                          ///  necessary for proper error of importance
+                          ///  weighting process.
 
   public:
     Decay();
