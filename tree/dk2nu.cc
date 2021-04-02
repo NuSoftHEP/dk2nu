@@ -64,7 +64,7 @@ void bsim::Decay::clear(const std::string &)
   ppmedium = bsim::kDfltDouble;
   ptype = bsim::kDfltInt;
   muparpx = muparpy = muparpz = mupare = bsim::kDfltDouble;
-  necm = nimpwt = bsim::kDfltDouble;
+  necm = nimpwt = sumnimpwt2 = bsim::kDfltDouble;
 
 }
 std::string bsim::Decay::AsString(const std::string& /* opt */) const
@@ -72,7 +72,7 @@ std::string bsim::Decay::AsString(const std::string& /* opt */) const
   std::ostringstream s;
   s << "norig " << norig << " ndecay " << ndecay
     << " ntype " << ntype << " ptype " << ptype << "\n";
-  s << "necm " << necm << " nimpwt " << nimpwt
+  s << "necm " << necm << " nimpwt " << nimpwt << " sumnimpwt2 " << sumnimpwt2
     << " ppmedium " << ppmedium << "\n";
   s << "v={" << vx << "," << vy << "," << vz << "} ";
   s << "pdp={" << pdpx << "," << pdpy << "," << pdpz << "}\n";

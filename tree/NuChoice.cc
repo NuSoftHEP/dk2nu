@@ -36,6 +36,7 @@ void bsim::NuChoice::clear(const std::string &)
   pdgNu  = 0;
   xyWgt  = 0;
   impWgt = 0;
+  impWgtSum2 = 0;
   static TLorentzVector NullLV = TLorentzVector(0,0,0,0);
   p4NuBeam = NullLV;
   x4NuBeam = NullLV;
@@ -46,7 +47,7 @@ std::string bsim::NuChoice::AsString(const std::string& /* opt */) const
 {
   std::ostringstream s;
   s << "NuChoice: " << pdgNu << " xyWgt " << xyWgt
-    << " impWgt " << impWgt << "\n";
+    << " impWgt " << impWgt << " impWgtSum2 " << impWgtSum2 << "\n";
   s << "beam  p3={ " << std::setw(12) << p4NuBeam.Px()
     << "," << std::setw(12) << p4NuBeam.Py()
     << "," << std::setw(12) << p4NuBeam.Pz()
