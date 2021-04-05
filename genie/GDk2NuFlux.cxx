@@ -305,6 +305,7 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
     // here we might want to do flavor oscillations or simple mappings
     fCurNuChoice->pdgNu  = fCurDk2Nu->decay.ntype;
     fCurNuChoice->impWgt = fCurDk2Nu->decay.nimpwt;
+    fCurNuChoice->impWgtSum2 = fCurDk2Nu->decay.sumnimpwt2;
   }
 
   // update the # POTs & number of neutrinos
