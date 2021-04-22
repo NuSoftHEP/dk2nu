@@ -66,7 +66,7 @@ namespace bsim {
     std::string AsString(const std::string& opt = "") const;
 
   private:
-    ClassDef(bsim::NuChoice,1)
+    ClassDef(bsim::NuChoice,2)
   };  // end-of-class bsim::NuChoice
 
 } // end-of-namespace "bsim"
