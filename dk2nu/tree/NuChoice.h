@@ -56,8 +56,10 @@ namespace bsim {
 
     TLorentzVector  p4NuBeam;    ///< generated nu 4-momentum in beam coord
     TLorentzVector  x4NuBeam;    ///< generated nu 4-position in beam coord
+                                 ///<  beam is in cm, ns
     TLorentzVector  p4NuUser;    ///< generated nu 4-momentum in user/det coord
     TLorentzVector  x4NuUser;    ///< generated nu 4-position in user/det coord
+                                 ///<  user is (normally) meters, seconds
 
   public:
     NuChoice();

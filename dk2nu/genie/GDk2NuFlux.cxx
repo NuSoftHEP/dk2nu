@@ -387,16 +387,19 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
   }
 
   // set the time component of the Lorentz vectors
-  double dist_dk2start = GetDecayDist();
+  double dist_dk2start = GetDecayDist();  // dk point to window, user units
   size_t inu = fCurDk2Nu->indxnu();
-  double t_dk = 0;
+  // calculate t_dk in user units
+  double t_dk = 0;  // time from proton-on-target to where nu generated
   if ( ! fCurDk2Nu->overflow() && ! fCurDk2Nu->ancestor.empty() ) {
-    t_dk = fCurDk2Nu->ancestor[inu].startt; // units?  seconds, hopefully
+    // units?  ancestor times in beam time units (ns)
+    t_dk = fCurDk2Nu->ancestor[inu].startt * fTimeScaleB2U;
   }
+  // this ... makes assumptions
   const double c_mbys  = 299792458;
-  const double c_cmbys = c_mbys * 100.;
-  double tstart = t_dk + ( dist_dk2start / c_cmbys );
-  fCurNuChoice->x4NuBeam.SetT(tstart);
+  //const double c_user  = c_mbys * fLengthScale;
+  double tstart = t_dk + ( dist_dk2start / c_mbys ); // user units
+  fCurNuChoice->x4NuBeam.SetT(tstart * fTimeScaleU2B);
   fCurNuChoice->x4NuUser.SetT(tstart);
   if ( t_dk == 0 ) {
     // probably wasn't set
@@ -437,8 +440,9 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
 //___________________________________________________________________________
 double GDk2NuFlux::GetDecayDist() const
 {
-  // return distance (user units) between dk point and start position
+  // return distance (user units) between dk point and start (window) position
   // these are in beam units
+  //                position on window              dk2nu nu start
   TVector3 x3diff = fCurNuChoice->x4NuBeam.Vect() - fgX4dkvtx.Vect();
   return x3diff.Mag() * fLengthScaleB2U;
 }
@@ -1011,6 +1015,8 @@ void GDk2NuFlux::Beam2UserPos(const TLorentzVector& beamxyz,
                                    TLorentzVector& usrxyz) const
 {
   usrxyz = fLengthScaleB2U*(fBeamRot*beamxyz) + fBeamZero;
+  // above assumed T=0
+  usrxyz.SetT(beamxyz.T()*fTimeScaleB2U);
 }
 void GDk2NuFlux::Beam2UserDir(const TLorentzVector& beamdir,
                                    TLorentzVector& usrdir) const
@@ -1027,6 +1033,8 @@ void GDk2NuFlux::User2BeamPos(const TLorentzVector& usrxyz,
                                    TLorentzVector& beamxyz) const
 {
   beamxyz = fLengthScaleU2B*(fBeamRotInv*(usrxyz-fBeamZero));
+  // above assumed T=0
+  beamxyz.SetT(usrxyz.T()*fTimeScaleU2B);
 }
 void GDk2NuFlux::User2BeamDir(const TLorentzVector& usrdir,
                                    TLorentzVector& beamdir) const
@@ -1116,8 +1124,10 @@ void GDk2NuFlux::Initialize(void)
   fApplyTiltWeight = true;
   fIsSphere        = false;
   fDetLocIsSet     = false;
-  // by default assume user length is m
+  // by default assume user length is meters, time is seconds
   SetLengthUnits(genie::utils::units::UnitFromString("m"));
+  SetTimeUnits(genie::utils::units::UnitFromString("s"));
+
 
 // #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
 //   // migrated to GFluxFileConfigI
@@ -1246,7 +1256,7 @@ void GDk2NuFlux::AddFile(TTree* ftree, TTree* mtree, std::string fname)
 }
 
 //___________________________________________________________________________
-void GDk2NuFlux::SetLengthUnits(double user_units)
+void GDk2NuFlux::SetLengthUnits(double user_units_dist)
 {
   // Set the scale factor for lengths going from beam (cm) to user coordinates
 
@@ -1258,11 +1268,11 @@ void GDk2NuFlux::SetLengthUnits(double user_units)
   // ( #include "Utils/UnitUtils.h for declaration )
   // to get the correct scale factor to pass in.
 
-  double rescale = fLengthUnits / user_units;
-  fLengthUnits = user_units;
+  double rescale = fLengthUnits / user_units_dist;
+  fLengthUnits = user_units_dist;
   double cm = genie::utils::units::UnitFromString("cm");
-  fLengthScaleB2U = cm / user_units;
-  fLengthScaleU2B = user_units / cm;
+  fLengthScaleB2U = cm / user_units_dist;
+  fLengthScaleU2B = user_units_dist / cm;
 
   // in case we're changing units without resetting transform/window
   // not recommended, but should work
@@ -1271,11 +1281,25 @@ void GDk2NuFlux::SetLengthUnits(double user_units)
   fFluxWindowPtUser[0]    *= rescale;
   fFluxWindowPtUser[1]    *= rescale;
   fFluxWindowPtUser[2]    *= rescale;
+}
 
-  // case GDk2NuFlux::kmeter:  fLengthScaleB2U =   0.01  ; break;
-  // case GDk2NuFlux::kcm:     fLengthScaleB2U =   1.    ; break;
-  // case GDk2NuFlux::kmm:     fLengthScaleB2U =  10.    ; break;
-  // case GDk2NuFlux::kfm:     fLengthScaleB2U =   1.e13 ; break;  // 10e-2m -> 10e-15m
+//___________________________________________________________________________
+void GDk2NuFlux::SetTimeUnits(double user_units_time)
+{
+  // Set the scale factor for time going from beam (ns) to user coordinates
+
+  // GDk2NuFlux uses "ns" as the length unit consistently internally (this is
+  // the length units used by both the g3 and g4 ntuples).  User interactions
+  // setting the beam-to-detector coordinate transform, flux window, and the
+  // returned position might need to be in other units.  Use:
+  //     double scale = genie::utils::units::UnitFromString("s");
+  // ( #include "Utils/UnitUtils.h for declaration )
+  // to get the correct scale factor to pass in.
+
+  fTimeUnits = user_units_time;
+  double ns = genie::utils::units::UnitFromString("ns");
+  fTimeScaleB2U = ns / user_units_time;
+  fTimeScaleU2B = user_units_time / ns;
 
 }
 
@@ -1285,6 +1309,13 @@ double GDk2NuFlux::LengthUnits(void) const
   // Return the scale factor for lengths the user is getting
   double cm = genie::utils::units::UnitFromString("cm");
   return fLengthScaleB2U * cm ;
+}
+//___________________________________________________________________________
+double GDk2NuFlux::TimeUnits(void) const
+{
+  // Return the scale factor for lengths the user is getting
+  double ns = genie::utils::units::UnitFromString("ns");
+  return fLengthScaleB2U * ns ;
 }
 
 //___________________________________________________________________________
@@ -1577,9 +1608,20 @@ void GDk2NuFluxXMLHelper::ParseParamSet(xmlDocPtr& xml_doc, xmlNodePtr& xml_pset
       }
       SLOG("GDk2NuFlux", pWARN) << "done using_param_set: \"" << pval << "\"";
     } else if ( pname == "units" ) {
+      // this is legacy ... equivalent to <lunits> for length
       double scale = genie::utils::units::UnitFromString(pval);
       fGDk2NuFlux->SetLengthUnits(scale);
-      SLOG("GDk2NuFlux", pINFO) << "set user units to \"" << pval << "\"";
+      SLOG("GDk2NuFlux", pINFO) << "set user length units to \"" << pval << "\"";
+
+    } else if ( pname == "lunits" ) {
+      double scale = genie::utils::units::UnitFromString(pval);
+      fGDk2NuFlux->SetLengthUnits(scale);
+      SLOG("GDk2NuFlux", pINFO) << "set user length units to \"" << pval << "\"";
+
+    } else if ( pname == "tunits" ) {
+      double scale = genie::utils::units::UnitFromString(pval);
+      fGDk2NuFlux->SetTimeUnits(scale);
+      SLOG("GDk2NuFlux", pINFO) << "set user time units to \"" << pval << "\"";
 
     } else if ( pname == "beamdir" ) {
       ParseBeamDir(xml_doc,xml_child);
