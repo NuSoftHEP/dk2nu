@@ -190,6 +190,8 @@ public :
 
   void   SetLengthUnits(double user_units);  ///< Set units assumed by user
   double    LengthUnits(void) const;         ///< Return user units
+  void   SetTimeUnits(double user_units);    ///< Set units assumed by user
+  double    TimeUnits(void) const;           ///< Return user units
 
   // set relative orientation of user coords vs. beam system, i.e.
   //  x3_user = ( beamrot * x3_beam ) + x0beam_user
@@ -308,8 +310,11 @@ private:
   bool      fDetLocIsSet;         ///< is a flux location (near/far) set?
 
   double           fLengthUnits;    ///< units for coord in user exchanges
+  double           fTimeUnits;      ///< units for coord in user exchanges
   double           fLengthScaleB2U; ///< scale factor beam (cm) --> user
   double           fLengthScaleU2B; ///< scale factor beam user --> (cm)
+  double           fTimeScaleB2U;   ///< scale factor beam (ns) --> user
+  double           fTimeScaleU2B;   ///< scale factor beam user --> (ns)
 
   TLorentzVector   fBeamZero;       ///< beam origin in user coords
   TLorentzRotation fBeamRot;        ///< rotation applied beam --> user coord
