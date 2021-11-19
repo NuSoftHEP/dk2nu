@@ -12,7 +12,7 @@
 # cmake [ -DWITH_GENIE=ON ] \
 #       [ -DGENIE_ONLY=OFF -DDK2NUDATA_DIR=<path-to-dk2nudata-install> ] \
 #       [ -DWITH_TBB=OFF ] \
-#     -DCMAKE_INSTALL_PREFIX:PATH==<path-to-install>/dk2nu-install \
+#     -DCMAKE_INSTALL_PREFIX:PATH=<path-to-install>/dk2nu-install \
 #     <path-to-source>/dk2nu
 #
 # Required environment variables:

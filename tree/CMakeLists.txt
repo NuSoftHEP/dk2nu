@@ -1,8 +1,7 @@
 
 MESSAGE("--DK2NU-- ONLY_GENIE was false")
 set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES}
-                        ${PROJECT_SOURCE_DIR}/tree
-                        ${PROJECT_SOURCE_DIR}/dk2nu/tree)
+                        ${PROJECT_SOURCE_DIR}/tree)
 
 include_directories( ${INCLUDE_DIRECTORIES} )
 link_directories( ${LINK_DIRECTORIES} )
@@ -25,12 +24,12 @@ file(GLOB dk2nuTree_SRCS ${PROJECT_SOURCE_DIR}/tree/*.cc
 
 #file(GLOB dk2nuTree_HDRS ${PROJECT_SOURCE_DIR}/tree/*.h)
 #list(REMOVE_ITEM dk2nuTree_HDRS ${PROJECT_SOURCE_DIR}/tree/LinkDef.h)
-set(dk2nuTree_HDRS dk2nu/tree/dk2nu.h
-                   dk2nu/tree/dkmeta.h
-                   dk2nu/tree/NuChoice.h
-                   dk2nu/tree/dflt.h
-                   dk2nu/tree/calcLocationWeights.h
-                   dk2nu/tree/readWeightLocations.h )
+set(dk2nuTree_HDRS tree/dk2nu.h
+                   tree/dkmeta.h
+                   tree/NuChoice.h
+                   tree/dflt.h
+                   tree/calcLocationWeights.h
+                   tree/readWeightLocations.h )
 
 #MESSAGE("dk2nuTree_SRCS=${dk2nuTree_SRCS}")
 #MESSAGE(" ")
@@ -82,7 +81,7 @@ install(FILES ${TREEDICTFILES} DESTINATION lib)
 #--------------------
 # Install the headers
 #   given full dk2nu/tree/*.h names, look up one directory and then down
-string(REGEX REPLACE "([^;]+)" "${PROJECT_SOURCE_DIR}/../\\1" dk2nuTree_HDRS2 "${dk2nuTree_HDRS}")
+string(REGEX REPLACE "([^;]+)" "${PROJECT_SOURCE_DIR}/\\1" dk2nuTree_HDRS2 "${dk2nuTree_HDRS}")
 # MESSAGE("dk2nuTree_HDRS2=${dk2nuTree_HDRS2}")
 install(FILES   ${dk2nuTree_HDRS2}  DESTINATION include/dk2nu/tree)
 

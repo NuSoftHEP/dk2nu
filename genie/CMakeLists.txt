@@ -52,8 +52,7 @@ if (GENIE_ONLY)
                           ${DK2NUDATA_DIR}/include)
 else()
   set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES}
-                          ${PROJECT_SOURCE_DIR}/tree
-                          ${PROJECT_SOURCE_DIR}/dk2nu/tree)
+                          ${PROJECT_SOURCE_DIR}/tree)
 endif()
 
 set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES}
@@ -80,7 +79,7 @@ file(GLOB dk2nuGenie_SRCS ${PROJECT_SOURCE_DIR}/genie/*.cc
 
 #file(GLOB dk2nuGenie_HDRS ${PROJECT_SOURCE_DIR}/genie/*.h)
 #list(REMOVE_ITEM dk2nuGenie_HDRS ${PROJECT_SOURCE_DIR}/genie/LinkDef.h)
-set(dk2nuGenie_HDRS dk2nu/genie/GDk2NuFlux.h)
+set(dk2nuGenie_HDRS genie/GDk2NuFlux.h)
 
 #MESSAGE("dk2nuGenie_SRCS=${dk2nuGenie_SRCS}")
 #MESSAGE(" ")
@@ -141,6 +140,6 @@ install(TARGETS dk2nuGenie DESTINATION lib)
 install(FILES ${GENIEDICTFILES} DESTINATION lib)
 
 
-string(REGEX REPLACE "([^;]+)" "${PROJECT_SOURCE_DIR}/../\\1" dk2nuGenie_HDRS2 "${dk2nuGenie_HDRS}")
+string(REGEX REPLACE "([^;]+)" "${PROJECT_SOURCE_DIR}/\\1" dk2nuGenie_HDRS2 "${dk2nuGenie_HDRS}")
 # MESSAGE("dk2nuGenie_HDRS2=${dk2nuGenie_HDRS2}")
 install(FILES ${dk2nuGenie_HDRS2} DESTINATION include/dk2nu/genie)
