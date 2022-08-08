@@ -391,14 +391,20 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
   size_t inu = fCurDk2Nu->indxnu();
   // calculate t_dk in user units
   double t_dk = 0;  // time from proton-on-target to where nu generated
-  if ( ! fCurDk2Nu->overflow() && ! fCurDk2Nu->ancestor.empty() ) {
-    // units?  ancestor times in beam time units (ns)
+  //if ( ! fCurDk2Nu->overflow() && ! fCurDk2Nu->ancestor.empty() ) {
+  // overflow bit should signal that the ancestor list was truncated
+  // but seems to be set unreliably
+  // Assume the list is never truncated ...
+  // if it is we'll just have a slightly wrong time (but better than zero)
+  if ( ! fCurDk2Nu->ancestor.empty() ) {
+    // ancestor times in beam time units (ns); t_dk in user units
     t_dk = fCurDk2Nu->ancestor[inu].startt * fTimeScaleB2U;
   }
-  // this ... makes assumptions
+  // this ... makes assumptions [blech]
   const double c_mbys  = 299792458;
   //const double c_user  = c_mbys * fLengthScale;
   double tstart = t_dk + ( dist_dk2start / c_mbys ); // user units
+
   fCurNuChoice->x4NuBeam.SetT(tstart * fTimeScaleU2B);
   fCurNuChoice->x4NuUser.SetT(tstart);
   if ( t_dk == 0 ) {
@@ -406,7 +412,7 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
     static int nmsg = 5;
     if ( nmsg > 0 ) {
       --nmsg;
-      LOG("Flux", pNOTICE)
+      LOG("Flux", pWARN)
         << "Setting time at flux window, \n"
         << "noticed that t_dk from ancestor list was 0, "
         << "this probably means that the calculated time is wrong";
