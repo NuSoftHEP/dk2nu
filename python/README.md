@@ -110,6 +110,18 @@ window2_energies = numus[:,3]
 window2_weights = numus[:,4]
 ```
 
+You can of course apply similar logic in your python loops to reduce
+repeated I/O, but nested list comprehension can be tricky:
+
+```python
+nus = np.array(
+    [ [ x 
+           for oam in [0, 5, 10, 20, 25]
+           for x in dk.decay_through_point([oam*100, 0, ND_Z_cm]) ] 
+      for dk in fr.decays() ] )
+numus = nus[nus[:,0] == 14]
+```
+
 Two complete example scripts for making Near Detector flux predictions can 
 be found below:
 * [example_off_axis.py](./example_off_axis.py)
