@@ -16,16 +16,22 @@ ND_Z_cm = 57400
 
 lswheel = ["solid", "dashed", "dotted"]
 cwheel = ['#0077bb', '#ee3377', '#009988', '#ee7733']
-for i,offaxis_m in enumerate([0, 5, 10]):
-  nus = np.array(
-    [(dk.decay.ntype, *dk.decay_through_point([offaxis_m*100, 0, ND_Z_cm]), dk.ancestor[-2].pdg) \
-      for dk in fr.decays()] 
-      )
-  numus = nus[nus[:,0] == 14]
-  for j,ppdg in enumerate(np.nditer(np.unique(numus[:,3]))):
-    numus_wparent = numus[numus[:,3] == ppdg]
 
-    bin_vals, bins = np.histogram(numus_wparent[:,1], bins=np.linspace(0,10,50), weights=numus_wparent[:,2])
+nus = np.array(
+    [ ( dk.decay.ntype, 
+        dk.ancestor[-2].pdg, 
+        *[ x 
+           for oam in [0, 5, 10] 
+           for x in dk.decay_through_point([oam*100, 0, ND_Z_cm]) ] 
+      ) for dk in fr.decays() ] )
+numus = nus[nus[:,0] == 14]
+
+for j,ppdg in enumerate(np.nditer(np.unique(numus[:,1]))):
+  numus_wparent = numus[numus[:,1] == ppdg]
+  for i,offaxis_m in enumerate([0, 5, 10]):
+
+    bin_vals, bins = np.histogram(numus_wparent[:,2 + i*2], 
+                      bins=np.linspace(0,10,200), weights=numus_wparent[:,3 + i*2])
 
     bcs = (bins[1:] + bins[:-1])/2.0
     bws = (bins[1:] - bins[:-1])

@@ -82,6 +82,34 @@ approach is useful, you don't sacrifice much performance for doing so. The vast
 majority of the computation time is spent on ROOT I/O, and then on the 
 python/C++ interface, and then neglibly on the weight and energy calculations.
 
+When the flux through multiple points is needed then it is significantly more
+performant to only loop over the dk2nu entries once. We provide a single 
+interface for calculating the neutrino ray energies and weights through an 
+arbitrary number of flux windows.
+
+```python
+import sys
+import numpy as np
+import pydk2nu as dk
+
+rdr = dk.dk2nuFileReader(sys.argv[1:])
+
+POT = sum([m.pots for m in rdr.metas()])
+
+ND_Z_cm = 57400
+offaxis_positions_m = [0, 5, 10, 20, 25]
+
+nus = fr.decay_all_through_points([ [x*100, 0, ND_Z_cm] for x in offaxis_positions_m ])
+# select only the muon neutrinos
+numus = nus[nus[:,0] == 14]
+
+window1_energies = numus[:,1]
+window1_weights = numus[:,2]
+
+window2_energies = numus[:,3]
+window2_weights = numus[:,4]
+```
+
 Two complete example scripts for making Near Detector flux predictions can 
 be found below:
 * [example_off_axis.py](./example_off_axis.py)

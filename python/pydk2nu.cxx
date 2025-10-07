@@ -53,6 +53,43 @@ template <> struct type_caster<TVector3> {
   }
 };
 
+template <> struct type_caster<std::vector<TVector3>> {
+
+  PYBIND11_TYPE_CASTER(std::vector<TVector3>,
+                       io_name("Sequence[Sequence[float]]",
+                               "Sequence[tuple[float, float, float]]"));
+
+  bool load(handle src, bool /*convert*/) {
+    // Check if handle is a Sequence
+    if (!py::isinstance<py::sequence>(src)) {
+      return false;
+    }
+    auto seq = py::reinterpret_borrow<py::sequence>(src);
+    for (auto seqi : seq) {
+      if (!py::isinstance<py::sequence>(seqi)) {
+        return false;
+      }
+      auto vec = seqi.cast<py::sequence>();
+
+      // Check if exactly two values are in the Sequence
+      if (vec.size() != 3) {
+        return false;
+      }
+      // Check if each element is either a float or an int
+      for (auto item : vec) {
+        if (!py::isinstance<py::float_>(item) &&
+            !py::isinstance<py::int_>(item)) {
+          return false;
+        }
+      }
+      value.emplace_back();
+      value.back().SetXYZ(vec[0].cast<double>(), vec[1].cast<double>(),
+                          vec[2].cast<double>());
+    }
+    return true;
+  }
+};
+
 } // namespace detail
 } // namespace pybind11
 
@@ -366,6 +403,46 @@ N.B. The importance weight from the beam/target simulation (Decay::nimpwt)
       .def_readwrite("vdblnames", &DkMeta::vdblnames)
       .def("__str__", &DkMeta::AsString, py::arg("opt") = "");
 
+  auto decay_all_through_points =
+      [=](dk2nuFileReader &rdr,
+          std::vector<TVector3> const &points_in_beam_frame_cm) {
+        std::vector<int> nupids;
+        std::vector<std::vector<double>> data;
+
+        auto dk = rdr._first();
+
+        while (dk) {
+
+          nupids.push_back(dk->decay.ntype);
+
+          std::vector<double> loc_weights;
+
+          for (auto const &loc : points_in_beam_frame_cm) {
+            auto enu_wght = decay_through_point(*dk, loc);
+            loc_weights.emplace_back(std::get<0>(enu_wght));
+            loc_weights.emplace_back(std::get<1>(enu_wght));
+          }
+          data.emplace_back(std::move(loc_weights));
+          dk = rdr._next();
+        }
+
+        py::array_t<double> a;
+        a.resize(std::array<size_t, 2>{data.size(),
+                                       1 + 2 * points_in_beam_frame_cm.size()});
+
+        // Obtain mutable access to the array
+        auto r = a.mutable_unchecked<2>();
+
+        for (size_t i = 0; i < data.size(); i++) {
+          r(i, 0) = nupids[i];
+          for (size_t j = 0; j < data[i].size(); j++) {
+            r(i, j + 1) = data[i][j];
+          }
+        }
+
+        return a;
+      };
+
   py::class_<dk2nuFileReader>(m, "dk2nuFileReader")
       .def(py::init<std::vector<std::string> const &>())
       .def("first", &dk2nuFileReader::first)
@@ -384,40 +461,29 @@ N.B. The importance weight from the beam/target simulation (Decay::nimpwt)
             return py::make_iterator(begin_meta(s), end(s));
           },
           py::keep_alive<0, 1>())
-      .def("decay_all_through_point",
-           [=](dk2nuFileReader &rdr, TVector3 const &point_in_beam_frame_cm) {
-             std::vector<std::tuple<int, double, double>> data;
-
-             auto dk = rdr._first();
-
-             while (dk) {
-
-               auto enu_wght = decay_through_point(*dk, point_in_beam_frame_cm);
-               data.emplace_back(dk->decay.ntype, std::get<0>(enu_wght),
-                                 std::get<1>(enu_wght));
-
-               dk = rdr._next();
-             }
-
-             py::array_t<double> a;
-             a.resize(std::array<size_t, 2>{data.size(), 3});
-
-             // Obtain mutable access to the array
-             auto r = a.mutable_unchecked<2>();
-
-             for (size_t i = 0; i < data.size(); i++) {
-               r(i, 0) = std::get<0>(data[i]);
-               r(i, 0) = std::get<1>(data[i]);
-               r(i, 0) = std::get<2>(data[i]);
-             }
-
-             return a;
-           },
-           py::arg("point_in_beam_frame_cm"), R"(
+      .def(
+          "decay_all_through_point",
+          [=](dk2nuFileReader &rdr, TVector3 const &point_in_beam_frame_cm) {
+            return decay_all_through_points(rdr, {
+                                                     point_in_beam_frame_cm,
+                                                 });
+          },
+          py::arg("point_in_beam_frame_cm"), R"(
 Returns the (neutrino species, neutrino Energy (GeV), total flux weight in /cm^2])
   for each decay in the file to send a neutrino through a 1 m diameter circular 
   window at point_in_beam_frame_cm and returns the result as a single Nx4 numpy
   array.
+
+N.B. The importance weight from the beam/target simulation (Decay::nimpwt) 
+  is included in the returned flux weight, so the returned weight is the only
+  weight you need to make flux predictions.
+)")
+      .def("decay_all_through_points", decay_all_through_points,
+           py::arg("points_in_beam_frame_cm"), R"(
+Returns the (neutrino species, neutrino Energy (GeV), total flux weight in /cm^2])
+  for each decay in the file to send a neutrino through a 1 m diameter circular 
+  window at each point_in_beam_frame_cm and returns the result as a single Nx(1+2*M) 
+  numpy array, where M is the number of points.
 
 N.B. The importance weight from the beam/target simulation (Decay::nimpwt) 
   is included in the returned flux weight, so the returned weight is the only
