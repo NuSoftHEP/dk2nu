@@ -40,6 +40,7 @@ option(GENIE_ONLY "Build only GENIE flux driver" OFF)
 option(DK2NUDATA_DIR "path the dk2nu data half of package if GENIE_ONLY" "")
 option(WITH_TBB "Build in linkage to TBB library" ON)
 option(COPY_AUX "install etc, convert, snippets subdirectories" ON)
+option(DK2NU_PYTHON_ENABLED "Enable the building of python bindings" OFF)
 
 execute_process(COMMAND root-config --version OUTPUT_VARIABLE ROOT_VERSION)
 string(STRIP ${ROOT_VERSION} ROOT_VERSION)
@@ -127,6 +128,10 @@ else()
     add_subdirectory(genie)
     MESSAGE("--DK2NU-- Both tree & GENIE flux driver building enabled")
   endif()
+endif()
+
+if(DK2NU_PYTHON_ENABLED)
+  add_subdirectory(python)
 endif()
 
 #----------------------------------------------------------------------------
