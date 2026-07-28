@@ -21,6 +21,8 @@
 #include <sstream>
 #include <cassert>
 #include <climits>
+#include <iostream>
+#include <iomanip>
 
 #include "libxml/xmlmemory.h"
 #include "libxml/parser.h"
@@ -49,6 +51,7 @@
   // GENIE R-3 headers
   #include "Framework/Conventions/GBuild.h"
   #include "Framework/Conventions/Units.h"
+  #include "Framework/Conventions/Constants.h"
   #include "Framework/Messenger/Messenger.h"
   #include "Framework/Numerical/RandomGen.h"
   #include "Framework/ParticleData/PDGCodes.h"
@@ -125,6 +128,39 @@ namespace genie {
     };
   }
 }
+
+//____________________________________________________________________________
+namespace {
+  std::string formatLorentzRotation(const TLorentzRotation& lr) {
+    std::stringstream ss;
+    std::ios_base::fmtflags original_flags = ss.flags();
+    std::streamsize original_precision = ss.precision();
+
+    ss << std::fixed << std::setprecision(6);
+    ss << "  [ " << std::setw(9) << lr.XX()
+       << ", " << std::setw(9) << lr.XY()
+       << ", " << std::setw(9) << lr.XZ()
+       << ", " << std::setw(9) << lr.XT() << " ]\n";
+    ss << "  [ " << std::setw(9) << lr.YX()
+       << ", " << std::setw(9) << lr.YY()
+       << ", " << std::setw(9) << lr.YZ()
+       << ", " << std::setw(9) << lr.YT() << " ]\n";
+    ss << "  [ " << std::setw(9) << lr.ZX()
+       << ", " << std::setw(9) << lr.ZY()
+       << ", " << std::setw(9) << lr.ZZ()
+       << ", " << std::setw(9) << lr.ZT() << " ]\n";
+    ss << "  [ " << std::setw(9) << lr.TX()
+       << ", " << std::setw(9) << lr.TY()
+       << ", " << std::setw(9) << lr.TZ()
+       << ", " << std::setw(9) << lr.TT() << " ]\n";
+
+    ss.flags(original_flags);
+    ss.precision(original_precision);
+
+    return ss.str();
+  }
+}
+
 
 //____________________________________________________________________________
 GDk2NuFlux::GDk2NuFlux()
@@ -458,12 +494,25 @@ void GDk2NuFlux::MoveToZ0(double z0usr)
   // move ray origin to specified user z0
   // move beam coord entry correspondingly
 
-#ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
-  LOG("Flux", pDEBUG)
+//#ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
+  static bool first = true;
+  if (first) {
+    first = false;
+    LOG("Flux", pNOTICE)
+      << "\n"
+      << "TLorentzRotation fBeamRot" << "\n"
+      << formatLorentzRotation(fBeamRot) << "\n"
+      << "TLorentzRotation fBeamRotInv" << "\n"
+      << formatLorentzRotation(fBeamRotInv);
+  }
+
+//  LOG("Flux", pDEBUG)
+    LOG("Flux", pNOTICE)
     << "MoveToZ0 (z0usr=" << z0usr << ") before:"
     << "\n p4 user: " << utils::print::P4AsShortString(&(fCurNuChoice->p4NuUser))
-    << "\n x4 user: " << utils::print::X4AsString(&(fCurNuChoice->x4NuUser));
-#endif
+    << "\n x4 user: " << utils::print::X4AsString(&(fCurNuChoice->x4NuUser))
+    << "\n x4 beam: " << utils::print::X4AsString(&(fCurNuChoice->x4NuBeam));
+//#endif
 
   double pzusr    = fCurNuChoice->p4NuUser.Pz();
   if ( TMath::Abs(pzusr) < 1.0e-30 ) {
@@ -473,18 +522,28 @@ void GDk2NuFlux::MoveToZ0(double z0usr)
     return;
   }
 
-  double scale = (z0usr - fCurNuChoice->x4NuUser.Z()) / pzusr;
-  fCurNuChoice->x4NuUser += (scale*fCurNuChoice->p4NuUser);
-  fCurNuChoice->x4NuBeam += ((fLengthScaleU2B*scale)*fCurNuChoice->p4NuBeam);
-  // this scaling works for distances, but not the time component
-  fCurNuChoice->x4NuBeam.SetT(0);
-  fCurNuChoice->x4NuUser.SetT(0);
+  double dz = z0usr - fCurNuChoice->x4NuUser.Z();
+  double scale = dz / pzusr;
+  TVector3 dx3( scale*fCurNuChoice->p4NuUser.Vect() );
 
-#ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
-  LOG("Flux", pDEBUG)
+  // Find the corresponding time shift
+  double v = fCurNuChoice->p4NuUser.Beta() * constants::kLightSpeed
+    / ( units::meter / units::second );
+  double dt = fCurNuChoice->p4NuUser.P() * dz / ( pzusr * v );
+
+  // appl thes shifts to update the neutrino 4-position
+  TLorentzVector dx4(dx3,dt);
+  fCurNuChoice->x4NuUser += dx4;
+  // rotations this a different dx4, so just the the coordinate transform
+  User2BeamPos(fCurNuChoice->x4NuUser,fCurNuChoice->x4NuBeam);
+
+//#ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
+//  LOG("Flux", pDEBUG)
+  LOG("Flux", pNOTICE)
     << "MoveToZ0 (" << z0usr << ") after:"
-    << "\n x4 user: " << utils::print::X4AsString(&(fCurNuChoice->x4NuUser));
-#endif
+    << "\n x4 user: " << utils::print::X4AsString(&(fCurNuChoice->x4NuUser))
+    << "\n x4 beam: " << utils::print::X4AsString(&(fCurNuChoice->x4NuBeam));
+//#endif
 
 }
 
@@ -954,6 +1013,7 @@ void GDk2NuFlux::GetFluxWindow(TVector3& p0, TVector3& p1, TVector3& p2) const
 void GDk2NuFlux::SetBeamRotation(TRotation beamrot)
 {
   // rotation is really only 3-d vector, but we'll be operating on LorentzV's
+  // unless we do a boost or something this leaves [XYZ]T and T[XYZ] = 0, TT=1
   fBeamRot    = TLorentzRotation(beamrot);
   fBeamRotInv = fBeamRot.Inverse();
 }
@@ -1021,7 +1081,8 @@ void GDk2NuFlux::Beam2UserPos(const TLorentzVector& beamxyz,
                                    TLorentzVector& usrxyz) const
 {
   usrxyz = fLengthScaleB2U*(fBeamRot*beamxyz) + fBeamZero;
-  // above assumed T=0
+  // above assumed fBeamZero T=0
+  // fBeamRot having no T components other than TT=1
   usrxyz.SetT(beamxyz.T()*fTimeScaleB2U);
 }
 void GDk2NuFlux::Beam2UserDir(const TLorentzVector& beamdir,
@@ -1039,7 +1100,8 @@ void GDk2NuFlux::User2BeamPos(const TLorentzVector& usrxyz,
                                    TLorentzVector& beamxyz) const
 {
   beamxyz = fLengthScaleU2B*(fBeamRotInv*(usrxyz-fBeamZero));
-  // above assumed T=0
+  // above assumed fBeamZero T=0
+  // fBeamRotInv having no T components other than TT=1
   beamxyz.SetT(usrxyz.T()*fTimeScaleU2B);
 }
 void GDk2NuFlux::User2BeamDir(const TLorentzVector& usrdir,
