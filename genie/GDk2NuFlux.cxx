@@ -494,11 +494,11 @@ void GDk2NuFlux::MoveToZ0(double z0usr)
   // move ray origin to specified user z0
   // move beam coord entry correspondingly
 
-//#ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
+#ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
   static bool first = true;
   if (first) {
     first = false;
-    LOG("Flux", pNOTICE)
+    LOG("Flux", pDEBUG)
       << "\n"
       << "TLorentzRotation fBeamRot" << "\n"
       << formatLorentzRotation(fBeamRot) << "\n"
@@ -506,13 +506,12 @@ void GDk2NuFlux::MoveToZ0(double z0usr)
       << formatLorentzRotation(fBeamRotInv);
   }
 
-//  LOG("Flux", pDEBUG)
-    LOG("Flux", pNOTICE)
+  LOG("Flux", pDEBUG)
     << "MoveToZ0 (z0usr=" << z0usr << ") before:"
     << "\n p4 user: " << utils::print::P4AsShortString(&(fCurNuChoice->p4NuUser))
     << "\n x4 user: " << utils::print::X4AsString(&(fCurNuChoice->x4NuUser))
     << "\n x4 beam: " << utils::print::X4AsString(&(fCurNuChoice->x4NuBeam));
-//#endif
+#endif
 
   double pzusr    = fCurNuChoice->p4NuUser.Pz();
   if ( TMath::Abs(pzusr) < 1.0e-30 ) {
@@ -537,14 +536,12 @@ void GDk2NuFlux::MoveToZ0(double z0usr)
   // rotations this a different dx4, so just the the coordinate transform
   User2BeamPos(fCurNuChoice->x4NuUser,fCurNuChoice->x4NuBeam);
 
-//#ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
-//  LOG("Flux", pDEBUG)
-  LOG("Flux", pNOTICE)
+#ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
+  LOG("Flux", pDEBUG)
     << "MoveToZ0 (" << z0usr << ") after:"
     << "\n x4 user: " << utils::print::X4AsString(&(fCurNuChoice->x4NuUser))
     << "\n x4 beam: " << utils::print::X4AsString(&(fCurNuChoice->x4NuBeam));
-//#endif
-
+#endif
 }
 
 //___________________________________________________________________________
