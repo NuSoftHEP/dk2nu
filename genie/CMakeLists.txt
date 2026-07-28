@@ -2,16 +2,12 @@
 set(GENIE $ENV{GENIE})
 
 # genie
-# genie-config for R-2 series didn't support --version (returns blank)
-# execute_process(COMMAND genie-config --version OUTPUT_VARIABLE GENIE_VERSION)
+execute_process(COMMAND genie-config --version OUTPUT_VARIABLE GENIE_VERSION)
 # this is the equivalent:
-execute_process(COMMAND cat ${GENIE}/VERSION OUTPUT_VARIABLE GENIE_VERSION)
+#execute_process(COMMAND cat ${GENIE}/VERSION OUTPUT_VARIABLE GENIE_VERSION)
 string(STRIP ${GENIE_VERSION} GENIE_VERSION)
 string(SUBSTRING ${GENIE_VERSION} 0 1 GENIE_MAJOR_VERSION)
 MESSAGE("--DK2NU-- GENIE_VERSION=${GENIE_VERSION} major=${GENIE_MAJOR_VERSION}")
-if( ${GENIE_MAJOR_VERSION} LESS 3 )
-  add_definitions(-DGENIE_PRE_R3)
-endif()
 
 # log4cpp
 find_library( LOG4CPP NAMES log4cpp PATHS ENV LOG4CPP_LIB NO_DEFAULT_PATH )
@@ -19,14 +15,6 @@ find_library( LOG4CPP NAMES log4cpp PATHS ENV LOG4CPP_LIB NO_DEFAULT_PATH )
 set( LIBXML2_LIB_DIR $ENV{LIBXML2_FQ_DIR}/lib )
 find_library( XML2 NAMES xml2 PATHS ${LIBXML2_LIB_DIR} NO_DEFAULT_PATH )
 
-if( ${GENIE_MAJOR_VERSION} LESS 3 )
-  find_library( GPDG NAMES GPDG PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
-  find_library( GUTILS NAMES GUtils PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
-  find_library( GFLUXDRIVERS NAMES GFluxDrivers PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
-  find_library( GEVGDRIVERS NAMES GEVGDrivers PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
-  find_library( GMESSENGER NAMES GMessenger PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
-  find_library( GNUMERICAL NAMES GNumerical PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
-else()
   find_library( GALGORITHM NAMES GFwAlg  PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
   find_library( GHEP       NAMES GFwGHEP PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
   find_library( GMESSENGER NAMES GFwMsg  PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
@@ -35,7 +23,6 @@ else()
   find_library( GPDG       NAMES GFwParDat PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
   find_library( GEVGDRIVERS NAMES GFwEG  PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
   find_library( GTOOLFLUXDRIVERS NAMES GTlFlx PATHS ENV GENIE_LIB NO_DEFAULT_PATH )
-endif()
 
 MESSAGE("--DK2NU-- WITH_GENIE or GENIE_ONLY was true")
 if (GENIE_ONLY)
@@ -58,7 +45,7 @@ set(INCLUDE_DIRECTORIES ${INCLUDE_DIRECTORIES}
                         $ENV{LOG4CPP_INC}
                         ${GENIE}/src)
 
-set(LINK_DIRECTORIES ${LINK_DIRECTORIES} ${GENIE}/lib )
+set(LINK_DIRECTORIES ${LINK_DIRECTORIES} ${GENIE_LIB} )
 if (GENIE_ONLY)
   set(LINK_DIRECTORIES ${LINK_DIRECTORIES} ${DK2NUDATA_DIR}/lib )
     MESSAGE("DK2NUDATA_DIR = ${DK2NUDATA_DIR}")
@@ -87,13 +74,6 @@ set(dk2nuGenie_LINKDEF ${PROJECT_SOURCE_DIR}/genie/LinkDef.h)
 set(dk2nuGenie_DICTIONARY dk2nuGenieDict)
 
 #MESSAGE("--DK2NU- about to ROOT_GENERATE_DICTIONARY ${dk2nuGenie_DICTIONARY}")
-# option -p = use compiler's preprocessor instead of CINT's
-# needed to handle GVersion.h  GRELCODE(2,9,0) construct
-if( ${ROOT_MAJOR_VERSION} LESS 6 )
-  set(ROOT_DICT_OPT_GENIE -p)
-  ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}"
-    LINKDEF "${dk2nuGenie_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_GENIE} )
-else()
   set(ROOT_INCLUDE_PATH $ENV{ROOT_INCLUDE_PATH}:${PROJECT_SOURCE_DIR}:${PROJECT_SOURCE_DIR}/genie)
   # again define these for "install" phase
   set(GENIEDICTFILES ${CMAKE_BINARY_DIR}/genie/libdk2nuGenie_rdict.pcm
@@ -105,7 +85,6 @@ else()
   ROOT_GENERATE_DICTIONARY("${dk2nuGenie_DICTIONARY}" "${dk2nuGenie_HDRS}"
     LINKDEF "${dk2nuGenie_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_GENIE}
     MODULE dk2nuGenie )
-endif()
 
 # add dictionary to list of source files
 SET(dk2nuGenie_SRCS ${dk2nuGenie_SRCS} ${dk2nuGenie_DICTIONARY})
