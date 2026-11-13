@@ -31,37 +31,24 @@
 #include <TFile.h>
 #include <TChain.h>
 #include <TChainElement.h>
+#include <TBranch.h>
+#include <TTree.h>
 #include <TSystem.h>
 #include <TStopwatch.h>
 
-#ifdef GENIE_PRE_R3
-  // GENIE headers
-  #include "Conventions/GBuild.h"
-  #include "Conventions/Units.h"
-  #include "Messenger/Messenger.h"
-  #include "Numerical/RandomGen.h"
-  #include "PDG/PDGCodes.h"
-  #include "PDG/PDGCodeList.h"
-  #include "Utils/MathUtils.h"
-  #include "Utils/PrintUtils.h"
-  #include "Utils/UnitUtils.h"
-  #include "Utils/XmlParserUtils.h"
-  #include "Utils/StringUtils.h"
-#else
-  // GENIE R-3 headers
-  #include "Framework/Conventions/GBuild.h"
-  #include "Framework/Conventions/Units.h"
-  #include "Framework/Conventions/Constants.h"
-  #include "Framework/Messenger/Messenger.h"
-  #include "Framework/Numerical/RandomGen.h"
-  #include "Framework/ParticleData/PDGCodes.h"
-  #include "Framework/ParticleData/PDGCodeList.h"
-  #include "Framework/Utils/PrintUtils.h"
-  #include "Framework/Utils/UnitUtils.h"
-  #include "Framework/Utils/XmlParserUtils.h"
-  #include "Framework/Utils/StringUtils.h"
-  #include "Framework/Numerical/MathUtils.h"
-#endif
+// GENIE R-3 (or later) headers
+#include "Framework/Conventions/GBuild.h"
+#include "Framework/Conventions/Units.h"
+#include "Framework/Conventions/Constants.h"
+#include "Framework/Messenger/Messenger.h"
+#include "Framework/Numerical/RandomGen.h"
+#include "Framework/ParticleData/PDGCodes.h"
+#include "Framework/ParticleData/PDGCodeList.h"
+#include "Framework/Utils/PrintUtils.h"
+#include "Framework/Utils/UnitUtils.h"
+#include "Framework/Utils/XmlParserUtils.h"
+#include "Framework/Utils/StringUtils.h"
+#include "Framework/Numerical/MathUtils.h"
 
 // Dk2Nu headers
 #include "genie/GDk2NuFlux.h"
@@ -71,16 +58,8 @@
 #include "tree/calcLocationWeights.h"
 
 // need GDk2NuFlux header to register w/ factory
-#ifdef GENIE_PRE_R3
-  #include "Conventions/GVersion.h"
-  #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
-    #include "FluxDrivers/GFluxDriverFactory.h"
-    FLUXDRIVERREG4(genie,flux,GDk2NuFlux,genie::flux::GDk2NuFlux)
-  #endif
-#else
-    #include "Tools/Flux/GFluxDriverFactory.h"
-    FLUXDRIVERREG4(genie,flux,GDk2NuFlux,genie::flux::GDk2NuFlux)
-#endif
+#include "Tools/Flux/GFluxDriverFactory.h"
+FLUXDRIVERREG4(genie,flux,GDk2NuFlux,genie::flux::GDk2NuFlux)
 
 #include <vector>
 #include <algorithm>
@@ -164,9 +143,7 @@ namespace {
 
 //____________________________________________________________________________
 GDk2NuFlux::GDk2NuFlux()
-// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
   : GFluxExposureI(genie::flux::kPOTs)
-// #endif
 {
   this->Initialize();
 }
@@ -176,13 +153,11 @@ GDk2NuFlux::~GDk2NuFlux()
   this->CleanUp();
 }
 //___________________________________________________________________________
-// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
 double GDk2NuFlux::GetTotalExposure() const
 {
   // complete the GFluxExposureI interface
   return UsedPOTs();
 }
-// #endif
 //___________________________________________________________________________
 int GDk2NuFlux::PdgCode(void)
 {
@@ -214,7 +189,10 @@ bool GDk2NuFlux::GenerateNext(void)
 
      // Get next weighted flux ntuple entry
      bool nextok = this->GenerateNext_weighted();
-     if ( fGenWeighted ) return nextok;
+     if ( fGenWeighted ) {
+       if ( nextok ) this->FinishCurrent();
+       return nextok;
+     }
      if ( ! nextok ) continue;
 
      /* RWH - debug purposes
@@ -233,7 +211,11 @@ bool GDk2NuFlux::GenerateNext(void)
      double f = this->Weight() / fMaxWeight;
      //LOG("Flux", pNOTICE)
      //   << "Curr flux neutrino fractional weight = " << f;
+     bool finished = false;
      if (f > 1.) {
+       // complete the ray (full entry, times, move to z0) for the printout
+       this->FinishCurrent();
+       finished = true;
        // Oh,dear me ... what the weight max _should_ have been
        double bumped = this->Weight() * fMaxWgtFudge;
        if ( bumped > fMaxWeightMax ) fMaxWeightMax = bumped;
@@ -267,6 +249,10 @@ bool GDk2NuFlux::GenerateNext(void)
      double r = rnd->RndFlux().Rndm(); // (f < 1.) ? rnd->RndFlux().Rndm() : 0;
      bool accept = ( r < f );
      if ( accept ) {
+
+       // read the rest of the entry, set times, move to upstream z
+       // (already done if the ray bumped fMaxWeight)
+       if ( ! finished ) this->FinishCurrent();
 
 #ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
        LOG("Flux", pNOTICE)
@@ -328,12 +314,13 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
       }
     }
 
-    fNuFluxTree->GetEntry(fIEntry);
+    // only bsim::Decay if partial reading is possible; see FinishCurrent()
+    this->ReadCurrentEntry();
 
 #ifdef __GENIE_LOW_LEVEL_MESG_ENABLED__
   LOG("Flux",pDEBUG)
     << "got " << fNNeutrinos << " new fIEntry " << fIEntry
-    << " pot# " << fCurDk2Nu->potnum;
+    << ( fIEntryFull == fIEntry ? " (full)" : " (decay only)" );
 #endif
 
     fIUse = 1;
@@ -358,8 +345,14 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
   // has already been configured to handle the specified list.
   // Make sure that the appropriate list of flux neutrino species was set at
   // initialization via GDk2NuFlux::SetFluxParticles(const PDGCodeList &)
+  // The result for the last flavour checked is cached (consecutive rays are
+  // usually the same flavour); SetFluxParticles() resets the cache.
 
-  if ( ! fPdgCList->ExistsInPDGCodeList(fCurNuChoice->pdgNu) ) {
+  if ( fCurNuChoice->pdgNu != fLastPdg ) {
+    fLastPdg   = fCurNuChoice->pdgNu;
+    fLastPdgOK = fPdgCList->ExistsInPDGCodeList(fLastPdg);
+  }
+  if ( ! fLastPdgOK ) {
      /// user might modify list via SetFluxParticles() in order to reject certain
      /// flavors, even if they're found in the file.  So don't make a big fuss.
      /// Spit out a single message and then stop reporting that flavor as problematic.
@@ -384,15 +377,31 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
   // Make sure that the appropriate maximum flux neutrino energy was set at
   // initialization via GDk2NuFlux::SetMaxEnergy(double Ev)
 
-  fCurNuChoice->x4NuBeam = fFluxWindowBase;
+  // Pick a point on the flux window and weight the ray, in beam coordinates.
+  // Plain doubles throughout: each TVector3/TLorentzVector temporary costs a
+  // TObject construction and destruction, which dominated this part of the
+  // loop.  The products and sums keep the grouping of the vector expressions
+  // they replace (base + (r1*dir1 + r2*dir2), TVector3::Unit, TVector3::Dot).
+  RandomGen * rnd = RandomGen::Instance();
+  // the two random numbers in a fixed order: in the former vector expression
+  // r1*dir1 + r2*dir2 the order of the two Rndm() calls was up to the compiler
+  const double r1 = rnd->RndFlux().Rndm();
+  const double r2 = rnd->RndFlux().Rndm();
+
+  const double wx = fFluxWindowBase.X() +
+    ( r1*fFluxWindowDir1.X() + r2*fFluxWindowDir2.X() );
+  const double wy = fFluxWindowBase.Y() +
+    ( r1*fFluxWindowDir1.Y() + r2*fFluxWindowDir2.Y() );
+  const double wz = fFluxWindowBase.Z() +
+    ( r1*fFluxWindowDir1.Z() + r2*fFluxWindowDir2.Z() );
+  const double wt = fFluxWindowBase.T() +
+    ( r1*fFluxWindowDir1.T() + r2*fFluxWindowDir2.T() );
+  fCurNuChoice->x4NuBeam.SetXYZT(wx, wy, wz, wt);
 
   double Ev = 0;
   double& wgt_xy = fCurNuChoice->xyWgt;
-  // recalculate on x-y window
-  RandomGen * rnd = RandomGen::Instance();
-  fCurNuChoice->x4NuBeam += ( rnd->RndFlux().Rndm()*fFluxWindowDir1 +
-                              rnd->RndFlux().Rndm()*fFluxWindowDir2   );
-  bsim::calcEnuWgt(fCurDk2Nu->decay,fCurNuChoice->x4NuBeam.Vect(),Ev,wgt_xy);
+  fgWinPtBeam.SetXYZ(wx, wy, wz);   // reused member; calcEnuWgt takes a TVector3
+  bsim::calcEnuWgt(fCurDk2Nu->decay, fgWinPtBeam, Ev, wgt_xy);
 
   if (Ev > fMaxEv) {
      LOG("Flux", pWARN)
@@ -400,27 +409,70 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
           << "\nEv = " << Ev << "(> Ev{max} = " << fMaxEv << ")";
   }
 
-  // Set the current flux neutrino 4-momentum
-  // this is in *beam* coordinates
-  fgX4dkvtx = TLorentzVector( fCurDk2Nu->decay.vx,
-                              fCurDk2Nu->decay.vy,
-                              fCurDk2Nu->decay.vz, 0.);
-  // don't use TLorentzVector here for Mag() due to - on metric
-  TVector3 dirNu = (fCurNuChoice->x4NuBeam.Vect() - fgX4dkvtx.Vect()).Unit();
-  fCurNuChoice->p4NuBeam.SetPxPyPzE( Ev*dirNu.X(),
-                                     Ev*dirNu.Y(),
-                                     Ev*dirNu.Z(), Ev);
-
-  // Set the current flux neutrino 4-position, direction in user coord
-  Beam2UserP4(fCurNuChoice->p4NuBeam,fCurNuChoice->p4NuUser);
-  Beam2UserPos(fCurNuChoice->x4NuBeam,fCurNuChoice->x4NuUser);
+  // Set the current flux neutrino 4-momentum, in *beam* coordinates, along
+  // the direction from the decay vertex to the window point
+  // (normalised as TVector3::Unit() does)
+  const bsim::Decay& dk = fCurDk2Nu->decay;
+  fgX4dkvtx.SetXYZT(dk.vx, dk.vy, dk.vz, 0.);
+  double ux = wx - dk.vx;
+  double uy = wy - dk.vy;
+  double uz = wz - dk.vz;
+  const double umag2 = ux*ux + uy*uy + uz*uz;
+  const double uinv  = ( umag2 > 0 ) ? 1.0/TMath::Sqrt(umag2) : 1.0;
+  ux *= uinv;  uy *= uinv;  uz *= uinv;
+  fCurNuChoice->p4NuBeam.SetPxPyPzE(Ev*ux, Ev*uy, Ev*uz, Ev);
 
   fWeight = fCurNuChoice->impWgt * fCurNuChoice->xyWgt;  // full weight
   if ( fApplyTiltWeight ) {
     // additional weight due to window tilt relative to flux direction
-    double tiltwgt = dirNu.Dot( FluxWindowNormal() );
+    double nx = fFluxWindowNormal.X();
+    double ny = fFluxWindowNormal.Y();
+    double nz = fFluxWindowNormal.Z();
+    if ( fIsSphere ) {
+      // as SphereNormal(): radial direction at the point
+      nx = wx - fFluxSphereCenterBeam.X();
+      ny = wy - fFluxSphereCenterBeam.Y();
+      nz = wz - fFluxSphereCenterBeam.Z();
+      const double nmag2 = nx*nx + ny*ny + nz*nz;
+      const double ninv  = ( nmag2 > 0 ) ? 1.0/TMath::Sqrt(nmag2) : 1.0;
+      nx *= ninv;  ny *= ninv;  nz *= ninv;
+    }
+    const double tiltwgt = ux*nx + uy*ny + uz*nz;
     fWeight *= TMath::Abs( tiltwgt );
   }
+
+  // the user-coordinate 4-momentum and 4-position, the ray times (which need
+  // the ancestor list) and the move to the upstream z are done in
+  // FinishCurrent(), once the ray has been accepted; only beam-coordinate
+  // quantities are needed for the weight
+
+  if ( Ev > fMaxEv ) {
+    LOG("Flux", pFATAL)
+      << "Generated neutrino had E_nu = " << Ev << " > " << fMaxEv
+      << " maximum ";
+    assert(0);
+  }
+
+  // update sum of weights
+  fSumWeight += fWeight;
+
+  return true;
+}
+//___________________________________________________________________________
+void GDk2NuFlux::FinishCurrent(void)
+{
+  // Complete the current ray once it has been accepted, or before printing
+  // it when it bumps fMaxWeight (or for every ray when generating weighted
+  // rays); call at most once per ray: make sure the whole dk2nu entry has been
+  // read, not only bsim::Decay, transform the ray to user coordinates, set
+  // the ray times (which need the ancestor list) and, if requested, move the
+  // ray origin upstream.
+
+  this->ReadFullEntry();
+
+  // the 4-momentum and 4-position in user coordinates
+  Beam2UserP4(fCurNuChoice->p4NuBeam,fCurNuChoice->p4NuUser);
+  Beam2UserPos(fCurNuChoice->x4NuBeam,fCurNuChoice->x4NuUser);
 
   // set the time component of the Lorentz vectors
   double dist_dk2start = GetDecayDist();  // dk point to window, user units
@@ -467,17 +519,64 @@ bool GDk2NuFlux::GenerateNext_weighted(void)
     << "\n p4 user: " << utils::print::P4AsShortString(&(fCurNuChoice->p4NuUser))
     << "\n x4 user: " << utils::print::X4AsString(&(fCurNuChoice->x4NuUser));
 #endif
-  if ( Ev > fMaxEv ) {
-    LOG("Flux", pFATAL)
-      << "Generated neutrino had E_nu = " << Ev << " > " << fMaxEv
-      << " maximum ";
-    assert(0);
+}
+//___________________________________________________________________________
+void GDk2NuFlux::ReadCurrentEntry(void)
+{
+  // Read entry fIEntry of the flux chain.  With partial reading enabled and
+  // a split dk2nu branch, only the "decay" sub-branch (everything needed to
+  // weight the ray) is read; ReadFullEntry() reads the rest if the ray is
+  // accepted.  Otherwise, or for a file whose dk2nu branch is not split,
+  // the whole entry is read.  The check is made for each file in the chain,
+  // so split and unsplit files may be mixed.
+
+  fIEntryFull = -1;
+  if ( fPartialRead ) {
+    Long64_t local = fNuFluxTree->LoadTree(fIEntry);
+    int itree = fNuFluxTree->GetTreeNumber();
+    if ( itree != fDecayTreeNum ) {
+      fDecayTreeNum = itree;
+      fDecayBranch  = this->FindDecayBranch();
+      if ( ! fDecayBranch ) {
+        LOG("Flux", pNOTICE)
+          << "dk2nu branch in file "
+          << ( fNuFluxTree->GetFile() ? fNuFluxTree->GetFile()->GetName()
+                                      : "(unknown)" )
+          << " is not split; reading whole entries";
+      }
+    }
+    if ( local >= 0 && fDecayBranch ) {
+      fDecayBranch->GetEntry(local);
+      return;
+    }
   }
-
-  // update sum of weights
-  fSumWeight += this->Weight();
-
-  return true;
+  fNuFluxTree->GetEntry(fIEntry);
+  fIEntryFull = fIEntry;
+}
+//___________________________________________________________________________
+void GDk2NuFlux::ReadFullEntry(void)
+{
+  // make sure all of entry fIEntry (not just bsim::Decay) is in fCurDk2Nu
+  if ( fIEntry < 0 || fIEntryFull == fIEntry ) return;
+  fNuFluxTree->GetEntry(fIEntry);
+  fIEntryFull = fIEntry;
+}
+//___________________________________________________________________________
+TBranch* GDk2NuFlux::FindDecayBranch(void)
+{
+  // the sub-branch holding bsim::Decay in the chain's current tree, if the
+  // dk2nu branch was written split (split level >= 1); it is named "decay",
+  // or "dk2nu.decay" if the top-level branch was booked as "dk2nu."
+  TTree* tree = fNuFluxTree->GetTree();
+  if ( ! tree ) return 0;
+  TBranch* top = tree->GetBranch("dk2nu");
+  if ( ! top || top->GetListOfBranches()->GetEntries() == 0 ) return 0;
+  const char* names[] = { "decay", "dk2nu.decay" };
+  for (size_t i = 0; i < 2; ++i) {
+    TBranch* b = (TBranch*)top->GetListOfBranches()->FindObject(names[i]);
+    if ( b ) return b;
+  }
+  return 0;
 }
 //___________________________________________________________________________
 double GDk2NuFlux::GetDecayDist() const
@@ -608,8 +707,10 @@ void GDk2NuFlux::LoadDkMeta(void)
     }
   } else {
     // wasn't already indexed
-    LOG("Flux", pFATAL) << "Failed index metadata for job " << job
-                        << " indx " << lookat->second;
+    // (lookat == end() here, so it must not be dereferenced)
+    LOG("Flux", pFATAL) << "Failed to find metadata for job " << job
+                        << " among " << fJobToMetaIndex.size()
+                        << " indexed dkmeta entries";
     assert(0);
   }
 
@@ -675,11 +776,23 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<std::string>& patterns,
       LOG("Flux", pINFO) << "Look for flux using directory " << dirname;
       fbegin = slashpos + 1;
     } else { fbegin = 0; }
+    std::string basename = pattern.substr(fbegin,pattern.size()-fbegin);
 
-    void* dirp = gSystem->OpenDirectory(gSystem->ExpandPathName(dirname.c_str()));
+    // A plain file name (no wildcard) is used as given, without listing
+    // the directory: listing a remote (e.g. root://) directory needs the
+    // server to allow it, and can be slow for large directories.
+    // TFile::Open below reports a file that can't be opened.
+    bool has_wildcard = ( basename.find_first_of("*?[") != std::string::npos );
+    if ( ! has_wildcard ) {
+      fnames.insert(pattern);
+      nfiles_from_pattern[ipatt]++;
+      continue;
+    }
+
+    char* expdir = gSystem->ExpandPathName(dirname.c_str());
+    void* dirp = gSystem->OpenDirectory(expdir);
+    delete [] expdir;
     if ( dirp ) {
-      std::string basename =
-      pattern.substr(fbegin,pattern.size()-fbegin);
       TRegexp re(basename.c_str(),kTRUE);
       const char* onefile;
       while ( ( onefile = gSystem->GetDirEntry(dirp) ) ) {
@@ -691,6 +804,17 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<std::string>& patterns,
         nfiles_from_pattern[ipatt]++;
       }
       gSystem->FreeDirectory(dirp);
+      if ( nfiles_from_pattern[ipatt] == 0 ) {
+        LOG("Flux", pWARN)
+          << "No files in directory \"" << dirname
+          << "\" match \"" << basename << "\"";
+      }
+    } else {
+      LOG("Flux", pERROR)
+        << "Could not list directory \"" << dirname
+        << "\" to expand the wildcard in \"" << basename << "\""
+        << " (for a remote directory the server must allow listing);"
+        << " give explicit file names instead";
     } // legal directory
   } // loop over patterns
 
@@ -702,12 +826,16 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<std::string>& patterns,
     std::string filename = *sitr;
     // std::cout << "RWH  [" << std::setw(3) << indx << "]  \""
     //           << filename << "\"" << std::endl << std::flush;
-    bool isok = true;
-    // this next test only works for local files, so we can't do that
-    // if we want to stream via xrootd
-    // ! (gSystem->AccessPathName(filename.c_str()));
-    if ( isok ) {
-      TFile* tf = TFile::Open(filename.c_str(),"READ");
+    // gSystem->AccessPathName() only works for local files, so we can't use
+    // it if we want to stream via xrootd; rely on TFile::Open instead
+    TFile* tf = TFile::Open(filename.c_str(),"READ");
+    if ( ! tf || tf->IsZombie() ) {
+      LOG("Flux", pERROR) << "Could not open flux file \"" << filename
+                          << "\"; it was not added to the file list";
+      delete tf;
+      continue;
+    }
+    {
       TTree* ftree = (TTree*)tf->Get(fTreeNames[0].c_str());
       TTree* mtree = (TTree*)tf->Get(fTreeNames[1].c_str());
       if ( ftree && mtree ) {
@@ -773,6 +901,11 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<std::string>& patterns,
   TBranch* bdkmeta = fNuMetaTree->GetBranch("dkmeta");
   if (bdkmeta) bdkmeta->SetAutoDelete(false);
 
+  // chain (re)built: forget any cached "decay" sub-branch / full entry
+  fDecayTreeNum = -1;
+  fDecayBranch  =  0;
+  fIEntryFull   = -1;
+
   // we have a file we can work with
   if (!fDetLocIsSet) {
      LOG("Flux", pERROR)
@@ -782,6 +915,26 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<std::string>& patterns,
      LOG("Flux", pINFO)
        << "Run ScanForMaxWeight() as part of LoadBeamSimData";
      this->ScanForMaxWeight();
+  }
+
+  if ( fPartialRead ) {
+    // The TTreeCache learns which branches to prefetch from the first
+    // entries read.  With partial reading those come from the max-weight
+    // scan, which reads only "decay", so the cache would fetch only the
+    // decay baskets and every other basket needed by an accepted entry
+    // would be a separate read (one round trip each over xrootd/dCache).
+    // Accepted entries need nearly every basket anyway, so register all
+    // branches now that the scan is done: generation then makes the same
+    // reads as full reading, and the scan read only "decay".
+    // (A chain sizes its cache only once a tree is loaded; with no cache,
+    // e.g. SetCacheSize(0), there is nothing to register.)
+    if ( fNuFluxTree->GetTreeNumber() < 0 ) fNuFluxTree->LoadTree(0);
+    if ( fNuFluxTree->GetCacheSize() > 0 &&
+         fNuFluxTree->AddBranchToCache("*", kTRUE) == 0 ) {
+      fNuFluxTree->StopCacheLearningPhase();
+    } else {
+      LOG("Flux", pINFO) << "no TTreeCache in use for the flux chain";
+    }
   }
 
   // current ntuple cycle # (flux ntuples may be recycled)
@@ -802,7 +955,6 @@ void GDk2NuFlux::LoadBeamSimData(const std::vector<std::string>& patterns,
 
 }
 
-// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
 //___________________________________________________________________________
 void GDk2NuFlux::GetBranchInfo(std::vector<std::string>& branchNames,
                                std::vector<std::string>& branchClassNames,
@@ -824,36 +976,16 @@ void GDk2NuFlux::GetBranchInfo(std::vector<std::string>& branchNames,
 }
 TTree* GDk2NuFlux::GetMetaDataTree() { return fNuMetaTree; }
 
-// #else
-// //___________________________________________________________________________
-// // migrated to GFluxFileConfigI
-// void GDk2NuFlux::SetUpstreamZ(double z0) { fZ0 = z0; }
-// void GDk2NuFlux::SetNumOfCycles(long int ncycle) { fNCycles = TMath::Max(0L, ncycle); }
-// void GDk2NuFlux::LoadBeamSimData(std::set<std::string> fileset, std::string config)
-// {
-//   // have a set<> want a vector<>
-//   std::vector<std::string> filevec;
-//   std::copy(fileset.begin(),fileset.end(),std::back_inserter(filevec));
-//   LoadBeamSimData(filevec,config); // call the one that takes a vector
-// }
-// void GDk2NuFlux::LoadBeamSimData(std::string filename, std::string config)
-// {
-//   // Loads a beam simulation root file into the GDk2NuFlux driver.
-//   std::vector<std::string> filevec;
-//   filevec.push_back(filename);
-//   LoadBeamSimData(filevec,config); // call the one that takes a vector
-// }
-// void GDk2NuFlux::SetFluxParticles(const PDGCodeList & particles)
-// {
-//   if (!fPdgCList) {
-//      fPdgCList = new PDGCodeList;
-//   }
-//   fPdgCList->Copy(particles);
-//
-//   LOG("Flux", pINFO)
-//     << "Declared list of neutrino species: " << *fPdgCList;
-// }
-// #endif
+//___________________________________________________________________________
+void GDk2NuFlux::SetFluxParticles(const PDGCodeList & particles)
+{
+  // set the list of flavours to generate; forget the cached result of
+  // the last flavour check, which was made against the old list
+  GFluxFileConfigI::SetFluxParticles(particles);
+  fLastPdg   = 0;
+  fLastPdgOK = false;
+}
+
 
 //___________________________________________________________________________
 void GDk2NuFlux::ScanForMaxWeight(void)
@@ -877,10 +1009,11 @@ void GDk2NuFlux::ScanForMaxWeight(void)
     if ( enu > enumx ) enumx = enu;
   }
   t.Stop();
-  t.Print("u");
   LOG("Flux", pNOTICE) << "Maximum flux weight for spin = "
                        << wgtgenmx << ", energy = " << enumx
-                       << " (" << fMaxWgtEntries << ")";
+                       << " (" << fMaxWgtEntries << " rays, "
+                       << t.CpuTime() << " s CPU, "
+                       << t.RealTime() << " s real)";
 
   if (wgtgenmx > fMaxWeight ) fMaxWeight = wgtgenmx;
   // apply a fudge factor to estimated weight
@@ -980,7 +1113,7 @@ void GDk2NuFlux::SetFluxSphere(TVector3 center, double radius,
     fFluxSphereCenterBeam = center;
     TLorentzVector v4user;
     Beam2UserPos(TLorentzVector(center,0),v4user);
-    fFluxSphereCenterBeam = v4user.Vect();
+    fFluxSphereCenterUser = v4user.Vect();
   }
 
   // not yet supported
@@ -1148,10 +1281,6 @@ void GDk2NuFlux::Initialize(void)
   fMaxEv           =  0;
   fEnd             =  false;
 
-// #if __GENIE_RELEASE_CODE__ <= GRELCODE(2,9,0)
-//   fPdgCList        = new PDGCodeList;
-//   fPdgCListRej     = new PDGCodeList;
-// #endif
 
   fTreeNames[0]    = "dk2nuTree";
   fTreeNames[1]    = "dkmetaTree";
@@ -1164,6 +1293,12 @@ void GDk2NuFlux::Initialize(void)
 
   fNEntries        =  0;
   fIEntry          = -1;
+  fIEntryFull      = -1;
+  fPartialRead     = true;
+  fLastPdg         =  0;
+  fLastPdgOK       = false;
+  fDecayTreeNum    = -1;
+  fDecayBranch     =  0;
   fICycle          =  0;
   fNUse            =  1;
   fIUse            =  999999;
@@ -1175,7 +1310,7 @@ void GDk2NuFlux::Initialize(void)
   fMinMaxWeight    =  0;
   fMaxWgtFudge     =  1.05;
   fMaxWgtEntries   = 2500000;
-  fMaxEFudge       =  0;
+  fMaxEFudge       =  1.05;
 
   fMaxWgtExceeded  =  0;
   fMaxWgtFailModel =  0;  // default: 0=bump, 1=leave frozen, 2=abort
@@ -1194,12 +1329,6 @@ void GDk2NuFlux::Initialize(void)
   SetTimeUnits(genie::utils::units::UnitFromString("s"));
 
 
-// #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
-//   // migrated to GFluxFileConfigI
-//   fXMLbasename     = "GNuMIFlux.xml";
-//   fNCycles         =  0;
-//   fZ0              =  -3.4e38;
-// #endif
 
   this->SetDefaults();
   this->ResetCurrent();
@@ -1234,11 +1363,7 @@ void GDk2NuFlux::SetDefaults(void)
   std::string xmlfile = "GNuMIFlux.xml";
   const char* altxml = gSystem->Getenv("GDK2NUFLUXXML");
   if ( altxml ) xmlfile = altxml;
-// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
   this->SetXMLFileBase(xmlfile);
-// #else
-//   this->SetXMLFile(xmlfile);
-// #endif
 
 }
 //___________________________________________________________________________
@@ -1288,20 +1413,26 @@ void GDk2NuFlux::AddFile(TTree* ftree, TTree* mtree, std::string fname)
   delete ftree;
   delete mtree;
 
-  // make sure the chains are defined and a branch object attached
-  if ( ! fNuFluxTree ) {
+  // make sure the chains are defined
+  bool firstFile = ( fNuFluxTree == 0 );
+  if ( firstFile ) {
     fNuFluxTree  = new TChain(fTreeNames[0].c_str());
     fNuMetaTree  = new TChain(fTreeNames[1].c_str());
     fCurDk2Nu    = new bsim::Dk2Nu;
     fCurDkMeta   = new bsim::DkMeta;
     fCurNuChoice = new bsim::NuChoice;
-    fNuFluxTree->SetBranchAddress("dk2nu",&fCurDk2Nu);
-    fNuMetaTree->SetBranchAddress("dkmeta",&fCurDkMeta);
   }
 
   // add the file to the chains
   int stat0 = fNuFluxTree->AddFile(fname.c_str());
   int stat1 = fNuMetaTree->AddFile(fname.c_str());
+
+  // attach the branch objects once the chains have a file; ROOT warns
+  // ("no dataset schema available") if this is done on an empty chain
+  if ( firstFile ) {
+    fNuFluxTree->SetBranchAddress("dk2nu",&fCurDk2Nu);
+    fNuMetaTree->SetBranchAddress("dkmeta",&fCurDkMeta);
+  }
 
   LOG("Flux",pINFO)
     << "flux->AddFile() of " << nentries
@@ -1371,16 +1502,17 @@ void GDk2NuFlux::SetTimeUnits(double user_units_time)
 //___________________________________________________________________________
 double GDk2NuFlux::LengthUnits(void) const
 {
-  // Return the scale factor for lengths the user is getting
-  double cm = genie::utils::units::UnitFromString("cm");
-  return fLengthScaleB2U * cm ;
+  // Return the user length unit (as set by SetLengthUnits) relative to
+  // metres, e.g. 1 for "m", 0.01 for "cm".  This is the same convention
+  // as ROOTGeomAnalyzer::LengthUnits().
+  return fLengthUnits / units::meter;
 }
 //___________________________________________________________________________
 double GDk2NuFlux::TimeUnits(void) const
 {
-  // Return the scale factor for lengths the user is getting
-  double ns = genie::utils::units::UnitFromString("ns");
-  return fLengthScaleB2U * ns ;
+  // Return the user time unit (as set by SetTimeUnits) relative to
+  // seconds, e.g. 1 for "s", 1.0e-9 for "ns".
+  return fTimeUnits / units::second;
 }
 
 //___________________________________________________________________________
@@ -1462,7 +1594,7 @@ void GDk2NuFlux::PrintConfig()
     << "\n wgt max=" << fMaxWeight
     << " min=" << fMinMaxWeight << " scan=" << fMaxWeightScan
     << " ( fudge=" << fMaxWgtFudge << " using scan of "
-    << fMaxWgtEntries << " entries )"
+    << fMaxWgtEntries << " rays )"
     << "\n exceeded init=" << fMaxWeightInit << ", N=" << fMaxWgtExceeded
     << " times (fail model " << fMaxWgtFailModel << ") max = " << fMaxWeightMax
     << "\n Z0 pushback " << fZ0
@@ -1472,6 +1604,7 @@ void GDk2NuFlux::PrintConfig()
     << "\n EffPOTsPerNu " << fEffPOTsPerNu << " AccumPOTs " << fAccumPOTs
     << "\n GenWeighted: \"" << (fGenWeighted?"true":"false") << "\", "
     << "ApplyTiltWeight: \"" << (fApplyTiltWeight?"true":"false") << "\", "
+    << "PartialRead: \"" << (fPartialRead?"true":"false") << "\", "
     << "Detector location set: \"" << (fDetLocIsSet?"true":"false") << "\", "
     << "\n LengthUnits " << fLengthUnits << ", scale b2u " << fLengthScaleB2U
     << ", scale u2b " << fLengthScaleU2B;
@@ -1567,11 +1700,7 @@ std::vector<long int> GDk2NuFluxXMLHelper::GetIntVector(std::string str)
 
 bool GDk2NuFluxXMLHelper::LoadConfig(std::string cfg)
 {
-// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
   std::string fname = utils::xml::GetXMLFilePath(fGDk2NuFlux->GetXMLFileBase());
-// #else
-//   string fname = utils::xml::GetXMLFilePath(fGDk2NuFlux->GetXMLFile());
-// #endif
 
   bool is_accessible = ! (gSystem->AccessPathName(fname.c_str()));
   if (!is_accessible) {
@@ -1734,6 +1863,22 @@ void GDk2NuFluxXMLHelper::ParseParamSet(xmlDocPtr& xml_doc, xmlNodePtr& xml_pset
       if ( v.size() > 0 ) nreuse = v[0];
       fGDk2NuFlux->SetEntryReuse(nreuse);
       SLOG("GDk2NuFlux", pINFO) << "set entry reuse = " << nreuse;
+
+    } else if ( pname == "partialread" ) {
+      // read only bsim::Decay until a ray is accepted?
+      std::string v = utils::str::ToLower(pval);
+      if        ( v == "true"  || v == "yes" || v == "on"  || v == "1" ) {
+        fGDk2NuFlux->SetPartialRead(true);
+      } else if ( v == "false" || v == "no"  || v == "off" || v == "0" ) {
+        fGDk2NuFlux->SetPartialRead(false);
+      } else {
+        SLOG("GDk2NuFlux", pWARN)
+          << "unrecognized <partialread> value \"" << pval
+          << "\" (use true/false); left as "
+          << ( fGDk2NuFlux->GetPartialRead() ? "true" : "false" );
+      }
+      SLOG("GDk2NuFlux", pINFO) << "set partialread = "
+        << ( fGDk2NuFlux->GetPartialRead() ? "true" : "false" );
 
     } else {
       SLOG("GDk2NuFlux", pWARN)

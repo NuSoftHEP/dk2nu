@@ -1,3 +1,7 @@
+if(APPLE)
+    set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
+endif()
+
 if (CMAKE_SYSTEM_NAME MATCHES Darwin)
   set(CMAKE_MACOSX_RPATH 1)
 

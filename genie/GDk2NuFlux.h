@@ -30,26 +30,12 @@
 #include <TLorentzVector.h>
 #include <TLorentzRotation.h>
 
-// post-R3 this needs -I ${GENIE}/src/Framework as well as -I ${GENIE}/src
-// #include "Conventions/GVersion.h"
-// can't rely on that ... so we'll require -DGENIE_PRE_R3
-
-
-#ifdef GENIE_PRE_R3
-  #include "Conventions/GVersion.h"
-  #include "EVGDrivers/GFluxI.h"
-  #include "PDG/PDGUtils.h"
-  #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
-    #include "FluxDrivers/GFluxExposureI.h"
-    #include "FluxDrivers/GFluxFileConfigI.h"
-   #endif
-#else
-  #include "Framework/Conventions/GVersion.h"
-  #include "Framework/EventGen/GFluxI.h"
-  #include "Framework/ParticleData/PDGUtils.h"
-  #include "Tools/Flux/GFluxExposureI.h"
-  #include "Tools/Flux/GFluxFileConfigI.h"
-#endif
+// GENIE R-3 (or later) headers
+#include "Framework/Conventions/GVersion.h"
+#include "Framework/EventGen/GFluxI.h"
+#include "Framework/ParticleData/PDGUtils.h"
+#include "Tools/Flux/GFluxExposureI.h"
+#include "Tools/Flux/GFluxFileConfigI.h"
 
 class TFile;
 class TChain;
@@ -65,12 +51,8 @@ namespace bsim {
 namespace genie {
 namespace flux  {
 
-// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
 class GDk2NuFlux : public GFluxI,
     public GFluxExposureI, public GFluxFileConfigI {
-// #else
-// class GDk2NuFlux: public GFluxI {
-// #endif
 
 public :
   GDk2NuFlux();
@@ -112,14 +94,7 @@ public :
   //
   // information about the current state
   //
-// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
   virtual double GetTotalExposure() const;  // GFluxExposureI interface
-// #else
-//   // these are elminated with the introduction of GFluxFileConfigI
-//   void                   SetXMLFile(std::string xmlbasename="GNuMIFlux.xml")
-//                               { fXMLbasename = xmlbasename; }
-//   std::string            GetXMLFile() const { return fXMLbasename; }
-// #endif
 
   double    POT_curr(void);             ///< current average POT (RWH?)
   double    UsedPOTs(void) const;       ///< # of protons-on-target used
@@ -136,17 +111,12 @@ public :
   //
   virtual void  LoadBeamSimData(const std::vector<std::string>& filenames,
                                 const std::string&         det_loc);
-// #if __GENIE_RELEASE_CODE__ >= GRELCODE(2,9,0)
   using GFluxFileConfigI::LoadBeamSimData; // inherit the rest
   virtual void GetBranchInfo(std::vector<std::string>& branchNames,
                              std::vector<std::string>& branchClassNames,
                              std::vector<void**>&      branchObjPointers);
   virtual TTree* GetMetaDataTree();
-// #else
-//   void      LoadBeamSimData(std::set<std::string>  filenames, std::string det_loc);     ///< load root flux ntuple files and config
-//   void      LoadBeamSimData(std::string filename, std::string det_loc);     ///< older (obsolete) single file version
-//
-// #endif
+  virtual void  SetFluxParticles(const PDGCodeList & particles); ///< also resets the flavour-check cache
 
   //
   // configuration of GDk2NuFlux
@@ -161,6 +131,12 @@ public :
   void      SetMaxEnergy(double Ev);          ///< specify max flx nu energy
 
   void      SetGenWeighted(bool genwgt=false) { fGenWeighted = genwgt; } ///< toggle whether GenerateNext() returns weight=1 flux (initial default false)
+
+  /// read only the bsim::Decay part of an entry to calculate the ray's
+  /// weight, and the rest only once the ray is accepted (initial default
+  /// true).  Files whose dk2nu branch is not split are always read in full.
+  void      SetPartialRead(bool partial=true) { fPartialRead = partial; }
+  bool      GetPartialRead() const { return fPartialRead; }
 
   void      SetEntryReuse(long int nuse=1);   ///<  # of times to use entry before moving to next
 
@@ -187,11 +163,14 @@ public :
   // ( #include "Utils/UnitUtils.h for declaration )
   // to get the correct scale factor to pass in.  This should get set
   // FIRST before setting detector position/rotation
+  // LengthUnits() and TimeUnits() return the user units relative to metres
+  // and seconds (1 for the defaults), as ROOTGeomAnalyzer::LengthUnits()
+  // does; they are not the values passed to the setters.
 
   void   SetLengthUnits(double user_units);  ///< Set units assumed by user
-  double    LengthUnits(void) const;         ///< Return user units
+  double    LengthUnits(void) const;         ///< User length unit in metres
   void   SetTimeUnits(double user_units);    ///< Set units assumed by user
-  double    TimeUnits(void) const;           ///< Return user units
+  double    TimeUnits(void) const;           ///< User time unit in seconds
 
   // set relative orientation of user coords vs. beam system, i.e.
   //  x3_user = ( beamrot * x3_beam ) + x0beam_user
@@ -213,12 +192,6 @@ public :
   void      SetFluxSphere(TVector3  center, double  radius, bool inDetCoord=true);       ///< specification of a sphere
   void      GetFluxSphere(TVector3& center, double& radius, bool inDetCoord=true) const; ///< specification of a sphere
 
-// #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
-//   // migrated to GFluxFileConfigI
-//   void      SetUpstreamZ(double z0);
-//   void      SetNumOfCycles(long int ncycle);
-//   void      SetFluxParticles(const PDGCodeList & particles);
-// #endif
 
   //
   // Actual coordinate transformations  b=beam, u=user (e.g. detector)
@@ -244,6 +217,10 @@ private:
   // Private methods
   //
   bool GenerateNext_weighted (void);
+  void FinishCurrent         (void);  ///< full entry, user coords, times, z0
+  void ReadCurrentEntry      (void);  ///< read decay (or full) of fIEntry
+  void ReadFullEntry         (void);  ///< ensure all of fIEntry is read
+  TBranch* FindDecayBranch   (void);  ///< "decay" sub-branch of current tree
   void Initialize            (void);
   void SetDefaults           (void);
   void CleanUp               (void);
@@ -258,15 +235,6 @@ private:
 
   bool           fEnd;            ///< end condition reached
 
-// #if __GENIE_RELEASE_CODE__ < GRELCODE(2,9,0)
-//   // incorporated into GFluxFileConfigI
-//   PDGCodeList *  fPdgCList;       ///< list of neutrino pdg-codes to generate
-//   PDGCodeList *  fPdgCListRej;    ///< list of neutrino pdg-codes seen but rejected
-//   std::string    fXMLbasename;         ///< XML filename for config data
-//   double    fZ0;                  ///< configurable starting z position for each flux neutrino (in detector coord system)
-//   long int  fNCycles;             ///< # times to cycle through the flux ntuple
-//   long int  fICycle;              ///< current file cycle
-// #endif
 
   std::vector<std::string> fNuFluxFilePatterns;   ///< (potentially wildcarded) path(s)
 
@@ -281,6 +249,11 @@ private:
   int       fNFiles;              ///< number of files in chain
   Long64_t  fNEntries;            ///< number of flux ntuple entries
   Long64_t  fIEntry;              ///< current flux ntuple entry
+  Long64_t  fIEntryFull;          ///< entry fully read into fCurDk2Nu (-1 none)
+
+  bool      fPartialRead;         ///< read only decay until accepted?
+  int       fDecayTreeNum;        ///< chain tree # that fDecayBranch is from
+  TBranch*  fDecayBranch;         ///< "decay" sub-branch (0 if not split)
   Long64_t  fNuTot;               ///< cummulative # of entries (=fNEntries)
   Long64_t  fFilePOTs;            ///< # of protons-on-target represented by all files
 
@@ -333,6 +306,9 @@ private:
   double           fFluxSphereRadius;     ///< radius for flux sphere
 
   TLorentzVector   fgX4dkvtx;             ///< decay 4-position beam coord
+  TVector3         fgWinPtBeam;           ///< window point, beam coord (reused per ray)
+  int              fLastPdg;              ///< last flavour checked against fPdgCList (0 = none)
+  bool             fLastPdgOK;            ///< ... and whether it was in the list
 
 };
 

@@ -61,7 +61,7 @@ void bsim::Decay::clear(const std::string &)
   norig = ndecay = ntype = bsim::kDfltInt;
   vx = vy = vz = pdpx = pdpy = pdpz = bsim::kDfltDouble;
   ppdxdz = ppdydz = pppz = ppenergy = bsim::kDfltDouble;
-  ppmedium = bsim::kDfltDouble;
+  ppmedium = bsim::kDfltInt;
   ptype = bsim::kDfltInt;
   muparpx = muparpy = muparpz = mupare = bsim::kDfltDouble;
   necm = nimpwt = sumnimpwt2 = bsim::kDfltDouble;
@@ -110,6 +110,7 @@ void bsim::Ancestor::clear(const std::string &)
   parIndex = -1; // not legal, should be a positive integer
   proc = "<<no-process>>";
   ivol = "<<no-volume>>";
+  imat = "<<no-material>>";
 }
 std::string bsim::Ancestor::AsString(const std::string& /* opt */) const
 {

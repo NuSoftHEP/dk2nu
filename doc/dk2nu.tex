@@ -1,0 +1,1443 @@
+%%
+%% dk2nu.tex -- reference documentation for the dk2nu package
+%%
+%% Build (from this directory):   latexmk -pdf dk2nu.tex
+%%   or:                          pdflatex dk2nu.tex ; pdflatex dk2nu.tex
+%%
+%% Code listings are pulled directly from the repository files by
+%% relative path (../tree, ../genie, ../scripts, ../etc, ./examples),
+%% so rebuilding the PDF picks up the current code.
+%%
+\documentclass[11pt]{article}
+
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{textcomp}
+\usepackage{amsmath}
+\usepackage{xspace}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage[table]{xcolor}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!60!black,
+            citecolor=black}
+
+\setcounter{tocdepth}{2}
+\setlength{\emergencystretch}{3em}
+
+% ---------------------------------------------------------------------------
+% listings
+\definecolor{lstbg}{gray}{0.96}
+\definecolor{lstcomment}{rgb}{0,0.45,0}
+\definecolor{lstkeyword}{rgb}{0,0,0.6}
+\definecolor{lststring}{rgb}{0.6,0.1,0.1}
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  backgroundcolor=\color{lstbg},
+  commentstyle=\color{lstcomment},
+  keywordstyle=\color{lstkeyword},
+  stringstyle=\color{lststring},
+  numbers=left, numberstyle=\tiny\color{gray}, stepnumber=1, numbersep=6pt,
+  tabsize=2, showstringspaces=false, breaklines=true,
+  columns=fullflexible, keepspaces=true,
+  frame=single, rulecolor=\color{gray!50},
+  upquote=true
+}
+\lstdefinestyle{cxx}{language=C++}
+\lstdefinestyle{xml}{language=XML,
+  % only "..." are strings, so apostrophes in comments (isn't) are harmless
+  deletestring=[b]', deletestring=[d]',
+  morekeywords={param_set,name,verbose,units,lunits,tunits,beamdir,type,
+                rotation,axis,beampos,window,point,coord,enumax,reuse,
+                upstreamz,minmaxwgt,maxwgtfail,partialread,using_param_set}}
+\lstdefinestyle{plain}{language={},numbers=none}
+
+% ---------------------------------------------------------------------------
+% shorthands
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\genie}{\textsc{genie}\xspace}
+\newcommand{\geant}{\textsc{geant}\xspace}
+\newcommand{\ROOT}{\textsc{root}\xspace}
+\newcommand{\fig}[1]{Figure~\ref{fig:#1}}
+\newcommand{\dktwonu}{\texttt{dk2nu}\xspace}
+\newcommand{\numu}{\ensuremath{\nu_{\mu}}\xspace}
+\newcommand{\numubar}{\ensuremath{\bar{\nu}_{\mu}}\xspace}
+\newcommand{\nue}{\ensuremath{\nu_{e}}\xspace}
+\newcommand{\nuebar}{\ensuremath{\bar{\nu}_{e}}\xspace}
+\newcommand{\tab}[1]{Table~\ref{tab:#1}}
+\newcommand{\sect}[1]{Section~\ref{sec:#1}}
+\newcommand{\app}[1]{Appendix~\ref{app:#1}}
+\newcommand{\open}[1]{\textcolor{red!70!black}{\textbf{[open: #1]}}}
+
+% field tables:  name | type | units | description
+\newcolumntype{F}{>{\ttfamily\raggedright\arraybackslash}p{0.19\textwidth}}
+\newcolumntype{T}{>{\ttfamily\raggedright\arraybackslash}p{0.13\textwidth}}
+% narrower member, wider type columns (used by the Dk2Nu table)
+\newcolumntype{G}{>{\ttfamily\raggedright\arraybackslash}p{0.15\textwidth}}
+\newcolumntype{V}{>{\ttfamily\raggedright\arraybackslash}p{0.19\textwidth}}
+\newcolumntype{U}{>{\raggedright\arraybackslash}p{0.07\textwidth}}
+\newcolumntype{D}{>{\raggedright\arraybackslash}X}
+
+% optional first argument: column spec (default "F T U D")
+\newenvironment{fieldtable}[2][F T U D]
+  {\par\noindent\small\tabularx{\textwidth}{#1}
+   \toprule \textbf{\rmfamily member} & \textbf{\rmfamily type} &
+   \textbf{units} & \textbf{description (#2)} \\ \midrule}
+  {\bottomrule\endtabularx\par}
+
+\title{The \dktwonu Neutrino Beam Simulation\\Flux Ntuple Format\\
+       and \genie Flux Driver}
+\author{Robert Hatcher\\Fermilab}
+\date{Reference for \dktwonu v01\_12\_00 and later\\
+      (\code{DK2NUVER 12}, \code{DKMETAVER 6})\\[1ex] \today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+\dktwonu is a common \ROOT \code{TTree} format for the output of neutrino
+beamline simulations (\code{g4numi}, \code{g4lbne}/\code{g4lbnf},
+\code{flugg}, and others), together with code to fill it, to compute
+neutrino energies and weights for arbitrary detector positions, to read it
+from \ROOT, C++ and Python, and a \genie flux driver
+(\code{genie::flux::GDk2NuFlux}) that turns the stored decays into neutrino
+rays for event generation.  This document describes the package as it now
+exists.  It replaces the 2012 proposal ``Proposal for a Unified `Flux'
+N-tuple Format'' (MINOS-DocDB-9070), whose tables of proposed elements are
+now superseded by the class definitions described here.
+\end{abstract}
+
+\tableofcontents
+\clearpage
+
+%===========================================================================
+\section{Introduction}\label{sec:intro}
+
+Accelerator neutrino beams are produced by protons striking a target; the
+resulting hadrons are focused by magnetic horns and decay in flight in a
+decay volume, producing neutrinos.  A beamline simulation records, for every
+decay that produced a neutrino, enough information about the decay to
+re-evaluate the probability (and the energy) of the neutrino passing through
+\emph{any} point downstream.  The resulting ``flux'' files are therefore
+really files of \emph{decays}, each with an importance weight, rather than
+files of neutrinos.
+
+Historically each beamline simulation (\code{gnumi} based on \geant{}3,
+\code{flugg} based on \textsc{fluka}+\geant{}4, \code{g4numi}, the
+\textsc{miner}$\nu$\textsc{a} variant of \code{g4numi}, \code{g4lbne})
+wrote its own ntuple layout.  The layouts were similar but incompatible:
+different basic types, capitalisation of leaf names, fixed array sizes, and
+ad hoc additions.  The \dktwonu format replaces all of these with a single
+layout that is
+\begin{itemize}[nosep]
+\item hierarchical (decay, neutrino rays, ancestry, target exit, \ldots);
+\item variable length where appropriate (\code{std::vector} rather than fixed
+      arrays, so no artificial overflow);
+\item extensible without changing the format (user \code{vint}/\code{vdbl}
+      vectors with names recorded in the metadata);
+\item accompanied by a per-file metadata tree recording the protons-on-target
+      (POT) and the exact detector locations used for any pre-computed rays.
+\end{itemize}
+
+\subsection{Package layout}\label{sec:layout}
+
+\begin{center}\small
+\begin{tabularx}{\textwidth}{>{\ttfamily}l X}
+\toprule
+\textrm{\textbf{directory}} & \textbf{contents} \\ \midrule
+tree/    & the data classes (\code{bsim::Dk2Nu}, \code{bsim::DkMeta},
+           \code{bsim::NuChoice}, \ldots) and helper functions
+           (\code{readWeightLocations}, \code{calcLocationWeights},
+           \code{calcEnuWgt}); built into \code{libdk2nuTree}. \\
+genie/   & the \genie flux driver \code{genie::flux::GDk2NuFlux}; built into
+           \code{libdk2nuGenie}. \\
+python/  & \code{pybind11} bindings (\code{pydk2nu}) and examples. \\
+scripts/ & \code{load\_dk2nu.C} for interactive \ROOT; \code{examples/}
+           for filling/reading; \code{convert/} for converting legacy
+           ntuples. \\
+etc/     & text files of standard detector locations. \\
+doc/     & this document. \\
+cmake/   & platform specific CMake fragments. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+All data classes and helper functions live in the C++ namespace
+\code{bsim} (``beam simulation'').
+
+\subsection{Requirements}
+The package requires \ROOT 6 and C++ compiler support matching that \ROOT
+build.  The \genie interface requires \genie v3 (R-3\_xx\_yy; the driver has
+been updated for the 3.04 series), together with \code{libxml2} and
+\code{log4cpp}.  Support for \ROOT 5 and \genie v2 has been dropped.  The
+Python bindings additionally need Python~3 and CMake $\geq 3.14$.
+
+%===========================================================================
+\section{Conventions}\label{sec:conventions}
+
+\paragraph{Units.}  Unless stated otherwise, all quantities stored in the
+\dktwonu and \code{dkmeta} trees use
+\begin{itemize}[nosep]
+\item length: centimetres (cm);
+\item energy and momentum: GeV and GeV/$c$;
+\item time: nanoseconds (ns).
+\end{itemize}
+Some legacy simulations used mm and MeV internally; the converters
+(\app{convert}) rescale on input.
+
+\paragraph{Beam coordinate system.}  Positions and momenta are in the
+\emph{beam} coordinate system of the simulation: $\hat z$ is along the
+nominal beam (decay-pipe) axis, and $\hat y$ is vertical (up).  The origin
+is whatever the beamline simulation uses for its own geometry; it must be
+the same origin used for the locations recorded in the metadata
+(\sect{dkmeta}) and for the beam-to-detector transformation given to \genie
+(\sect{genie-coords}).
+
+\paragraph{Particle codes.}  All particle species (\code{ntype},
+\code{ptype}, \code{tptype}, \code{Ancestor::pdg}, \code{nucleus}) are
+\textsc{pdg} codes.  (The legacy formats used \geant{}3 codes, with the
+extension $\nu_e=53$, $\bar\nu_e=52$, $\nu_\mu=56$, $\bar\nu_\mu=55$;
+the converters translate these.)
+
+\paragraph{Default (``unset'') values.}  Every class provides
+\code{clear()}, which resets its members to recognisably invalid values
+(\code{tree/dflt.h}):
+\code{bsim::kDfltInt} $=-9999$, \code{bsim::kDfltDouble} $=-9999.99$,
+\code{bsim::kDfltFloat} $=-9999.99$, \code{bsim::kDfltUInt} $=9999$ and
+\code{bsim::kDfltBool} $=$ \code{false}.  The overloaded function
+\code{bsim::IsDefault(value)} tests for these.  Vectors are cleared to
+zero length.  A few members use other sentinels; these are noted in the
+tables below.
+
+\paragraph{Class versions.}  All tree classes in \code{dk2nu.h} carry the
+\ROOT class version \code{DK2NUVER} (currently 12), the metadata classes
+in \code{dkmeta.h} carry \code{DKMETAVER} (currently 6) and
+\code{NuChoice} carries version 2.  These must be incremented whenever a
+data member changes.  The \ROOT dictionaries use schema evolution
+(``\code{+}'' in \code{LinkDef.h}), so older files remain readable.
+
+\paragraph{Common methods.}  Every class provides \code{clear()} and
+\code{AsString()} (each taking an optional \code{std::string} option),
+the latter returning a formatted description, and a global \code{operator<<}.  \code{bsim::Dk2Nu} also has
+\code{Print()}.
+
+%===========================================================================
+\section{File structure}\label{sec:file}
+
+A \dktwonu file contains two trees:
+
+\begin{center}\small
+\begin{tabular}{llll}
+\toprule
+\textbf{tree} & \textbf{branch} & \textbf{class} & \textbf{entries} \\
+\midrule
+\code{dk2nuTree}  & \code{dk2nu}  & \code{bsim::Dk2Nu}  & one per recorded decay \\
+\code{dkmetaTree} & \code{dkmeta} & \code{bsim::DkMeta} & one per job (normally one per file) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The metadata is kept as a tree, not as a single object, so that files can
+be chained with \code{TChain} or merged with \code{hadd}; a merged file
+simply has several \code{dkmeta} entries.  Entries in the two trees are
+associated through the \code{job} number: a \code{Dk2Nu} entry belongs to
+the \code{DkMeta} entry with the same \code{job}.  Job numbers should
+therefore be unique across any set of files that will be used together.
+
+The same incident proton can produce more than one entry, so
+\code{potnum} may repeat; \code{(job, potnum, jobindx)} identifies an entry.
+The number of protons-on-target represented by a file is \emph{only}
+available from \code{DkMeta::pots}; it cannot be reliably inferred from the
+range of \code{potnum}.
+
+Trees are written with split level 99 so that individual members can be
+read, drawn, or disabled independently (e.g.\ \code{decay.ntype}).
+\fig{classes} summarises the containment.
+
+\begin{figure}[htb]
+\centering\small
+\begin{tabular}{l}
+\code{bsim::Dk2Nu} \\
+\quad\code{job, potnum, jobindx} \\
+\quad\code{decay} \hfill \code{bsim::Decay} \\
+\quad\code{nuray[]} \hfill \code{std::vector<bsim::NuRay>} \\
+\quad\code{ancestor[]} \hfill \code{std::vector<bsim::Ancestor>} \\
+\quad\code{ppvx, ppvy, ppvz} \\
+\quad\code{tgtexit} \hfill \code{bsim::TgtExit} \\
+\quad\code{traj[]} \hfill \code{std::vector<bsim::Traj>} \\
+\quad\code{flagbits, vint[], vdbl[]} \\[1ex]
+\code{bsim::DkMeta} \\
+\quad\code{job, pots} \\
+\quad\code{beamsim, physics, physcuts, tgtcfg, horncfg, dkvolcfg} \\
+\quad\code{beam0x, beam0y, beam0z, beamhwidth, beamvwidth, beamdxdz, beamdydz} \\
+\quad\code{location[]} \hfill \code{std::vector<bsim::Location>} \\
+\quad\code{vintnames[], vdblnames[]} \\
+\end{tabular}
+\caption{Containment of the \dktwonu and \code{dkmeta} classes.}
+\label{fig:classes}
+\end{figure}
+
+%===========================================================================
+\section{The decay tree: \code{bsim::Dk2Nu}}\label{sec:dk2nu}
+
+\subsection{\code{bsim::Dk2Nu}}
+
+{\setlength{\tabcolsep}{3pt}%
+\begin{fieldtable}[G V U D]{Dk2Nu}
+job      & Int\_t   & -- & job number; matches \code{DkMeta::job}. \\
+potnum   & Int\_t   & -- & number of the proton (within the job) that
+                            initiated this decay chain.  Cleared to $-1$. \\
+jobindx  & Int\_t   & -- & index of the entry within the job; unique where
+                            \code{potnum} is not.  Cleared to $-1$. \\
+decay    & Decay    & -- & core decay information (\sect{decay}). \\
+nuray    & vector<\hspace{0pt}NuRay> & -- & neutrino rays through the metadata
+                            locations (\sect{nuray}). \\
+ancestor & vector<\hspace{0pt}Ancestor> & -- & chain from primary proton to neutrino
+                            (\sect{ancestor}). \\
+ppvx, ppvy, ppvz & Double\_t & cm & production vertex of the neutrino
+                            parent.  Redundant with the ancestor list
+                            (\code{ancestor[indxp()].start\{x,y,z\}}) when
+                            that is filled; kept for convenience and for
+                            files without ancestry. \\
+tgtexit  & TgtExit  & -- & ancestor as it left the target (\sect{tgtexit}). \\
+traj     & vector<\hspace{0pt}Traj> & -- & optional trajectory points (\sect{traj}). \\
+flagbits & Int\_t   & -- & bit flags (\sect{extend}).  Cleared to 0. \\
+vint     & vector<\hspace{0pt}Int\_t>    & -- & user-defined integers (\sect{extend}). \\
+vdbl     & vector<\hspace{0pt}Double\_t> & -- & user-defined doubles (\sect{extend}). \\
+\end{fieldtable}}
+
+\noindent Methods:
+\begin{itemize}[nosep]
+\item \code{size\_t indxnu() const} --- index of the neutrino in
+      \code{ancestor} (\code{ancestor.size()-1});
+\item \code{size\_t indxp() const} --- index of the neutrino's parent
+      (\code{size()-2});
+\item \code{size\_t indxgp() const} --- index of the grandparent
+      (\code{size()-3});
+\item \code{bool overflow() const} --- \code{flagbits \& kFlgOverflow}.
+\end{itemize}
+These are unsigned and are only meaningful when the ancestor list is filled
+and long enough.  Because they are compiled methods they can be used in
+\code{TTree::Draw()} / \code{Scan()} expressions once \code{libdk2nuTree}
+is loaded, e.g.\ \code{"ancestor[indxp()].pdg"}.
+
+\subsection{\code{bsim::Decay}}\label{sec:decay}
+
+The core information about the neutrino and the decay that produced it.
+Members marked \dag{} are required by \code{calcEnuWgt}
+(\sect{calcenuwgt}) to compute the neutrino energy and weight at an
+arbitrary point; files that omit them cannot be used with \genie.
+
+\begin{fieldtable}{Decay}
+norig     & Int\_t & -- & neutrino origin as recorded by the legacy
+             simulations (\code{g4numi}: 1 = from a particle leaving the
+             target or baffle, 2 = from scraping, 3 = from a muon decay; not
+             filled by \code{flugg}). \open{current meaning, if any} \\
+ndecay    & Int\_t & -- & decay process, \code{bsim::dkproc\_t}
+             (\tab{dkproc}).  Used to select the muon-polarisation
+             correction. \\
+ntype\,\dag & Int\_t & -- & neutrino flavour (\textsc{pdg}). \\
+vx, vy, vz\,\dag & Double\_t & cm & neutrino production (parent decay)
+             vertex. \\
+pdpx, pdpy, pdpz\,\dag & Double\_t & GeV/$c$ & momentum of the neutrino
+             parent at the decay vertex. \\
+ppdxdz, ppdydz\,\dag & Double\_t & -- & direction slopes of the neutrino
+             parent at its production point. \\
+pppz\,\dag & Double\_t & GeV/$c$ & $p_z$ of the neutrino parent at its
+             production point (so $p_x = $ \code{ppdxdz*pppz}, etc.). \\
+ppenergy\,\dag & Double\_t & GeV & energy of the neutrino parent at its
+             production point. \\
+ppmedium  & Int\_t & -- & code of the material in which the neutrino
+             parent was produced (legacy \code{gnumi} codes,
+             \tab{materials}). \\
+ptype\,\dag & Int\_t & -- & neutrino parent species (\textsc{pdg}). \\
+muparpx, muparpy, muparpz\,\dag & Double\_t & GeV/$c$ & momentum of the
+             neutrino \emph{grandparent}.  If the parent (\code{ptype}) is a
+             muon this is the grandparent at its decay point (i.e.\ where the
+             muon was produced); otherwise it is the grandparent hadron at
+             its production point.  Redundant with the ancestor list when
+             that is filled. \\
+mupare\,\dag & Double\_t & GeV & energy of the grandparent, as above. \\
+necm\,\dag  & Double\_t & GeV & neutrino energy in the parent rest
+             frame. \\
+nimpwt\,\dag & Double\_t & -- & cumulative importance weight of the
+             chain from production to this decay. \\
+sumnimpwt2 & Double\_t & -- & cumulative sum of squares of the importance
+             weights, needed for the statistical error of the
+             importance-weighting process (added in \code{DK2NUVER} 11). \\
+\end{fieldtable}
+
+For a muon parent, \code{ppdxdz}, \code{ppdydz}, \code{pppz},
+\code{ppenergy} describe the \emph{muon} at its production point and
+\code{muparp*}/\code{mupare} describe the muon's parent (the pion or kaon)
+at the point where it decayed; together they give the muon spin direction
+used in the polarisation correction.
+
+\begin{table}[htb]
+\centering\small
+\begin{tabular}{rll}
+\toprule
+\code{ndecay} & \code{bsim::dkproc\_t} & process \\ \midrule
+ 0 & \code{dkp\_unknown}         & unknown \\
+ 1 & \code{dkp\_k0l\_nuepimep}    & $K^0_L \to \nu_e\,\pi^-\,e^+$ \\
+ 2 & \code{dkp\_k0l\_nuebpipem}   & $K^0_L \to \bar\nu_e\,\pi^+\,e^-$ \\
+ 3 & \code{dkp\_k0l\_numupimmup}  & $K^0_L \to \nu_\mu\,\pi^-\,\mu^+$ \\
+ 4 & \code{dkp\_k0l\_numubpipmum} & $K^0_L \to \bar\nu_\mu\,\pi^+\,\mu^-$ \\
+ 5 & \code{dkp\_kp\_numumup}      & $K^+ \to \nu_\mu\,\mu^+$ \\
+ 6 & \code{dkp\_kp\_nuepi0ep}     & $K^+ \to \nu_e\,\pi^0\,e^+$ \\
+ 7 & \code{dkp\_kp\_numupi0mup}   & $K^+ \to \nu_\mu\,\pi^0\,\mu^+$ \\
+ 8 & \code{dkp\_kp\_numubmum}     & $K^- \to \bar\nu_\mu\,\mu^-$ \\
+ 9 & \code{dkp\_kp\_nuebpi0em}    & $K^- \to \bar\nu_e\,\pi^0\,e^-$ \\
+10 & \code{dkp\_kp\_numubpi0mum}  & $K^- \to \bar\nu_\mu\,\pi^0\,\mu^-$ \\
+11 & \code{dkp\_mup\_nusep}       & $\mu^+ \to \bar\nu_\mu\,\nu_e\,e^+$ \\
+12 & \code{dkp\_mum\_nusep}       & $\mu^- \to \nu_\mu\,\bar\nu_e\,e^-$ \\
+13 & \code{dk\_pip\_numumup}      & $\pi^+ \to \nu_\mu\,\mu^+$ \\
+14 & \code{dk\_pim\_numubmum}     & $\pi^- \to \bar\nu_\mu\,\mu^-$ \\
+15 & \code{dk\_mum\_capture}      & $\mu^- + (A,Z) \to \nu_\mu + \ldots$
+                                    (capture; kinematics differ from 12) \\
+16 & \code{dkp\_maximum}          & one past the last defined code \\
+999 & \code{dkp\_other}           & other / unusual \\
+\bottomrule
+\end{tabular}
+\caption{Decay process codes stored in \code{Decay::ndecay}
+         (\code{bsim::dkproc\_t} in \code{dk2nu.h}).  Note that the
+         enumerator names for codes 8--10 say \code{kp} although the
+         parent is a $K^-$.}
+\label{tab:dkproc}
+\end{table}
+
+\subsection{\code{bsim::NuRay}}\label{sec:nuray}
+
+Each \code{NuRay} is the neutrino from this decay forced through one fixed
+point.  \code{nuray[i]} corresponds to \code{DkMeta::location[i]}.
+
+\begin{fieldtable}{NuRay}
+px, py, pz & Double\_t & GeV/$c$ & neutrino momentum towards the location. \\
+E          & Double\_t & GeV & neutrino energy at the location. \\
+wgt        & Double\_t & -- & location weight (probability for the
+             neutrino to pass through a 100\,cm radius disk at the
+             location, see \sect{calcenuwgt}); does \emph{not} include
+             \code{nimpwt}. \\
+\end{fieldtable}
+
+By convention \code{location[0]} is named \code{"random decay"} and
+\code{nuray[0]} holds the neutrino direction actually chosen by the
+beamline simulation for the decay, with \code{wgt}$=1$.  The remaining
+entries are computed by \code{calcLocationWeights()}.  A flux spectrum at
+location $i$ is therefore
+\begin{lstlisting}[style=plain]
+dk2nuTree->Draw("nuray[i].E", "decay.nimpwt*nuray[i].wgt");
+\end{lstlisting}
+normalised by the POT in the metadata.  These pre-computed rays are useful
+for quick plots; a detector of any appreciable size sees a range of angles
+and therefore of spectra, which is why \genie recomputes the ray for a
+random point on a flux window (\sect{genie}).
+
+\subsection{\code{bsim::Ancestor}}\label{sec:ancestor}
+
+The ancestor list records the chain of particles from the primary proton
+(\code{ancestor[0]}) to the neutrino (\code{ancestor[indxnu()]}, the last
+element).  The neutrino's parent is \code{ancestor[indxp()]} and its
+grandparent \code{ancestor[indxgp()]}.  The list may contain entries for
+the same particle at successive interactions (e.g.\ an elastic or
+quasi-elastic scatter), so the parent's \emph{production} is not
+necessarily \code{ancestor[indxp()]}; see \code{parIndex}.
+
+\begin{fieldtable}{Ancestor}
+pdg       & Int\_t & -- & species (\textsc{pdg}).  Cleared to 0. \\
+startx, starty, startz & Double\_t & cm & position where this particle
+            starts (is created or scatters). \\
+startt    & Double\_t & ns & time at the start point, relative to the
+            primary proton.  Cleared to 0 (used by \genie for ray timing,
+            \sect{genie-time}). \\
+startpx, startpy, startpz & Double\_t & GeV/$c$ & momentum at the start
+            point. \\
+stoppx, stoppy, stoppz & Double\_t & GeV/$c$ & momentum at the end of this
+            segment (where it interacts or decays). \\
+polx, poly, polz & Double\_t & -- & polarisation vector. \\
+pprodpx, pprodpy, pprodpz & Double\_t & GeV/$c$ & momentum of the
+            \emph{parent} of this particle at the point where this particle
+            was produced.  Compiled only with \code{KEEP\_ANCESTOR\_PPRODPXYZ}
+            (currently defined).  \open{exact intended meaning and whether
+            to retire in favour of \code{parIndex}} \\
+nucleus   & Int\_t & -- & \textsc{pdg} code of the nucleus involved in the
+            interaction that produced this particle.  Cleared to 0. \\
+parIndex  & Int\_t & -- & index identifying this particle's parent in the
+            chain.  The header comment reads ``from nu (0), parent (1)
+            \ldots to proton (n)'', i.e.\ counted in the opposite order to
+            the vector index.  Cleared to $-1$.  Of the converters only
+            \code{convert\_flugg.C} fills it (copied from the \code{flugg}
+            ntuple); the g4numi (MINERvA) and BooNE files examined leave it
+            at $-1$ for every ancestor, and there each element's parent is
+            simply the previous element.
+            \open{confirm ordering convention} \\
+proc      & string & -- & name of the process that created this particle.
+            Cleared to \code{"<<no-process>>"}. \\
+ivol      & string & -- & name of the volume where the particle starts.
+            Cleared to \code{"<<no-volume>>"}. \\
+imat      & string & -- & name of the material where the particle starts.
+            Cleared to \code{"<<no-material>>"}. \\
+\end{fieldtable}
+
+\noindent Methods: \code{SetStartXYZT()}, \code{SetStartP()},
+\code{SetStopP()}, \code{SetPProdP()} set the triplets;
+\code{r()} $=\sqrt{x^2+y^2}$ at the start; \code{startpt()},
+\code{startp()}, \code{stoppt()}, \code{stopp()}, \code{pprodpt()},
+\code{pprodp()} give transverse and total momenta;
+\code{IsInTarget()} returns true if \code{ivol} is one of a hard-coded
+list of NuMI target volume names (\code{TargetM}, \code{Budal\_H},
+\code{TGT1}, \code{TGT1001}--\code{TGT10xx}, \ldots).
+
+Files converted from the \textsc{miner}$\nu$\textsc{a} \code{g4numi}
+format were limited to 10 ancestors; when that limit was hit the
+\code{kFlgOverflow} bit is set and the last entry is not the neutrino.  The
+overflow flag has been found to be unreliable in some files, so code
+should not depend on it alone.
+
+\subsection{\code{bsim::TgtExit}}\label{sec:tgtexit}
+
+Information about the neutrino's ancestor as it left the target.  This is
+possibly, but not necessarily, the neutrino's parent.  It overlaps with the
+ancestor list but is kept because it is filled by simulations that do not
+record full ancestry.
+
+\begin{fieldtable}{TgtExit}
+tvx, tvy, tvz & Double\_t & cm & position where the ancestor exits the
+           target. \\
+tpx, tpy, tpz & Double\_t & GeV/$c$ & momentum of the ancestor as it exits
+           the target. \\
+tptype     & Int\_t & -- & species of the ancestor exiting the target
+           (\textsc{pdg}). \\
+tgen       & Int\_t & -- & generation of the neutrino parent in the cascade:
+           1 = primary proton, 2 = particles produced by the proton
+           interaction, 3 = their daughters, \ldots \\
+\end{fieldtable}
+
+\subsection{\code{bsim::Traj}}\label{sec:traj}
+
+Optional track points, intended for crude visualisation of the history.
+
+\begin{fieldtable}{Traj}
+trkx, trky, trkz & Double\_t & cm & position of a recorded track point. \\
+trkpx, trkpy, trkpz & Double\_t & GeV/$c$ & momentum at that point. \\
+\end{fieldtable}
+\open{which particle and which boundaries trigger a point; whether any
+current simulation fills this}
+
+\subsection{Flags and user extensions}\label{sec:extend}
+
+\paragraph{\code{flagbits}.}  Bits are defined by \code{bsim::flgbitval\_t}:
+\begin{center}\small
+\begin{tabular}{lll}
+\toprule
+\code{kFlgOverflow}  & \code{0x00000001} & ancestor list was truncated \\
+\code{kMaskReserved} & \code{0x0000FFFF} & bits reserved for the package \\
+\code{kMaskUser}     & \code{0xFFFF0000} & bits available to users \\
+\bottomrule
+\end{tabular}
+\end{center}
+No other bits are currently assigned.  (The proposal suggested bits to flag
+non-standard units or \geant particle codes; that was not adopted: units are
+always as in \sect{conventions} and codes are always \textsc{pdg}.)
+
+\paragraph{\code{vint}, \code{vdbl}.}  These vectors let a simulation store
+additional per-entry information, for short-term studies, without changing
+the format.  When every entry uses the same fixed mapping, the names of the
+elements should be recorded in \code{DkMeta::vintnames} and
+\code{DkMeta::vdblnames}.  If sizes vary from entry to entry the
+interpretation is up to the user.
+
+\paragraph{Additional branches.}  A simulation can also add its own
+branches to \code{dk2nuTree} alongside \code{dk2nu}; readers that only set
+the \code{dk2nu} branch address are unaffected.  The example
+\code{test\_fill\_dk2nu.C} (\app{listings}) demonstrates this with a
+\code{NonStd} class.
+
+%===========================================================================
+\section{The metadata tree: \code{bsim::DkMeta}}\label{sec:dkmeta}
+
+{\setlength{\tabcolsep}{3pt}%
+\begin{fieldtable}[G V U D]{DkMeta}
+job        & Int\_t & -- & job number; links to \code{Dk2Nu::job}. \\
+pots       & Double\_t & -- & protons-on-target represented by this job's
+             entries.  Cleared to 0. \\
+beamsim    & string & -- & program and version that generated the file
+             (e.g.\ \code{"g4numi/v6r1"}). \\
+physics    & string & -- & physics generator (e.g.\ \code{"fluka08"},
+             \code{"g4.10.4"}). \\
+physcuts   & string & -- & tracking cuts (e.g.\ \code{"threshold=0.1GeV"}). \\
+tgtcfg     & string & -- & target configuration
+             (e.g.\ \code{"minos/epoch3/-10cm"}). \\
+horncfg    & string & -- & horn configuration
+             (e.g.\ \code{"FHC/185A/LE/h1xoff=1mm"}). \\
+dkvolcfg   & string & -- & decay volume configuration
+             (e.g.\ \code{"helium"}, \code{"vacuum"}). \\
+beam0x, beam0y & Double\_t & cm & proton beam centre at the start. \\
+beam0z     & Double\_t & cm & $z$ where the proton beam starts. \\
+beamhwidth, beamvwidth & Double\_t & cm & horizontal and vertical widths of
+             the proton beam. \\
+beamdxdz, beamdydz & Double\_t & -- & proton beam slopes. \\
+location   & vector<\hspace{0pt}Location> & -- & locations for which \code{nuray}
+             entries were computed. \\
+vintnames  & vector<\hspace{0pt}string> & -- & names for the elements of
+             \code{Dk2Nu::vint}. \\
+vdblnames  & vector<\hspace{0pt}string> & -- & names for the elements of
+             \code{Dk2Nu::vdbl}. \\
+\end{fieldtable}}
+
+\noindent The configuration strings are free-form; no standard syntax has
+been imposed.
+
+\subsection{\code{bsim::Location}}
+
+\begin{fieldtable}{Location}
+x, y, z & Double\_t & cm & position in beam coordinates. \\
+name    & string & -- & identifying name, e.g.\ \code{"NOvA NearDet"}. \\
+\end{fieldtable}
+
+%===========================================================================
+\section{The chosen ray: \code{bsim::NuChoice}}\label{sec:nuchoice}
+
+\code{NuChoice} is not stored in a \dktwonu file.  It describes the neutrino
+ray actually chosen by a consumer such as \code{GDk2NuFlux}, in both the
+beam and the user (detector) coordinate systems, and is typically written
+alongside the \code{Dk2Nu} entry in the event-generator output
+(\sect{genie-access}).
+
+{\setlength{\tabcolsep}{3pt}%
+\begin{fieldtable}[G V U D]{NuChoice}
+pdgNu      & int & -- & neutrino flavour (\textsc{pdg}). \\
+xyWgt      & double & -- & location (``x-y'') weight for the chosen point,
+             from \code{calcEnuWgt}. \\
+impWgt     & double & -- & importance weight (copied from
+             \code{Decay::nimpwt}). \\
+impWgtSum2 & double & -- & copied from \code{Decay::sumnimpwt2}. \\
+p4NuBeam   & TLorentzVector & GeV & 4-momentum in beam coordinates. \\
+x4NuBeam   & TLorentzVector & cm, ns & 4-position in beam coordinates. \\
+p4NuUser   & TLorentzVector & GeV & 4-momentum in user coordinates. \\
+x4NuUser   & TLorentzVector & user & 4-position in user coordinates (by
+             default m and s; see \sect{genie-coords}). \\
+\end{fieldtable}}
+
+\noindent The \genie weight returned by \code{GDk2NuFlux::Weight()} for
+weighted generation is \code{impWgt*xyWgt} (times a window-tilt factor,
+\sect{genie-gen}).
+
+%===========================================================================
+\section{Helper functions}\label{sec:helpers}
+
+\subsection{Reading locations: \code{readWeightLocations}}\label{sec:readloc}
+
+Detector positions are not hard-coded in simulation code; they are read
+from a text file (\code{tree/readWeightLocations.h}):
+\begin{lstlisting}[style=cxx,numbers=none]
+void bsim::readWeightLocations(std::string locfilename,
+                               std::vector<bsim::Location>& locations);
+void bsim::readWeightLocations(std::string locfilename, bsim::DkMeta* dkmeta);
+void bsim::printWeightLocations(std::vector<bsim::Location>& locations);
+void bsim::printWeightLocations(bsim::DkMeta* dkmeta);
+\end{lstlisting}
+The file name may contain environment variables (expanded with
+\code{gSystem->ExpandPathName}).  Lines beginning with \code{\#} are
+comments; every other line is \code{x y z name}, positions in cm in beam
+coordinates, the rest of the line (trimmed of blanks and quotes) being the
+name.  The \code{DkMeta} variant first appends a location
+\code{(0,0,0,"random decay")} and then appends the file's locations, so
+that \code{location[0]} is always the random decay.
+
+Three location files are provided in \code{etc/}:
+\code{locations.txt} (NuMI and Booster detectors: MINOS Near/Far, NOvA
+Near/Far, \textsc{miner}$\nu$\textsc{a}, MiniBooNE, MicroBooNE, SciBooNE;
+listed in \app{listings}), \code{NuMIlocations.txt} and
+\code{LBNElocations.txt}.  The comments in these files record the source
+of each position.
+
+\subsection{Computing rays: \code{calcLocationWeights}}
+
+\begin{lstlisting}[style=cxx,numbers=none]
+void bsim::calcLocationWeights(const bsim::DkMeta* dkmeta, bsim::Dk2Nu* dk2nu);
+\end{lstlisting}
+For every \code{dkmeta->location[i]} other than \code{"random decay"} this
+calls \code{calcEnuWgt} and appends a \code{NuRay} (momentum along the
+line from the decay vertex to the location, energy and weight) to
+\code{dk2nu->nuray}.  It expects \code{"random decay"} to be location 0 and
+\code{nuray[0]} to have already been filled by the caller; it prints an
+error and returns early otherwise.  The \code{decay} members marked \dag{}
+in \sect{decay} must be filled first.
+
+\subsection{The energy/weight calculation: \code{calcEnuWgt}}\label{sec:calcenuwgt}
+
+\begin{lstlisting}[style=cxx,numbers=none]
+int bsim::calcEnuWgt(const bsim::Decay& decay, const TVector3& xyz,
+                     double& enu, double& wgt_xy);
+int bsim::calcEnuWgt(const bsim::Dk2Nu* dk2nu, const TVector3& xyz,
+                     double& enu, double& wgt_xy);
+\end{lstlisting}
+Given a decay and a point \code{xyz} (beam coordinates, cm) this returns
+the energy \code{enu} (GeV) of a neutrino from that decay travelling
+towards the point, and the probability \code{wgt\_xy} that it passes
+through a disk of radius $R = 100$\,cm centred on the point and facing the
+decay.  It is a C++ transliteration of R.~Milburn's weighting routine
+(NuMI-NOTE-BEAM-0109, MINOS-DocDB-109) as used in \code{gnumi}.
+
+Let $m$ be the parent mass (chosen from \code{ptype}: $\pi^\pm$, $K^\pm$,
+$K^0_{L,S}$/$K^0$, $\mu^\pm$, $\Omega^\pm$, $n/\bar n$), $\vec p$ the
+parent momentum at decay (\code{pdp}), $\gamma$ and $\beta$ its boost,
+$E^*$ the rest-frame neutrino energy (\code{necm}), $\vec d$ the vector
+from the decay vertex to the point and $\theta$ the angle between $\vec p$
+and $\vec d$.  Then
+\begin{align}
+  E_\nu &= \frac{E^*}{\gamma\,(1-\beta\cos\theta)}, \\
+  w_{xy} &= \frac{1-\cos\left(\arctan(R/|\vec d|)\right)}{2}
+           \;\left[\frac{1}{\gamma(1-\beta\cos\theta)}\right]^2 ,
+\end{align}
+i.e.\ the solid-angle fraction of the disk in the lab times the Jacobian of
+the boost.  (Older versions used the small-angle form
+$R^2/(4 d_z^2)$ for the solid angle.)  For a stopped parent
+($|\vec p| = 0$) the boost factor is 1.
+
+For muon decays (\code{ndecay} 11 or 12 only; not for muon capture, code
+15) the weight is multiplied by a polarisation correction: the neutrino is
+boosted to the muon rest frame, the muon's parent (\code{mupar*}) is
+boosted to the muon production rest frame (using \code{ppenergy},
+\code{ppdxdz}, \code{ppdydz}, \code{pppz}) to give the spin direction, and
+with $\cos\theta_s$ the angle between them
+\begin{align}
+\nu_e,\bar\nu_e:&\quad 1-\cos\theta_s, \\
+\nu_\mu,\bar\nu_\mu:&\quad
+   \frac{(3-2x) - (1-2x)\cos\theta_s}{3-2x}, \qquad x = 2E^*/m_\mu .
+\end{align}
+
+Masses are the \geant{}4 10.3 values (since v01\_08); compiling with
+\code{-DHISTORIC\_MASS} restores the older values used to reproduce legacy
+files exactly.
+
+Return codes: 0 success; 1 unknown parent type; 2 a muon decay producing
+a neutrino that is neither $\nu_e$ nor $\nu_\mu$ type; 3 muon decay with
+missing parent information; 4 negative polarisation weight.  On any error
+\code{enu} and \code{wgt\_xy} are set to 0.
+
+\paragraph{Normalisation.}  Because $w_{xy}$ is a probability for a disk of
+area $\pi R^2 = \pi\times 10^4\,\mathrm{cm}^2$, the flux per unit area at a
+point from $N_\mathrm{POT}$ protons is
+\begin{equation}
+  \frac{d\Phi}{dA} = \frac{1}{\pi R^2\,N_\mathrm{POT}}
+      \sum_\text{entries} \code{nimpwt}\times w_{xy}.
+\end{equation}
+
+%===========================================================================
+\section{Writing \dktwonu files}\label{sec:write}
+
+A beamline simulation (or a converter) writes a \dktwonu file as follows;
+\path{scripts/examples/test_fill_dk2nu.C} (\app{listings}) is a complete
+example.
+\begin{enumerate}
+\item Create one \code{bsim::Dk2Nu} and one \code{bsim::DkMeta}; fill the
+      locations with \code{readWeightLocations()}.
+\item Create \code{dk2nuTree} with branch \code{"dk2nu"} of class
+      \code{"bsim::Dk2Nu"} and \code{dkmetaTree} with branch
+      \code{"dkmeta"} of class \code{"bsim::DkMeta"} (split level 99).
+\item For each neutrino-producing decay:
+  \begin{enumerate}[nosep]
+  \item call \code{dk2nu->clear()} (essential: otherwise vectors keep
+        entries from the previous decay);
+  \item fill \code{job}, \code{potnum}, \code{jobindx}, \code{decay},
+        \code{ppv*}, \code{tgtexit}, the \code{ancestor} list (proton
+        first, neutrino last) and anything optional;
+  \item push the simulation's own random-direction neutrino into
+        \code{nuray[0]} with \code{wgt=1};
+  \item call \code{calcLocationWeights(dkmeta, dk2nu)};
+  \item \code{dk2nuTree->Fill()}.
+  \end{enumerate}
+\item At the end, fill \code{dkmeta->job}, \code{pots} and the
+      descriptive strings, call \code{dkmetaTree->Fill()} once, and write
+      both trees.
+\end{enumerate}
+
+%===========================================================================
+\section{Reading \dktwonu files}\label{sec:read}
+
+\subsection{Interactive \ROOT}
+
+\code{scripts/load\_dk2nu.C} loads \code{libdk2nuTree} (and optionally
+\code{libdk2nuGenie}) from \code{\$DK2NU/lib} and adds the include paths
+needed by ACLiC:
+\begin{lstlisting}[style=plain]
+root $DK2NU/scripts/load_dk2nu.C myfile.root
+root [] dkmetaTree->Scan("job:pots:location.name","","colsize=20")
+root [] dk2nuTree->Draw("nuray[3].E","decay.nimpwt*nuray[3].wgt*(decay.ntype==14)")
+root [] dk2nuTree->Draw("@ancestor.size()")
+root [] dk2nuTree->Scan("decay.ntype:ancestor[indxnu()].pdg:ancestor[indxp()].pdg")
+\end{lstlisting}
+Its signature is
+\begin{lstlisting}[style=cxx,numbers=none]
+int load_dk2nu(bool genie_too = false, bool cnvtinc = false, bool verbose = false)
+\end{lstlisting}
+\code{genie\_too} also loads \code{libdk2nuGenie}; \code{cnvtinc} adds the
+\code{scripts/convert/*} directories to the include path.  The \code{@} in
+\code{@ancestor.size()} applies \code{size()} to the collection rather than
+to each element.  The index into \code{nuray} depends on the location file
+used to make the file; check \code{location.name} first.
+
+\subsection{Compiled C++}
+
+Set branch addresses on chains of both trees:
+\begin{lstlisting}[style=cxx,numbers=none]
+TChain* cflux = new TChain("dk2nuTree");   cflux->Add(pattern);
+TChain* cmeta = new TChain("dkmetaTree");  cmeta->Add(pattern);
+bsim::Dk2Nu*  dk2nu  = new bsim::Dk2Nu;
+bsim::DkMeta* dkmeta = new bsim::DkMeta;
+cflux->SetBranchAddress("dk2nu",&dk2nu);
+cmeta->SetBranchAddress("dkmeta",&dkmeta);
+\end{lstlisting}
+See \path{scripts/examples/test_read_dk2nu.C} (\app{listings}).  Link
+against \code{libdk2nuTree} and include \code{dk2nu/tree/dk2nu.h} etc.\
+from the install area.
+
+\subsection{Python: \code{pydk2nu}}\label{sec:python}
+
+When built with \code{-DDK2NU\_PYTHON\_ENABLED=ON}, the module
+\code{pydk2nu} exposes all the data classes (members read/write), the
+\code{dkproc} and \code{flgbitval} enumerations, and a reader:
+\begin{center}\small
+\begin{tabularx}{\textwidth}{>{\ttfamily}l X}
+\toprule
+\textrm{\textbf{method}} & \textbf{description} \\ \midrule
+dk2nuFileReader(files) & chain the given list of files (both trees). \\
+decays()               & iterator over \code{Dk2Nu} entries. \\
+metas()                & iterator over \code{DkMeta} entries. \\
+first(), next()        & explicit iteration (\code{None} at end); also
+                         \code{first\_meta()}, \code{next\_meta()}. \\
+decay\_all\_through\_point(p) & loop in C++ over all entries; returns an
+         $N\times 3$ \code{numpy} array of (\code{ntype}, $E_\nu$, weight)
+         for point \code{p} (beam coordinates, cm). \\
+decay\_all\_through\_points(ps) & as above for $M$ points in one pass;
+         returns $N\times(1+2M)$. \\
+Dk2Nu.decay\_through\_point(p) & (\,$E_\nu$, weight) for one entry. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+The weight returned by the Python helpers already includes
+\code{nimpwt} and is converted to a flux per cm$^2$:
+$\code{nimpwt}\times w_{xy}\times 10^{-4}/\pi$, i.e.\ divided by the
+$\pi\,(100\,\mathrm{cm})^2$ area of the disk used by \code{calcEnuWgt}.
+Histogramming it and dividing by the summed \code{pots} gives
+$\nu$/cm$^2$/POT.  \code{python/README.md}, \code{example\_off\_axis.py}
+and \code{example\_decay\_parent.py} show complete examples.
+
+%===========================================================================
+\section{The \genie flux driver: \code{GDk2NuFlux}}\label{sec:genie}
+
+\code{genie::flux::GDk2NuFlux} implements the \genie interfaces
+\code{GFluxI} (flux driver), \code{GFluxExposureI} (exposure in POT) and
+\code{GFluxFileConfigI} (file and XML configuration).  It is registered
+with the \genie flux-driver factory under the name
+\code{genie::flux::GDk2NuFlux}, so applications such as
+\code{gevgen\_fnal} or experiment frameworks can instantiate it by name
+once \code{libdk2nuGenie} is loaded.  For each neutrino requested it
+\begin{enumerate}[nosep]
+\item reads (or re-uses) a \code{Dk2Nu} entry;
+\item picks a random point on a user-defined flux window;
+\item computes the neutrino energy and weight for that point with
+      \code{calcEnuWgt};
+\item for unweighted generation, accepts or rejects the ray against a
+      maximum weight, and keeps track of the equivalent POT;
+\item transforms the ray it returns to the detector (``user'') coordinate
+      system.
+\end{enumerate}
+
+\subsection{Loading files and configuration}\label{sec:genie-load}
+
+\begin{lstlisting}[style=cxx,numbers=none]
+virtual void LoadBeamSimData(const std::vector<std::string>& filenames,
+                             const std::string& det_loc);
+\end{lstlisting}
+\code{det\_loc} is the name of a \code{<param\_set>} in the XML
+configuration file (\sect{genie-xml}); it is loaded first, and the job
+exits if it cannot be found.  Each entry in \code{filenames} is a path
+whose \emph{file-name} part may be a wildcard (\code{TRegexp} wildcard
+syntax: \code{*}, \code{?}, \code{[\ldots]}); directory parts are not
+expanded.  A name without a wildcard is used as given.  A wildcard is
+expanded by listing the directory, which for a remote (\code{root://})
+directory requires the server to allow listing; if the directory cannot be
+listed, an error is logged and the pattern contributes no files.  Names are
+collected into a sorted set (so duplicates are dropped) and each file is
+opened with \code{TFile::Open()}, so files may be streamed via xrootd.  A
+file that cannot be opened is reported and skipped.  A file is added to the
+chains only if it contains both \code{dk2nuTree} and \code{dkmetaTree}
+(names changeable with \code{SetTreeNames()}).  The POT for each file is
+the sum of \code{pots} over its \code{dkmeta} entries.
+
+After loading, if no maximum weight has been set, the driver runs
+\code{ScanForMaxWeight()} (\sect{genie-gen}), then picks a \emph{random
+starting entry} in the chain, resets the exposure counters, and computes
+the POT per entry (\sect{genie-pot}).
+
+The XML file name defaults to \code{GNuMIFlux.xml} (the file shared with
+\genie's \code{GNuMIFlux} driver; \code{doc/examples/GNuMIFlux.xml},
+\sect{genie-nova}, is an example).  It can be changed with the
+environment variable \code{GDK2NUFLUXXML} or with
+\code{SetXMLFileBase()} (from \code{GFluxFileConfigI}).  The file is
+located by \genie's standard search (\code{GXMLPATH}, then
+\code{\$GENIE/config}).  Its root element must be \code{<gdk2nu\_config>}
+or, for compatibility with \code{GNuMIFlux} files,
+\code{<gnumi\_config>}.
+
+\subsection{Coordinate systems, units and transformations}\label{sec:genie-coords}
+
+Internally the driver works in beam coordinates with cm and ns, matching
+the files.  The user (detector) system has its own orientation, origin and
+units.  The user units are metres and seconds, the units \genie uses for
+positions and times; this is the default and the only fully supported
+choice.  The methods \code{SetLengthUnits()} and \code{SetTimeUnits()}
+(and \code{<units>}, \code{<lunits>}, \code{<tunits>} in XML) exist, and
+should be called before the transformation or window are defined, but
+other units have not been fully implemented or tested (in particular the
+ray timing, \sect{genie-time}, assumes metres and seconds).
+The setters take the value of \code{genie::utils::units::UnitFromString()}
+for the unit, e.g.\ \code{UnitFromString("m")}.  \code{LengthUnits()} and
+\code{TimeUnits()} return the current user units relative to metres and
+seconds (1 for the defaults, 0.01 for cm), as
+\code{ROOTGeomAnalyzer::LengthUnits()} does; they are not the values passed
+to the setters.
+
+The transformation is
+\begin{align}
+  \vec x_\text{user} &= s\,R\,\vec x_\text{beam} + \vec x_0, &
+  \vec p_\text{user} &= R\,\vec p_\text{beam},
+\end{align}
+where $R$ is the beam-to-user rotation (\code{SetBeamRotation()},
+\code{<beamdir>}), $\vec x_0$ is the beam origin expressed in user
+coordinates and user units (\code{SetBeamCenter()}, \code{<beampos>}),
+and $s$ is the cm-to-user length scale.  Times are scaled by the
+ns-to-user factor.  \code{Beam2User\{Pos,Dir,P4\}} and
+\code{User2Beam\{Pos,Dir,P4\}} perform these transformations;
+\code{GetBeamRotation()} and \code{GetBeamCenter()} return the settings.
+
+\subsection{Flux window}\label{sec:genie-window}
+
+\begin{lstlisting}[style=cxx,numbers=none]
+void SetFluxWindow(TVector3 p1, TVector3 p2, TVector3 p3);   // user coords
+void GetFluxWindow(TVector3& p1, TVector3& p2, TVector3& p3) const;
+\end{lstlisting}
+The three points (user coordinates and units) define a parallelogram:
+\code{p1} is a corner and $\vec d_1 = $ \code{p2}$-$\code{p1},
+$\vec d_2 = $ \code{p3}$-$\code{p1} are its edges, which should be
+orthogonal (a warning is printed if they are not).  Each ray starts at a
+point chosen uniformly on the window,
+$\vec x = \vec p_1 + u_1\vec d_1 + u_2\vec d_2$.  The window should be
+large enough, and far enough upstream, that every ray that could interact
+in the geometry of interest crosses it.  A spherical ``window''
+(\code{SetFluxSphere}) is declared but not yet supported: calling it is
+fatal.
+
+\subsection{Generating rays}\label{sec:genie-gen}
+
+\paragraph{Weighted rays.}  For each ray the driver
+\begin{enumerate}[nosep]
+\item advances to the next entry, unless the current entry has been used
+      fewer than \code{fNUse} times (\code{SetEntryReuse(n)},
+      \code{<reuse>}); at the end of the chain it cycles back to the
+      beginning (\code{SetNumOfCycles}, 0 = unlimited).  Normally only the
+      \code{decay} part of the entry is read at this point
+      (see \emph{Partial reading} below);
+\item adds the POT equivalent of one ray to the exposure (\sect{genie-pot});
+\item rejects the ray (without further work) if \code{ntype} is not in the
+      list given to \code{SetFluxParticles()} (default
+      \numu, \numubar, \nue, \nuebar).  Rejected flavours still count towards
+      the exposure, so e.g.\ generating only intrinsic \nue events is
+      correctly normalised;
+\item picks a point on the window and calls \code{calcEnuWgt} to get
+      $E_\nu$ and $w_{xy}$; the momentum is along the line from the decay
+      vertex to that point;
+\item sets the weight
+      $w = \code{nimpwt}\times w_{xy}\times|\hat p\cdot\hat n|$,
+      where the last factor (the projection onto the window normal) is
+      applied unless \code{SetApplyWindowTiltWeight(false)};
+\item once the ray is to be returned (every ray when generating weighted
+      rays, otherwise only accepted rays), reads the rest of the entry,
+      transforms the ray's 4-momentum and 4-position to user coordinates
+      (the weight needs only beam coordinates), sets the times
+      (\sect{genie-time}) and, if requested, moves the ray origin upstream
+      (\code{upstreamz}).
+\end{enumerate}
+A ray with $E_\nu$ above the maximum energy (\code{SetMaxEnergy},
+default 120\,GeV, possibly raised by the scan) is fatal, since that maximum
+has already been used to normalise interaction probabilities.
+
+\paragraph{Partial reading.}  Everything needed to weight a ray is in
+\code{Dk2Nu::decay}.  If the \code{dk2nu} branch was written split (as the
+standard writers do, with split level 99), the driver reads only the
+\code{decay} sub-branch for each new entry, and the rest of the entry
+(\code{ancestor}, \code{nuray}, \code{traj}, \ldots) only when a ray from
+that entry is accepted.  The max-weight scan (\code{ScanForMaxWeight()})
+therefore never reads full entries.  The check is made for each file in the
+chain: entries of a file whose \code{dk2nu} branch is not split are read in
+full, as before, so split and unsplit files can be mixed.  Because the
+scan reads only \code{decay}, ROOT's \code{TTreeCache} would otherwise learn
+to prefetch only those baskets.  The driver therefore registers every
+branch with the cache once the scan is done, so generation makes the same
+grouped reads as full reading.
+\code{GetDk2Nu()} always returns a complete entry after
+\code{GenerateNext()}.  \code{SetPartialRead(false)} or
+\code{<partialread> false </partialread>} restores full reading of every
+entry.
+
+\paragraph{Unweighted rays.}  By default (\code{SetGenWeighted(false)})
+\code{GenerateNext()} returns rays with weight 1: each weighted ray is
+accepted with probability $w/w_\mathrm{max}$.  The maximum
+$w_\mathrm{max}$ is estimated by \code{ScanForMaxWeight()}, which generates
+\code{fMaxWgtEntries} weighted rays (default 2\,500\,000) and records the
+largest weight and energy.  Then
+\begin{itemize}[nosep]
+\item $w_\mathrm{max} = f_w\times\max(w)$, with $f_w$ the weight fudge
+      factor (default 1.05);
+\item if the user floor (\code{SetMinMaxWeight()}, \code{<minmaxwgt>}) is
+      larger, it is used instead;
+\item if $f_E\times\max(E_\nu)$ exceeds the declared maximum energy, the
+      maximum energy is raised to it ($f_E$ from \code{SetMaxEFudge()},
+      default 1.05).
+\end{itemize}
+If a ray is later found with $w > w_\mathrm{max}$, the action depends on
+\code{SetMaxWeightFailModel()} / \code{<maxwgtfail>}:
+\begin{description}[nosep,font=\ttfamily]
+\item[bump (0, default)] raise $w_\mathrm{max}$ to $f_w\,w$ and continue.
+      Subsequent POT accounting uses the new maximum, so the exposure stays
+      correct, but the acceptance efficiency drops.
+\item[frozen (1)] keep $w_\mathrm{max}$; the ray is accepted, so such
+      high-weight rays are under-represented.  This avoids changes of scale
+      mid-job, at the cost of a small bias.
+\item[abort (2)] print the configuration and abort.
+\end{description}
+\code{PrintConfig()} reports the scan result, the final maximum, and how
+many times it was exceeded.  Choosing the scan length, fudge factors,
+re-use count and floor is a trade-off between speed and bias; the example
+configuration (\sect{genie-nova}) records tuned values for particular
+file sets.
+
+\subsection{POT accounting}\label{sec:genie-pot}
+
+\code{GetTotalExposure()} and \code{UsedPOTs()} return the POT equivalent
+of the rays drawn so far.  With $N_\mathrm{POT}$ the sum of \code{pots}
+over all loaded files, $N_\mathrm{entries}$ the number of entries, $A$
+the window area and $R = 100$\,cm,
+\begin{equation}
+  \mathrm{POT\ per\ ray} = \frac{\pi R^2}{A}\,
+     \frac{N_\mathrm{POT}}{N_\mathrm{entries}}\,\frac{1}{w_\mathrm{max}},
+\end{equation}
+added for every ray drawn (including re-used entries and rejected
+flavours), using the value of $w_\mathrm{max}$ at that moment.
+\code{Clear()} resets the counters (the \genie event-generation driver calls
+it with \code{"CycleHistory"}).  \code{NFluxNeutrinos()} and
+\code{SumWeight()} report the number of rays drawn and their summed weight.
+
+\subsection{Ray timing}\label{sec:genie-time}
+
+If the ancestor list is filled, the time of the decay is taken from the
+\code{startt} member of the neutrino's ancestor entry,
+\code{ancestor[indxnu()]} (ns, relative to the primary proton).  The ray's time at the window is that time plus the light travel
+time from the decay point to the window, stored in both \code{x4NuBeam}
+(ns) and \code{x4NuUser} (user time units).  If \code{startt} is 0 the
+driver warns (a few times) that the time is probably wrong.  When the ray
+is moved to \code{upstreamz} (\code{MoveToZ0()}), its position is moved
+back along the momentum to the given user $z$ and the time is shifted by
+the corresponding travel time.  \code{GetDecayDist()} returns the
+distance from the decay point to the current ray position in user units.
+
+\subsection{Random numbers}\label{sec:genie-random}
+
+The driver has no generator of its own and never sets a seed.  All random
+numbers come from \genie's singleton
+\code{genie::RandomGen::Instance()->RndFlux()}
+(\code{Framework/Numerical/RandomGen.h}).  In \genie~v3 all the named
+streams (\code{RndFlux}, \code{RndKine}, \code{RndGeom}, \ldots) return the
+\emph{same} \code{TRandom3} (Mersenne Twister) object, so the flux driver,
+geometry navigation and physics models share one sequence.
+
+\paragraph{Seeding.}  \code{RandomGen::SetSeed(seed)} seeds that
+\code{TRandom3}, ROOT's \code{gRandom}, and PYTHIA6/8 with the same value.
+\genie applications call it from their \code{--seed} option; user code that
+drives \genie directly must call it itself.  If no seed is ever set,
+\code{RandomGen} is initialised with \code{kDefaultRandSeed} $= 65539$
+(\code{Framework/Conventions/Controls.h}).  The old \code{\$GSEED}
+environment variable is no longer read: if it is set, \genie exits with a
+fatal error.
+
+\paragraph{Where the driver draws.}
+\begin{enumerate}[nosep]
+\item \code{LoadBeamSimData()}: the starting entry,
+      \code{RndFlux().Integer(N\_entries)}, so that jobs sharing the same
+      files do not all begin with the same decays.
+\item \code{GenerateNext\_weighted()}: two uniform numbers giving the
+      fractions along the two window edge vectors (\sect{genie-window}),
+      i.e.\ the point at which \code{calcEnuWgt} is evaluated.
+\item \code{GenerateNext()}: one uniform number $r$ per weighted ray; the
+      ray is accepted if $r < w/w_\mathrm{max}$ (\sect{genie-gen}).
+\item \code{ScanForMaxWeight()}: called from \code{LoadBeamSimData()}, it
+      generates \code{fMaxWgtEntries} weighted rays and so consumes two
+      numbers for each ray of an accepted flavour before any event is
+      produced.
+\end{enumerate}
+
+\paragraph{Consequences.}
+\begin{itemize}[nosep]
+\item The seed must be set \emph{before} the flux files are loaded.  The
+      starting entry and the max-weight scan are drawn inside
+      \code{LoadBeamSimData()}; if the seed is set afterwards they use the
+      default seed, and every job starts at the same entry with the same
+      scan result.
+\item A run is reproducible for a fixed seed, configuration and software
+      version.  Because the stream is shared, any change that alters how
+      many numbers are consumed (physics model settings, geometry, the scan
+      length or \code{<minmaxwgt>}, \code{<reuse>}, the flavour list) shifts
+      every later number, so the flux rays cannot be held fixed while the
+      physics is varied simply by keeping the seed.
+\item Entries whose flavour is not in \code{SetFluxParticles()} are
+      rejected before a window point is picked and before the acceptance
+      step, so they consume no random numbers (but still count towards the
+      exposure).
+\end{itemize}
+
+\subsection{XML configuration}\label{sec:genie-xml}
+
+Each \code{<param\_set name="...">} groups the settings for one detector
+location.  Elements are applied in the order given; set the units first and
+\code{<beamdir>} before a six-value \code{<beampos>}.  Values may be
+separated and grouped liberally with spaces, commas, semicolons, colons,
+parentheses, brackets or \code{=}.
+
+\begin{center}\small
+\begin{longtable}{>{\ttfamily}p{0.20\textwidth} p{0.74\textwidth}}
+\toprule
+\textrm{\textbf{element}} & \textbf{meaning} \\ \midrule
+\endhead
+verbose & XML parsing verbosity (0--3). \\
+using\_param\_set & apply another named \code{param\_set} first (recursive);
+   later elements override it.  Fatal if not found. \\
+units, lunits & user length unit, e.g.\ \code{m}, \code{cm}.  Set first. \\
+tunits & user time unit, e.g.\ \code{s}, \code{ns}. \\
+beamdir & beam-to-user rotation; \code{type} attribute:
+   \code{"series"} --- a sequence of \code{<rotation axis="x|y|z"
+   units="rad|deg">angle</rotation>} elements;
+   \code{"thetaphi3"} --- six values, $(\theta,\phi)$ of the new $x$, $y$,
+   $z$ axes \`a la \geant{}3, with a \code{units} attribute;
+   \code{"newxyz"} --- nine values, three direction vectors \`a la
+   \geant{}4 (each normalised).  Only the last \code{<beamdir>} is used;
+   rotations are not cumulative across elements. \\
+beampos & beam origin in user coordinates (3 values), or
+   \code{( user xyz ) = ( beam xyz )} (6 values) stating that a beam-frame
+   point (in \emph{user} length units) is at the given user point.  The
+   six-value form needs \code{<beamdir>} first. \\
+window & three \code{<point coord="det">x, y, z</point>} elements in user
+   coordinates (\sect{genie-window}). \\
+enumax & up to four values: maximum energy (GeV, default 120); energy
+   fudge $f_E$ (1.05); weight fudge $f_w$ (1.05); number of rays in the
+   max-weight scan (2\,500\,000). \\
+minmaxwgt & floor for $w_\mathrm{max}$. \\
+maxwgtfail & \code{bump} (0), \code{frozen} (1) or \code{abort} (2). \\
+upstreamz & user $z$ to move ray origins to; if $|z| > 10^{30}$ rays stay
+   on the window. \\
+reuse & number of times each entry is used before moving on. \\
+partialread & \code{true} (default) or \code{false} (also \code{yes}/%
+   \code{no}, \code{on}/\code{off}, \code{1}/\code{0}): read only
+   \code{decay} until a ray is accepted (\sect{genie-gen}). \\
+\bottomrule
+\end{longtable}
+\end{center}
+Unrecognised elements produce a warning and are ignored.
+
+\subsection{Example configuration file}\label{sec:genie-nova}
+
+\code{doc/examples/GNuMIFlux.xml} combines the configuration file
+used by the NOvA experiment with \code{GDk2NuFlux}, the SBND and ICARUS
+sets from the one used by SBND, and the sets from the one used by the DUNE
+near detector (it predates the driver and so still uses
+the \code{<gnumi\_config>} root element and \code{GNuMIFlux} header
+comments, both of which are accepted).  It contains \code{param\_set}s for
+MINOS, NOvA (NDOS, ND, FD and ``Rock'' variants, and as-built/historical
+alignments), BNB, MicroBooNE, \textsc{miner}$\nu$\textsc{a}, ArgoNeuT,
+SBND (with an ``SBND-Dirt'' variant), ICARUS, the DUNE 2x2 prototype with
+\textsc{miner}$\nu$\textsc{a} in the NuMI beam (``ProtoDUNE-ND'',
+``MiniRun4'', ``MiniRun5'' and variants) and the DUNE near detector in the
+LBNF beam (``DUNEND'' and ``DUNENDROCK''), plus a DUNE far detector
+set (``DUNE-FD'', formerly ``LBNE-FarDet\_01'').  The ``DUNE-FD'' set is
+unverified: its baseline, beam angle, detector dimensions and window are
+copied unchanged from the LBNE-era set and have not been checked against
+the current DUNE far detector design.  The NOvA Near Detector set
+illustrates a
+\code{newxyz} rotation, a large window offset towards the beam, a high
+re-use count, a weight floor, and the \code{frozen} failure mode:
+\lstinputlisting[style=xml,firstline=223,lastline=285,firstnumber=223]%
+  {examples/GNuMIFlux.xml}
+\noindent and the ``rock'' variant inherits it, enlarging the window and
+pushing the ray origin far upstream:
+\lstinputlisting[style=xml,firstline=309,lastline=321,firstnumber=309]%
+  {examples/GNuMIFlux.xml}
+\noindent The Far Detector set instead uses the default \code{bump} model;
+as its comment notes, with about one interaction per spill and POT counted
+at the end, a change of $w_\mathrm{max}$ during the job is not a problem:
+\lstinputlisting[style=xml,firstline=323,lastline=376,firstnumber=323]%
+  {examples/GNuMIFlux.xml}
+\noindent The MINOS Near Detector set (lines 54--125 of the file) shows
+all three \code{<beamdir>} forms and both \code{<beampos>} forms for the
+same transformation.
+
+\subsection{Access to the current entry}\label{sec:genie-access}
+
+\begin{itemize}[nosep]
+\item \code{GetDk2Nu()}, \code{GetNuChoice()} --- the current entry and
+      chosen ray;
+\item \code{GetDkMeta()} --- the metadata entry whose \code{job} matches
+      the current entry (looked up on demand);
+\item \code{GetEntryNumber()}, \code{Index()} --- entry in the chain;
+\item \code{GetBranchInfo()} --- tells the \genie output stage to add
+      branches \code{dk2nu} (\code{bsim::Dk2Nu}) and \code{nuchoice}
+      (\code{bsim::NuChoice}) to the event tree, so each generated event
+      carries its flux history;
+\item \code{GetMetaDataTree()} --- the \code{dkmeta} chain, for copying
+      into the output;
+\item \code{GetFileList()}, \code{PrintCurrent()}, \code{PrintConfig()}.
+\end{itemize}
+
+\subsection{Performance}
+
+Event generation from \dktwonu files is slower than from pre-digested
+\code{gsimple} files, because every ray requires reading an entry and most
+rays are rejected by \genie's interaction-probability step.  A 2016 timing
+study with the NOvA Near Detector geometry found that entry re-use
+(\code{<reuse>} 10--50) gave the largest gain, and that files carrying
+ancestor information were noticeably slower to read than files without.
+Differences between beamline simulations in how importance weights are
+assigned also matter.  The study is summarised in \code{dk2nu\_timing.pdf}
+(R.~Hatcher, 2016).
+
+Partial reading (\sect{genie-gen}) helps most when entries are re-used
+little and few rays are accepted, because then most entries are read only
+to be rejected.  With heavy re-use, entries are read rarely and the gain is
+small.  The saving is mainly CPU time spent unpacking the \code{ancestor},
+\code{nuray} and \code{traj} vectors, not bytes read.
+
+%===========================================================================
+\appendix
+
+\section{Building and installing}\label{app:build}
+
+The package is built with CMake (3.14 or later if building the Python
+bindings).  \ROOT's \code{root-config} must be on the \code{PATH}
+(with \code{ROOTSYS} set); for the \genie driver \code{genie-config} must
+also be on the \code{PATH}.
+\begin{lstlisting}[style=plain]
+mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/path/to/install [options] /path/to/dk2nu
+make && make install
+\end{lstlisting}
+
+\begin{center}\small
+\begin{tabularx}{\textwidth}{>{\ttfamily}l >{\ttfamily}l X}
+\toprule
+\textrm{\textbf{option}} & \textrm{\textbf{default}} & \textbf{effect} \\ \midrule
+CMAKE\_BUILD\_TYPE & RelWithDebInfo & compiler flags: \code{RelWithDebInfo}
+   is optimised with debug symbols (\code{-O2 -g}); \code{Release},
+   \code{Debug} (unoptimised) and others as usual for CMake. \\
+WITH\_GENIE & ON & build \code{libdk2nuGenie}. \\
+GENIE\_ONLY & OFF & build only the \genie driver, against an installed
+   tree library given by \code{DK2NUDATA\_DIR}. \\
+DK2NUDATA\_DIR & "" & install prefix of the tree library (for
+   \code{GENIE\_ONLY}). \\
+WITH\_TBB & ON & link \ROOT's implicit multithreading library and TBB
+   (\code{TBB\_LIB}). \\
+COPY\_AUX & ON & install \code{etc/} and \code{scripts/}. \\
+DK2NU\_PYTHON\_ENABLED & OFF & build \code{pydk2nu} (fetches
+   \code{pybind11} from GitHub at configure time). \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+The \genie part uses the environment variables \code{GENIE} (source tree,
+for headers under \code{\$GENIE/src}), \code{GENIE\_LIB},
+\code{LIBXML2\_FQ\_DIR} (and \code{LIBXML2\_INC}), \code{LOG4CPP\_INC} and
+\code{LOG4CPP\_LIB}.
+
+The install area contains \code{lib/} (\code{libdk2nuTree},
+\code{libdk2nuGenie} and their \code{\_rdict.pcm}/\code{.rootmap} files),
+\code{include/dk2nu/tree/} and \code{include/dk2nu/genie/} (so code
+includes \code{"dk2nu/tree/dk2nu.h"} with \code{-I<prefix>/include}, or
+\code{"tree/dk2nu.h"} with \code{-I<prefix>/include/dk2nu}),
+\code{etc/}, \code{scripts/}, and \code{python/<X.Y>/} for the module.
+Set \code{DK2NU} to the install prefix for \code{load\_dk2nu.C} and the
+example macros; add \code{\$DK2NU/lib} to the library path and
+\code{\$DK2NU/python/<X.Y>} to \code{PYTHONPATH}.
+
+%===========================================================================
+\section{Converting legacy ntuples}\label{app:convert}
+
+\code{scripts/convert/} contains \ROOT macros that convert the older
+formats into \dktwonu files:
+
+\begin{center}\small
+\begin{tabular}{llll}
+\toprule
+\textbf{format} & \textbf{tree} & \textbf{macro} & \textbf{based on} \\ \midrule
+\code{gnumi}     & \code{h10}    & ---                            & \geant{}3 \\
+\code{flugg}     & \code{h10}    & \code{flugg/convert\_flugg.C}  & \textsc{fluka}+\geant{}4 \\
+\code{g4numi}    & \code{nudata} & ---                            & \geant{}4 \\
+\code{g4minerva} & \code{nudata} & \code{g4minerva/convert\_g4minerva.C} & \geant{}4 \\
+\code{g4lbne}    & \code{nudata} & \code{g4lbne/convert\_g4lbne.C} & \geant{}4 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Each format directory holds a \code{MakeClass}-generated reader
+(\code{<fmt>.h}, \code{<fmt>.C}, produced by
+\code{aux/mkgclasses3.sh}); \code{g3numi} and \code{g4numi} have readers
+but no conversion macro.  \code{common\_convert.C} provides the shared
+steps (\code{ConvertInit}, \code{ConvertBookNtuple},
+\code{ConvertFinish}), \geant{}3$\to$\textsc{pdg} code translation
+(\code{ConvertGeantToPdg}, \code{Convert5xToPdg}), POT estimation from
+the highest proton number when the input lacks it, and cross-checks of the
+recomputed energies and weights against the near/far values stored in the
+input.  For example:
+\begin{lstlisting}[style=plain]
+root -b -q '$DK2NU/scripts/load_dk2nu.C(false,true)' \
+  '$DK2NU/scripts/convert/g4lbne/convert_g4lbne.C+("in.root",42,"$DK2NU/etc/LBNElocations.txt")'
+\end{lstlisting}
+The arguments are input file, job number (the legacy files often did not
+set a usable run number), a location file or cross-check selector (for
+\code{flugg}: the FLUKA volumes file, then \code{"MINOS"} or \code{"NOvA"}
+to choose which stored near/far positions to cross-check), and optional
+maximum entries and dump frequency.  The output is
+\code{<input>\_to\_dk2nu.root}.  The legacy element names map to \dktwonu
+as follows (capitalisation varied between formats):
+
+\begin{center}\small
+\begin{tabular}{ll}
+\toprule
+\textbf{legacy} & \textbf{\dktwonu} \\ \midrule
+\code{run}, \code{evtno} & \code{job}, \code{potnum} \\
+\code{Ndxdz}, \code{Ndydz}, \code{Npz}, \code{Nenergy} & \code{nuray[0]} (random decay) \\
+\code{NdxdzNear}, \code{NenergyN}, \code{NWtNear}, \ldots & recomputed into \code{nuray[i]} \\
+\code{Norig}, \code{Ndecay}, \code{Ntype} & \code{decay.norig}, \code{decay.ndecay}, \code{decay.ntype} \\
+\code{Vx}, \code{pdPx}, \code{ppdxdz}, \code{pppz}, \code{ppenergy}, \ldots & \code{decay.vx}, \code{decay.pdpx}, \ldots \\
+\code{ppmedium}, \code{ptype}, \code{muparpx}, \ldots, \code{Necm}, \code{Nimpwt} & \code{decay.*} \\
+\code{ppvx}, \code{ppvy}, \code{ppvz} & \code{ppvx}, \code{ppvy}, \code{ppvz} \\
+\code{tvx}, \code{tpx}, \code{tptype}, \code{tgen}, \ldots & \code{tgtexit.*} \\
+\code{pdg[]}, \code{start*[]}, \code{stopp*[]}, \code{pprodp*[]}, \code{proc[]}, \code{ivol[]} & \code{ancestor[]} (mm$\to$cm, MeV$\to$GeV) \\
+\code{overflow} & \code{flagbits \& kFlgOverflow} \\
+\code{trkx[]}, \code{trkpx[]}, \ldots & \code{traj[]} \\
+\bottomrule
+\end{tabular}
+\end{center}
+Legacy elements with no \dktwonu equivalent (\code{xpoint},
+\code{tgptype}, \code{tgppx}, \code{tprivx}, \code{beamx}, \code{beampx},
+\code{trackId}, \code{parentId}, \code{fvol}, the \code{flugg}
+derived quantities \code{Vr}, \code{pdP}, \code{tp}, \ldots) are dropped;
+per-file beam parameters belong in \code{DkMeta}.
+
+%===========================================================================
+\section{Material codes}\label{app:materials}
+
+\begin{table}[htb]
+\centering\small
+\begin{tabular}{rl@{\qquad}rl}
+\toprule
+\textbf{code} & \textbf{material} & \textbf{code} & \textbf{material} \\ \midrule
+ 5 & Beryllium & 20 & Shotcrete \\
+ 6 & Carbon    & 21 & Variable-density aluminium \\
+ 9 & Aluminium & 22 & Variable-density steel \\
+10 & Iron      & 23 & 1018 steel \\
+11 & Slab steel & 24 & A500 steel \\
+12 & Blu steel  & 25 & Water \\
+15 & Air        & 26 & M1018 steel \\
+16 & Vacuum     & 28 & Decay-pipe vacuum \\
+17 & Concrete   & 31 & CT852 \\
+18 & Target (C) & & \\
+19 & Rebar concrete & & \\
+\bottomrule
+\end{tabular}
+\caption{Material codes stored in \code{Decay::ppmedium}, as defined by
+\code{gnumi} and used in the NuMI flux files.  Other simulations may use
+their own numbering; \code{Ancestor::imat} records material names
+directly.}
+\label{tab:materials}
+\end{table}
+
+%---------------------------------------------------------------------------
+\section{Code listings}\label{app:listings}
+
+All listings are included directly from the repository.
+
+\subsection{\code{tree/dk2nu.h}}
+\lstinputlisting[style=cxx]{../tree/dk2nu.h}
+
+\subsection{\code{tree/dkmeta.h}}
+\lstinputlisting[style=cxx]{../tree/dkmeta.h}
+
+\subsection{\code{tree/NuChoice.h}}
+\lstinputlisting[style=cxx]{../tree/NuChoice.h}
+
+\subsection{\code{tree/dflt.h}}
+\lstinputlisting[style=cxx]{../tree/dflt.h}
+
+\subsection{\code{tree/readWeightLocations.h}}
+\lstinputlisting[style=cxx]{../tree/readWeightLocations.h}
+
+\subsection{\code{tree/calcLocationWeights.h}}
+\lstinputlisting[style=cxx]{../tree/calcLocationWeights.h}
+
+\subsection{\code{tree/calcLocationWeights.cxx}}
+\lstinputlisting[style=cxx]{../tree/calcLocationWeights.cxx}
+
+\subsection{\code{genie/GDk2NuFlux.h}}
+\lstinputlisting[style=cxx]{../genie/GDk2NuFlux.h}
+
+\subsection{\code{etc/locations.txt}}
+\lstinputlisting[style=plain]{../etc/locations.txt}
+
+\subsection{\code{scripts/load\_dk2nu.C}}
+\lstinputlisting[style=cxx]{../scripts/load_dk2nu.C}
+
+\subsection{\code{scripts/examples/test\_fill\_dk2nu.C}}
+\lstinputlisting[style=cxx]{../scripts/examples/test_fill_dk2nu.C}
+
+\subsection{\code{scripts/examples/test\_read\_dk2nu.C}}
+\lstinputlisting[style=cxx]{../scripts/examples/test_read_dk2nu.C}
+
+\subsection{\code{scripts/examples/test\_read\_locations.C}}
+\lstinputlisting[style=cxx]{../scripts/examples/test_read_locations.C}
+
+%---------------------------------------------------------------------------
+\section{Open questions and known issues}\label{app:issues}
+
+Items marked \open{\ldots} in the text, collected here, together with
+behaviour noticed while preparing this document that users should be aware
+of.  None of these change the file format.
+
+\begin{enumerate}
+\item \code{Decay::norig}: is it still filled meaningfully by current
+      simulations?
+\item \code{Ancestor::pprodp\{x,y,z\}}: precise meaning, and whether to
+      retire it (the header notes the intent to replace it with
+      \code{parIndex}).
+\item \code{Ancestor::parIndex}: the header comment counts from the neutrino
+      (0) to the proton ($n$), opposite to the vector order.  This could not
+      be checked against data: in 20\,000 entries from each of two g4numi
+      (MINERvA) and two BooNE files, every ancestor has the cleared value
+      $-1$.  Only \code{convert\_flugg.C} fills it, from the \code{flugg}
+      ntuple, so confirming the convention needs a \code{flugg}-derived
+      file or the code that fills that ntuple.
+\item \code{Traj}: which particle and boundaries generate points; is it
+      filled by any current simulation?
+\item User units other than metres and seconds in \code{GDk2NuFlux} were
+      never fully implemented or tested; for example the light-travel time
+      added in \sect{genie-time} divides a distance in user length units by
+      $c$ in m/s.  Possible future work.
+\item Flux spheres (\code{SetFluxSphere()}) are not supported in ray
+      generation; calling it is fatal.
+\end{enumerate}
+
+\end{document}

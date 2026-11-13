@@ -364,9 +364,11 @@ PYBIND11_MODULE(pydk2nu, m) {
       .def("__str__", &Dk2Nu::AsString, py::arg("opt") = "")
       .def("decay_through_point", decay_through_point,
            py::arg("point_in_beam_frame_cm"), R"(
-Returns the (neutrino Energy (GeV), total flux weight in /cm^2])
-  for this decay to send a neutrino through a 1 m diameter circular window at 
-  point_in_beam_frame_cm.
+Returns (neutrino energy (GeV), total flux weight (/cm^2)) for this decay
+  to send a neutrino through a circular window of 1 m (100 cm) radius,
+  facing the decay point, centered at point_in_beam_frame_cm (beam
+  coordinates, cm).  The weight is the probability of passing through that
+  window (bsim::calcEnuWgt) divided by its area, pi*(100 cm)^2.
 
 N.B. The importance weight from the beam/target simulation (Decay::nimpwt) 
   is included in the returned flux weight, so the returned weight is the only
@@ -469,10 +471,11 @@ N.B. The importance weight from the beam/target simulation (Decay::nimpwt)
                                                  });
           },
           py::arg("point_in_beam_frame_cm"), R"(
-Returns the (neutrino species, neutrino Energy (GeV), total flux weight in /cm^2])
-  for each decay in the file to send a neutrino through a 1 m diameter circular 
-  window at point_in_beam_frame_cm and returns the result as a single Nx4 numpy
-  array.
+Returns (neutrino species (PDG), neutrino energy (GeV), total flux weight
+  (/cm^2)) for each of the N decays in the files to send a neutrino through a
+  circular window of 1 m (100 cm) radius centered at point_in_beam_frame_cm
+  (beam coordinates, cm), as a single Nx3 numpy array.  See
+  Dk2Nu.decay_through_point for the definition of the weight.
 
 N.B. The importance weight from the beam/target simulation (Decay::nimpwt) 
   is included in the returned flux weight, so the returned weight is the only
@@ -480,10 +483,13 @@ N.B. The importance weight from the beam/target simulation (Decay::nimpwt)
 )")
       .def("decay_all_through_points", decay_all_through_points,
            py::arg("points_in_beam_frame_cm"), R"(
-Returns the (neutrino species, neutrino Energy (GeV), total flux weight in /cm^2])
-  for each decay in the file to send a neutrino through a 1 m diameter circular 
-  window at each point_in_beam_frame_cm and returns the result as a single Nx(1+2*M) 
-  numpy array, where M is the number of points.
+Returns, for each of the N decays in the files, the neutrino species (PDG)
+  followed by (neutrino energy (GeV), total flux weight (/cm^2)) for each of
+  the M points in points_in_beam_frame_cm (beam coordinates, cm), each point
+  being the center of a circular window of 1 m (100 cm) radius.  The result
+  is a single Nx(1+2*M) numpy array: column 0 is the species, columns
+  1+2*j and 2+2*j are the energy and weight for point j.  See
+  Dk2Nu.decay_through_point for the definition of the weight.
 
 N.B. The importance weight from the beam/target simulation (Decay::nimpwt) 
   is included in the returned flux weight, so the returned weight is the only
