@@ -7,7 +7,7 @@
 Python3, CMake >3.14
 
 Add `-DDK2NU_PYTHON_ENABLED=ON` to your cmake invocation for the main dk2nu 
-project to enable thepython bindings.
+project to enable the python bindings.
 
 ## Usage
 
@@ -33,9 +33,9 @@ rdr = dk.dk2nuFileReader(["./dk2nu.file1.root", "./dk2nu.file2.root"])
 
 POT = sum([m.pots for m in rdr.metas()])
 
-for d in dk.decays():
-  # do something with each decay
-
+for entry in rdr.decays():
+  # do something with each entry (a dk.Dk2Nu), e.g. entry.decay.ntype
+  pass
 ```
 
 A common task is calculating the weight for all decays in an input chain
@@ -53,7 +53,8 @@ POT = sum([m.pots for m in rdr.metas()])
 
 point_cm = [0, 0, 57400]
 
-nus = np.array([(dk.decay.ntype, *dk.decay_through_point(point_cm)) for dk in fr.decays()])
+nus = np.array([(entry.decay.ntype, *entry.decay_through_point(point_cm))
+                for entry in rdr.decays()])
 # select only the muon neutrinos
 numus = nus[nus[:,0] == 14]
 ```
@@ -80,7 +81,7 @@ This approach has been benchmarked to be approximately 30% faster on identical
 inputs, so if the greater degree of flexibility afforded by the python looping
 approach is useful, you don't sacrifice much performance for doing so. The vast
 majority of the computation time is spent on ROOT I/O, and then on the 
-python/C++ interface, and then neglibly on the weight and energy calculations.
+python/C++ interface, and then negligibly on the weight and energy calculations.
 
 When the flux through multiple points is needed then it is significantly more
 performant to only loop over the dk2nu entries once. We provide a single 
@@ -99,7 +100,7 @@ POT = sum([m.pots for m in rdr.metas()])
 ND_Z_cm = 57400
 offaxis_positions_m = [0, 5, 10, 20, 25]
 
-nus = fr.decay_all_through_points([ [x*100, 0, ND_Z_cm] for x in offaxis_positions_m ])
+nus = rdr.decay_all_through_points([ [x*100, 0, ND_Z_cm] for x in offaxis_positions_m ])
 # select only the muon neutrinos
 numus = nus[nus[:,0] == 14]
 
@@ -115,10 +116,11 @@ repeated I/O, but nested list comprehension can be tricky:
 
 ```python
 nus = np.array(
-    [ [ x 
+    [ ( entry.decay.ntype,
+        *[ x
            for oam in [0, 5, 10, 20, 25]
-           for x in dk.decay_through_point([oam*100, 0, ND_Z_cm]) ] 
-      for dk in fr.decays() ] )
+           for x in entry.decay_through_point([oam*100, 0, ND_Z_cm]) ] )
+      for entry in rdr.decays() ] )
 numus = nus[nus[:,0] == 14]
 ```
 
