@@ -42,11 +42,6 @@ set(dk2nuTree_DICTIONARY dk2nuTreeDict)
 
 #MESSAGE("--DK2NU- about to ROOT_GENERATE_DICTIONARY ${dk2nuTree_DICTIONARY}")
 #MESSAGE("--rwh- ROOT_GENERATE_DICTIONARY ${dk2nuTree_DICTIONARY} ${dk2nuTree_HDRS} ${dk2nuTree_LINKDEF} ")
-if( ${ROOT_MAJOR_VERSION} LESS 6 )
-  set(ROOT_DICT_OPT_TREE -p)
-  ROOT_GENERATE_DICTIONARY("${dk2nuTree_DICTIONARY}" "${dk2nuTree_HDRS}"
-    LINKDEF "${dk2nuTree_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_TREE} )
-else()
   set(ROOT_INCLUDE_PATH $ENV{ROOT_INCLUDE_PATH}:${PROJECT_SOURCE_DIR}:${PROJECT_SOURCE_DIR}/tree)
   # these are defined for the install stage
   set(TREEDICTFILES ${CMAKE_BINARY_DIR}/tree/libdk2nuTree_rdict.pcm
@@ -59,14 +54,12 @@ else()
   ROOT_GENERATE_DICTIONARY("${dk2nuTree_DICTIONARY}" "${dk2nuTree_HDRS}"
     LINKDEF "${dk2nuTree_LINKDEF}" OPTIONS ${ROOT_DICT_OPT_TREE}
     MODULE dk2nuTree )
-endif()
 
 # add dictionary to list of source files
 SET(dk2nuTree_SRCS ${dk2nuTree_SRCS} ${dk2nuTree_DICTIONARY})
 
 add_library(dk2nuTree SHARED ${dk2nuTree_SRCS})
 target_link_libraries(dk2nuTree ${ROOT_LIBRARIES}
-  ${ROOT_Physics_LIBRARY} ${ROOT_Matrix_LIBRARY}
   ${ADD_ROOT_Imt_LIBRARY} ${TBB_LIBRARY} )
 
 #MESSAGE("--DK2NU- dk2nuTree section done")
