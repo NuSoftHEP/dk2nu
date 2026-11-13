@@ -114,6 +114,7 @@ public :
    Int_t           parIndex[10000];
    Int_t           proc[10000];
    Int_t           ivol[10000];
+   Double_t        tracklength[10000];
 
    // List of branches
    TBranch        *b_run;   //!
@@ -206,6 +207,7 @@ public :
    TBranch        *b_parIndex;   //!
    TBranch        *b_proc;   //!
    TBranch        *b_ivol;   //!
+   TBranch        *b_tracklength;   //!
 
    flugg(TTree *tree=0);
    virtual ~flugg();
@@ -367,6 +369,8 @@ void flugg::Init(TTree *tree)
    fChain->SetBranchAddress("parIndex", parIndex, &b_parIndex);
    fChain->SetBranchAddress("proc", proc, &b_proc);
    fChain->SetBranchAddress("ivol", ivol, &b_ivol);
+
+   fChain->SetBranchAddress("tracklength", tracklength, &b_tracklength);
 
    Notify();
 }

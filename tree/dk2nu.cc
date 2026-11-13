@@ -110,6 +110,7 @@ void bsim::Ancestor::clear(const std::string &)
   parIndex = -1; // not legal, should be a positive integer
   proc = "<<no-process>>";
   ivol = "<<no-volume>>";
+  tracklength = bsim::kDfltDouble;
 }
 std::string bsim::Ancestor::AsString(const std::string& /* opt */) const
 {
@@ -122,7 +123,8 @@ std::string bsim::Ancestor::AsString(const std::string& /* opt */) const
 #ifdef KEEP_ANCESTOR_PPRODPXYZ
   s << "     pprodpx {" << pprodpx << "," << pprodpy << "," << pprodpz << "}\n";
 #endif
-  s << "     stoppx  {" << stoppx << "," << stoppy << "," << stoppz << "}";
+  s << "     stoppx  {" << stoppx << "," << stoppy << "," << stoppz << "}\n";
+  s << "     tracklength=" << tracklength; 
   //last line shouldn't have endl << "\n";
   return s.str();
 }
@@ -137,6 +139,9 @@ void bsim::Ancestor::SetStopP(Double_t px, Double_t py, Double_t pz)
 void bsim::Ancestor::SetPProdP(Double_t px, Double_t py, Double_t pz)
 { pprodpx = px; pprodpy = py; pprodpz = pz; }
 #endif
+
+void bsim::Ancestor::SetTrackLength(Double_t length)
+{ tracklength = length; }
 
 Double_t bsim::Ancestor::r() const
 { return TMath::Sqrt(startx*startx+starty*starty); }

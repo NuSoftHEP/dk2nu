@@ -30,7 +30,7 @@
 #include <vector>
 #include <string>
 
-#define DK2NUVER 12   // KEEP THIS UP-TO-DATE!  increment for each change
+#define DK2NUVER 13   // KEEP THIS UP-TO-DATE!  increment for each change
 #define KEEP_ANCESTOR_PPRODPXYZ 1
 
 namespace bsim {
@@ -199,6 +199,8 @@ namespace bsim {
     Double_t startpy;  ///< particle y initial momentum
     Double_t startpz;  ///< particle z initial momentum
 
+    Double_t tracklength;   ///< particle total track length
+
     Double_t stoppx;   ///< particle x final momentum
     Double_t stoppy;   ///< particle y final momentum
     Double_t stoppz;   ///< particle z final momentum
@@ -236,6 +238,7 @@ namespace bsim {
 
     /// set triplets
     void        SetStartXYZT(Double_t x, Double_t y, Double_t z, Double_t t);
+    void        SetTrackLength(Double_t length);       ///< set track length
     void        SetStartP(Double_t px, Double_t py, Double_t pz);
     void        SetStopP(Double_t px, Double_t py, Double_t pz);
     void        SetPProdP(Double_t px, Double_t py, Double_t pz);
