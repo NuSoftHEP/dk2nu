@@ -61,8 +61,8 @@ int load_dk2nu(bool genie_too = false, bool cnvtinc = false,
   gSystem->SetIncludePath(ip);
   if ( verbose ) cout << "SetIncludePath:  " << ip << endl;
 
-  // additions to .include must be done individually or CINT will
-  // try to quote all the spaces as a single path
+  // additions to .include must be done individually or the interpreter
+  // will try to quote all the spaces as a single path
   TString dip;
 
   dip = ".include ";
