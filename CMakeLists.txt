@@ -1,8 +1,8 @@
 #
 # source /nusoft/app/externals/setup
 # setup cmake
-# setup genie  v2_8_0a   -q debug:e4
-# setup root   v5_34_05  -q debug:e4
+# setup genie  <version, R-3 or later>
+# setup root   <version, 6 or later>
 #
 # cd /nova/app/users/$USER
 #
@@ -16,7 +16,7 @@
 #     <path-to-source>/dk2nu
 #
 # Required environment variables:
-#    ROOTSYS    e.g. /nusoft/app/externals/root/v5_34_05/Linux64bit+2.6-2.5-e2-debug
+#    ROOTSYS    the ROOT (6 or later) installation
 # Optional
 #    GENIE
 #      if GENIE, also requires  $LIBXML2_INC and $LOG4CPP_INC
@@ -24,9 +24,14 @@
 #----------------------------------------------------------------------------
 # Setup the project
 #
-cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 project(dk2nu)
-set(CMAKE_BUILD_TYPE Debug)
+# default to an optimised build with debug symbols (-O2 -g);
+# -DCMAKE_BUILD_TYPE=<type> on the command line takes precedence
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
+endif()
+MESSAGE("--DK2NU-- CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
 set(LIBRARY_OUTPUT_PATH "${CMAKE_BINARY_DIR}/lib")
 set(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
 
@@ -46,7 +51,9 @@ execute_process(COMMAND root-config --version OUTPUT_VARIABLE ROOT_VERSION)
 string(STRIP ${ROOT_VERSION} ROOT_VERSION)
 string(SUBSTRING ${ROOT_VERSION} 0 1 ROOT_MAJOR_VERSION)
 MESSAGE("--DK2NU-- ROOT_VERSION=${ROOT_VERSION} major=${ROOT_MAJOR_VERSION}")
-# for now this still has to work with both 5 & 6
+if( ${ROOT_MAJOR_VERSION} LESS 6 )
+  MESSAGE(FATAL_ERROR "--DK2NU-- ROOT 6 or later is required (found ${ROOT_VERSION})")
+endif()
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake
                       $ENV{ROOTSYS}/cmake/modules
@@ -60,34 +67,8 @@ find_package(ROOT REQUIRED)
 
 include(Darwin)
 
-if( ${ROOT_MAJOR_VERSION} LESS 6 )
-  # older ROOT wasn't so helpful, mimic what ROOT 6 does
-
-  MESSAGE("--DK2NU-- start ROOT 5 config")
-  include(CMakeParseArguments)
-  ##  $ENV{ROOTSYS}/etc/cmake/ROOTUseFile.cmake)
-
-  execute_process(COMMAND root-config --auxcflags
-                  OUTPUT_VARIABLE ROOT_CXX_FLAGS)
-  ### has a troublesome trailing \n
-  string(STRIP ${ROOT_CXX_FLAGS} ROOT_CXX_FLAGS)
-  MESSAGE("--DK2NU-- ROOT_CXX_FLAGS ${ROOT_CXX_FLAGS}")
-  set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${ROOT_CXX_FLAGS})
-
-  include(CMakeParseArguments)
-
-  find_library(ROOT_Physics_LIBRARY NAMES Physics PATHS
-    $ENV{ROOTSYS}/lib NO_DEFAULT_PATH )
-  find_library(ROOT_Matrix_LIBRARY NAMES Matrix PATHS
-    $ENV{ROOTSYS}/lib NO_DEFAULT_PATH )
-
-else()
-  MESSAGE("--DK2NU-- start ROOT 6 config")
-  # don't know who defines the ${ROOT_DIR} used here
-  # seems to be $ENV{ROOTSYS}/cmake
-  include(${ROOT_DIR}/ROOTUseFile.cmake)
-endif()
-MESSAGE("--DK2NU-- finish ROOT X config")
+# ${ROOT_DIR} is set by find_package(ROOT)
+include(${ROOT_DIR}/ROOTUseFile.cmake)
 
 if( WITH_TBB )
   MESSAGE("--DK2NU-- enabled WITH_TBB")
@@ -102,18 +83,11 @@ endif()
 
 #----------------------------------------------------------------------------
 
-if( ${ROOT_MAJOR_VERSION} LESS 6 )
-  #### / ) # add abs path for find_file() in FindROOT.cmake
-  set(ROOT5_NEEDS_FULL_PATH / )
-endif()
-
-
 MESSAGE("====> PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}")
 set(INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/..
                         ${PROJECT_SOURCE_DIR}
                         ${PROJECT_SOURCE_DIR}/dk2nu
-                        $${ROOT_INCLUDE_DIR}
-                        ${ROOT5_NEEDS_FULL_PATH} )
+                        ${ROOT_INCLUDE_DIR} )
 
   set(GENIE $ENV{GENIE})
 if( GENIE_ONLY )
