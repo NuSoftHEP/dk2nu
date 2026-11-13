@@ -25,9 +25,7 @@
 #include "TTree.h"
 #include "TRandom3.h"
 
-#ifndef __CINT__
-// hide header stuff from CINT, assume load_dk2nu.C run first
-
+// dk2nu includes (run load_dk2nu.C first to set the include path)
 #include "tree/dk2nu.h"
 #include "tree/dkmeta.h"
 
@@ -37,9 +35,7 @@
 /// include standardized code for getting energy/weight vectors for locations
 #include "tree/calcLocationWeights.h"
 
-#endif  // ifndef __CINT__
-
-// if running bare CINT don't try adding the NonStd addition it won't work
+// comment this out to leave out the NonStd extension example
 #define ADD_NONSTD
 
 #ifdef ADD_NONSTD
