@@ -707,12 +707,29 @@
 
   <param_set name="SBND-Dirt">
     <using_param_set> SBND </using_param_set>
+    <!-- window just upstream of the earth in sbnd_v02_06.gdml, which starts
+         at z = -21.6 m (upstream of that is only air), so every ray crosses
+         all of the earth.  The window is upstream of all the matter, so it
+         only has to cover the x-y extent of the GENIE rock region.  This
+         22 m x 20 m size (x +-11 m, y +-10 m) is for the hall-interior
+         rockbox
+           (-472,-394,-270)(472,627,949),0,500,...
+         whose region reaches x +-9.7 m and y -8.9 to +11.3 m.  y +-10 m
+         covers all the earth (its top is at y = 6.3 m); y up to +12 m would
+         add only the thin building wall above it.  For the TPC-sized
+         rockbox
+           (-210,-210,-10)(210,210,510),0,500,...
+         (region +-7.1 m) x +-10 m is enough.  An 80 m x 80 m window gives
+         the same events and is 8-15 times slower.  Regenerate the max path
+         length file after changing the window or the rockbox. -->
     <window>
-      <point coord="det">  40.0,  40.0, -18.0 </point>
-      <point coord="det">  40.0, -40.0, -18.0 </point>
-      <point coord="det"> -40.0, 40.0,  -18.0 </point>
+      <point coord="det">  11.0,  10.0, -22.0 </point>
+      <point coord="det">  11.0, -10.0, -22.0 </point>
+      <point coord="det"> -11.0,  10.0, -22.0 </point>
     </window>
-    <upstreamz> -18.0 </upstreamz>
+    <!-- start the rays on the window; without this the -10 inherited from
+         SBND would move them downstream, past 11.6 m of earth -->
+    <upstreamz> -22.0 </upstreamz>
   </param_set>
 
 
