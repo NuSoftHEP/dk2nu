@@ -112,7 +112,11 @@ endif()
 
 # Install support files and scripts
 if(COPY_AUX)
-#  install(FILES README DESTINATION doc RENAME dk2nu.README)
+  install(FILES README.md DESTINATION doc RENAME dk2nu.README.md)
+  install(FILES       doc/dk2nu.tex
+          DESTINATION doc)
+  install(FILES       doc/examples/GNuMIFlux.xml
+          DESTINATION doc/examples)
   install(FILES       etc/locations.txt
                       etc/NuMIlocations.txt
                       etc/LBNElocations.txt
