@@ -1,0 +1,145 @@
+# dk2nu: a common format for neutrino beam simulation "flux" files
+
+[![Documentation PDF](https://shields.io/badge/Docs-PDF-red)](https://github.com/user-attachments/files/35041878/dk2nu.pdf)
+(LaTeX source: [`doc/dk2nu.tex`](doc/dk2nu.tex))
+
+## Purpose
+
+dk2nu defines a single ROOT TTree format for the output of neutrino
+beamline simulations (g4numi, g4lbne/g4lbnf, flugg, ...), replacing the
+older incompatible layouts (gnumi, flugg, g4numi, g4numi-minerva).
+
+These "flux" files record decays rather than neutrinos: for every decay
+that produced a neutrino they keep enough information about the decay
+(and optionally the full ancestry back to the primary proton) to
+re-evaluate the energy and probability of the neutrino passing through
+any point. The package provides:
+
+- the data classes (namespace `bsim`) and helper code for filling them
+- `calcEnuWgt()`: energy and weight of a decay's neutrino at any point
+- a GENIE flux driver, `genie::flux::GDk2NuFlux`, that generates
+  neutrino rays from dk2nu files for event generation
+- Python bindings (`pydk2nu`) for reading files and computing fluxes
+- ROOT macros for converting legacy ntuples
+
+## File format in brief
+
+| tree         | branch   | class          | entries                          |
+|--------------|----------|----------------|----------------------------------|
+| `dk2nuTree`  | `dk2nu`  | `bsim::Dk2Nu`  | one per recorded decay           |
+| `dkmetaTree` | `dkmeta` | `bsim::DkMeta` | one per job (normally one per file) |
+
+Units are cm, GeV and ns; positions are in the beam coordinate system;
+particle codes are PDG. Entries in the two trees are linked by `job`.
+The protons-on-target for a file is `DkMeta::pots`.
+
+## Directory layout
+
+| directory  | contents |
+|------------|----------|
+| `tree/`    | data classes (`Dk2Nu`, `DkMeta`, `NuChoice`, ...) and helpers (`readWeightLocations`, `calcLocationWeights`, `calcEnuWgt`) → `libdk2nuTree` |
+| `genie/`   | GENIE flux driver `GDk2NuFlux` → `libdk2nuGenie` |
+| `python/`  | pybind11 bindings (`pydk2nu`) and example scripts; see [`python/README.md`](python/README.md) |
+| `scripts/` | `load_dk2nu.C` (load libraries and include paths into ROOT); `examples/` (filling and reading examples); `convert/` (convert legacy ntuples to dk2nu) |
+| `etc/`     | standard detector location files (beam coordinates, cm) |
+| `doc/`     | `dk2nu.tex` (the full documentation); `examples/GNuMIFlux.xml`, an example `GDk2NuFlux` XML configuration |
+| `cmake/`   | platform-specific CMake fragments |
+
+## Requirements
+
+- ROOT 6
+- CMake 3.12 or later
+- for the GENIE flux driver: GENIE v3, libxml2, log4cpp
+- for the Python bindings: Python 3, CMake 3.14 or later, and network
+  access at configure time (pybind11 is fetched from GitHub)
+
+ROOT 5 and GENIE v2 are no longer supported.
+
+## Building
+
+The build uses CMake. `root-config` (and, for the GENIE driver,
+`genie-config`) must be on `PATH`.
+
+```bash
+mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/path/to/install [options] /path/to/dk2nu
+make
+make install
+```
+
+Options:
+
+| option | default | meaning |
+|--------|---------|---------|
+| `-DCMAKE_BUILD_TYPE=<type>`     | `RelWithDebInfo` (`-O2 -g`) | `Release`, `RelWithDebInfo`, `Debug`, ... |
+| `-DWITH_GENIE=ON\|OFF`           | `ON`  | build `libdk2nuGenie` |
+| `-DGENIE_ONLY=ON\|OFF`           | `OFF` | build only the GENIE driver against an installed tree library |
+| `-DDK2NUDATA_DIR=<prefix>`      |       | install prefix of that tree library (needed with `GENIE_ONLY`) |
+| `-DWITH_TBB=ON\|OFF`             | `ON`  | link the ROOT implicit-MT library and TBB |
+| `-DCOPY_AUX=ON\|OFF`             | `ON`  | install `etc/`, `scripts/` and `doc/` |
+| `-DDK2NU_PYTHON_ENABLED=ON\|OFF` | `OFF` | build `pydk2nu` |
+
+Environment variables used:
+
+| variable | meaning |
+|----------|---------|
+| `ROOTSYS`                       | ROOT installation |
+| `GENIE`, `GENIE_LIB`            | GENIE source tree (headers under `$GENIE/src`) and libraries |
+| `LIBXML2_FQ_DIR`, `LIBXML2_INC` | libxml2 (GENIE driver) |
+| `LOG4CPP_INC`, `LOG4CPP_LIB`    | log4cpp (GENIE driver) |
+| `TBB_LIB`                       | TBB library (`WITH_TBB`) |
+
+Installed layout:
+
+```
+lib/                  libdk2nuTree, libdk2nuGenie (+ _rdict.pcm, .rootmap)
+include/dk2nu/tree/
+include/dk2nu/genie/
+etc/
+scripts/
+doc/                  dk2nu.README.md, dk2nu.tex, examples/GNuMIFlux.xml
+python/<X.Y>/         pydk2nu module (if enabled)
+```
+
+## Using the package
+
+Set `DK2NU` to the install prefix.
+
+### ROOT
+
+```
+root $DK2NU/scripts/load_dk2nu.C myfile.root
+root [] dkmetaTree->Scan("job:pots:location.name")
+root [] dk2nuTree->Draw("nuray[1].E","decay.nimpwt*nuray[1].wgt")
+```
+
+`load_dk2nu(genie_too=false, cnvtinc=false, verbose=false)` also loads
+`libdk2nuGenie` if `genie_too` is true.
+
+### C++
+
+Include `"dk2nu/tree/dk2nu.h"` (with `-I$DK2NU/include`) and link against
+`libdk2nuTree`; see `scripts/examples/test_read_dk2nu.C` and
+`scripts/examples/test_fill_dk2nu.C`.
+
+### Python
+
+Add `$DK2NU/python/<X.Y>` to `PYTHONPATH`; see
+[`python/README.md`](python/README.md).
+
+### GENIE
+
+Load `libdk2nuGenie` and select the flux driver `genie::flux::GDk2NuFlux`.
+The driver reads its configuration (beam-to-detector transform, flux
+window, weighting parameters) from a named `<param_set>` in an XML file;
+see the documentation PDF and `doc/examples/GNuMIFlux.xml`.
+
+When the `dk2nu` branch is split, the driver by default reads only the
+`decay` part of an entry to weight a ray, and reads the rest only once a
+ray is accepted. This speeds up unweighted generation without changing
+the events. `<partialread> false </partialread>` in the XML (or
+`SetPartialRead(false)`) restores full reading.
+
+## Contact
+
+Robert Hatcher <rhatcher@fnal.gov>
